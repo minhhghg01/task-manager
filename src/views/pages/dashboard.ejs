@@ -1,0 +1,103 @@
+<%- include('../partials/header') %>
+
+    <div
+        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">
+            <%= (typeof pageTitle !=='undefined' ) ? pageTitle : 'Tổng quan công việc' %>
+        </h1>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle datatable-init">
+            <thead class="table-dark">
+                <tr>
+                    <th style="width: 5%">STT</th>
+                    <th style="width: 25%">Tiêu đề</th>
+                    <th style="width: 15%">Người nhận</th>
+                    <th style="width: 15%">Hạn chót</th>
+                    <th style="width: 15%">Người tạo</th>
+                    <th style="width: 10%">Độ ưu tiên</th>
+                    <th style="width: 10%">Trạng thái</th>
+                    <th style="width: 5%">Ngày tạo</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (tasks && tasks.length> 0) { %>
+                    <% tasks.forEach((task, index)=> { %>
+                        <tr style="cursor: pointer;" onclick="window.location.href='/tasks/<%= task.id %>'">
+
+                            <td>
+                                <%= index + 1 %>
+                            </td>
+
+                            <td>
+                                <strong>
+                                    <%= task.title %>
+                                </strong>
+                                <% if(task.attachment_path) { %>
+                                    <i data-feather="paperclip" class="text-muted" style="width:14px"></i>
+                                    <% } %>
+                                        <br>
+                                        <small class="text-muted text-truncate"
+                                            style="max-width: 250px; display: inline-block;">
+                                            <%= task.description %>
+                                        </small>
+
+                                        <% if(task.progress> 0 && task.progress < 100) { %>
+                                                <div class="progress mt-1" style="height: 3px; width: 50%;">
+                                                    <div class="progress-bar" style="width: <%= task.progress %>%;">
+                                                    </div>
+                                                </div>
+                                                <% } %>
+                            </td>
+
+                            <td>
+                                <small class="text-primary fw-bold">
+                                    <%= task.assigneeNames || 'Chưa giao' %>
+                                </small>
+                            </td>
+
+                            <td>
+                                <% const dueDate=task.due_date ? new Date(task.due_date) : null; const now=new Date();
+                                    const isOverdue=dueDate && dueDate < now && task.status !=='Completed' ; %>
+                                    <span class="<%= isOverdue ? 'text-danger fw-bold' : '' %>">
+                                        <%= task.formattedDueDate %>
+                                    </span>
+                                    <% if(isOverdue) { %> <i data-feather="alert-circle" class="text-danger"
+                                            style="width:14px"></i>
+                                        <% } %>
+                            </td>
+
+                            <td>
+                                <%= task.Creator ? task.Creator.fullname : 'N/A' %>
+                            </td>
+
+                            <td>
+                                <span
+                                    class="badge bg-<%= task.priority === 'High' ? 'danger' : (task.priority === 'Medium' ? 'warning' : 'secondary') %>">
+                                    <%= task.priority %>
+                                </span>
+                            </td>
+
+                            <td>
+                                <% let statusColor='secondary' ; if(task.status==='New' ) statusColor='info text-dark' ;
+                                    if(task.status==='In_Progress' ) statusColor='primary' ;
+                                    if(task.status==='Completed' ) statusColor='success' ; if(task.status==='Overdue' )
+                                    statusColor='danger' ; %>
+                                    <span class="badge bg-<%= statusColor %>">
+                                        <%= task.status %>
+                                    </span>
+                            </td>
+
+                            <td>
+                                <%= new Date(task.createdAt).toLocaleDateString('vi-VN') %>
+                            </td>
+                        </tr>
+                        <% }); %>
+                            <% } %>
+            </tbody>
+        </table>
+    </div>
+
+    <%- include('../partials/modal-create-task') %>
+        <%- include('../partials/footer') %>

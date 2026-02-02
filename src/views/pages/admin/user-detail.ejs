@@ -1,0 +1,79 @@
+<%- include('../../partials/header') %>
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3>Chi tiết Nhân sự</h3>
+
+            <button type="button"
+                onclick="confirmDelete('/admin/users/delete/<%= user.id %>', 'Xóa nhân viên <%= user.fullname %>?')"
+                class="btn btn-danger">
+                <span data-feather="trash-2"></span> Xóa nhân viên này
+            </button>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                Thông tin: <%= user.fullname %>
+            </div>
+            <div class="card-body">
+                <form action="/admin/users/update/<%= user.id %>" method="POST">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Họ và tên</label>
+                            <input type="text" name="fullname" class="form-control" value="<%= user.fullname %>"
+                                required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Tài khoản (Username)</label>
+                            <input type="text" name="username" class="form-control" value="<%= user.username %>"
+                                required>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Khoa / Phòng</label>
+                            <select name="departments_id" class="form-select">
+                                <% departments.forEach(d=> { %>
+                                    <option value="<%= d.id %>" <%=user.departments_id==d.id ? 'selected' : '' %>>
+                                        <%= d.name %>
+                                    </option>
+                                    <% }) %>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Chức vụ</label>
+                            <select name="role" class="form-select">
+                                <% ['STAFF','LEADER','DEPUTY','HEAD','DEPUTY_DIRECTOR','DIRECTOR','ADMIN'].forEach(r=> {
+                                    %>
+                                    <option value="<%= r %>" <%=user.role==r ? 'selected' : '' %>><%= r %>
+                                    </option>
+                                    <% }) %>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Trạng thái</label>
+                            <select name="status" class="form-select">
+                                <option value="active" <%=user.status=='active' ? 'selected' : '' %>>Hoạt động</option>
+                                <option value="inactive" <%=user.status=='inactive' ? 'selected' : '' %>>Đã khóa
+                                </option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Đổi mật khẩu (Để trống nếu không đổi)</label>
+                            <input type="password" name="password" class="form-control" placeholder="******">
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-3 border-top pt-3">
+                        <a href="/admin/users" class="btn btn-secondary me-2">Quay lại danh sách</a>
+                        <button type="submit" class="btn btn-success"><span data-feather="save"></span> Lưu thay
+                            đổi</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <%- include('../../partials/footer') %>

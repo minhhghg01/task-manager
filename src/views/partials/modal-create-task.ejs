@@ -1,0 +1,178 @@
+<div class="modal fade" id="createTaskModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+
+        <form action="/api/tasks" method="POST" enctype="multipart/form-data" id="createTaskForm">
+            <div class="modal-content">
+
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <span data-feather="plus-circle" style="width: 20px"></span> Giao việc mới
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label fw-bold">Tiêu đề công việc <span
+                                    class="text-danger">*</span></label>
+                            <input type="text" name="title" class="form-control" required
+                                placeholder="Nhập tên công việc ngắn gọn...">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Độ ưu tiên</label>
+                            <select name="priority" class="form-select">
+                                <option value="Medium" selected>Bình thường</option>
+                                <option value="High" class="text-danger fw-bold">Cao (Gấp)</option>
+                                <option value="Low">Thấp</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Mô tả chi tiết</label>
+                        <textarea name="description" class="form-control" rows="4"
+                            placeholder="Mô tả nội dung, yêu cầu cụ thể..."></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">
+                            <span data-feather="paperclip" style="width: 16px"></span> Đính kèm tài liệu
+                        </label>
+                        <input type="file" name="attachment" class="form-control"
+                            accept=".jpg, .jpeg, .png, .gif, .txt, .pdf, .doc, .docx, .xls, .xlsx, .ppt, .pptx">
+                        <small class="text-muted fst-italic">Hỗ trợ: Ảnh, Word, Excel, PowerPoint, PDF, TXT (Max
+                            10MB).</small>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-7 mb-3">
+                            <label class="form-label fw-bold">Người nhận việc <span class="text-danger">*</span></label>
+
+                            <div class="card p-2"
+                                style="max-height: 200px; overflow-y: auto; background-color: #f8f9fa;">
+
+                                <div class="form-check border-bottom pb-2 mb-2">
+                                    <input class="form-check-input" type="checkbox" id="selectAllUsers">
+                                    <label class="form-check-label fw-bold text-primary" for="selectAllUsers">
+                                        Chọn tất cả nhân viên
+                                    </label>
+                                </div>
+
+                                <div id="userListContainer">
+                                    <div class="text-center text-muted py-3">
+                                        <div class="spinner-border spinner-border-sm" role="status"></div> Đang tải danh
+                                        sách...
+                                    </div>
+                                </div>
+                            </div>
+                            <small class="text-muted">Có thể chọn nhiều người cùng lúc.</small>
+                        </div>
+
+                        <div class="col-md-5 mb-3">
+                            <label class="form-label fw-bold">Hạn chót (Deadline)</label>
+                            <input type="datetime-local" name="due_date" class="form-control">
+                            <div class="form-text">Bỏ trống nếu không giới hạn thời gian.</div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-success">
+                        <span data-feather="send" style="width: 16px"></span> Giao việc ngay
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const modal = document.getElementById('createTaskModal');
+        const listContainer = document.getElementById('userListContainer');
+        const selectAllCheckbox = document.getElementById('selectAllUsers');
+        const form = document.getElementById('createTaskForm');
+
+        // Biến lưu ID người cần chọn trước (nếu có)
+        let preSelectUserId = null;
+
+        // 1. KHI MỞ MODAL
+        modal.addEventListener('show.bs.modal', function (event) {
+            // Lấy nút bấm đã kích hoạt modal
+            const button = event.relatedTarget;
+            // Lấy ID từ thuộc tính data-preselect (nếu bấm từ trang nhân viên)
+            preSelectUserId = button ? button.getAttribute('data-preselect') : null;
+
+            // Reset checkbox "Chọn tất cả"
+            if (selectAllCheckbox) selectAllCheckbox.checked = false;
+
+            // Gọi API lấy danh sách
+            loadUsers();
+        });
+
+        // 2. HÀM LOAD USER VÀ TỰ ĐỘNG TICK
+        function loadUsers() {
+            listContainer.innerHTML = '<div class="text-center text-muted py-3"><div class="spinner-border spinner-border-sm"></div> Đang tải...</div>';
+
+            fetch('/api/users/subordinates')
+                .then(res => res.json())
+                .then(data => {
+                    listContainer.innerHTML = '';
+
+                    if (data.users && data.users.length > 0) {
+                        data.users.forEach(u => {
+                            const isChecked = (preSelectUserId && String(preSelectUserId) === String(u.id)) ? 'checked' : '';
+
+                            // Highlight nền vàng nhẹ nếu người này được chọn mặc định
+                            const bgClass = isChecked ? 'bg-warning bg-opacity-10' : '';
+
+                            const div = document.createElement('div');
+                            div.className = `form-check mb-1 p-2 rounded ${bgClass}`;
+                            div.innerHTML = `
+                                <input class="form-check-input user-checkbox" type="checkbox" 
+                                       name="assigned_to" value="${u.id}" id="user_${u.id}" ${isChecked}>
+                                <label class="form-check-label w-100" style="cursor:pointer" for="user_${u.id}">
+                                    <strong>${u.fullname}</strong> 
+                                    <span class="badge bg-secondary ms-1" style="font-size: 0.7em">${u.role}</span>
+                                </label>
+                            `;
+                            listContainer.appendChild(div);
+                        });
+                    } else {
+                        listContainer.innerHTML = '<p class="text-danger text-center mb-0">Không tìm thấy nhân viên cấp dưới.</p>';
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    listContainer.innerHTML = '<p class="text-danger text-center">Lỗi tải dữ liệu.</p>';
+                });
+        }
+
+        // 3. XỬ LÝ CHỌN TẤT CẢ
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function () {
+                const checkboxes = document.querySelectorAll('.user-checkbox');
+                checkboxes.forEach(cb => cb.checked = this.checked);
+            });
+        }
+
+        // 4. CHẶN SUBMIT NẾU CHƯA CHỌN AI (Validate Client-side)
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                const checked = document.querySelectorAll('.user-checkbox:checked');
+                if (checked.length === 0) {
+                    e.preventDefault(); // Ngừng gửi
+                    alert('Vui lòng chọn ít nhất một người nhận việc!');
+                    // Scroll tới chỗ chọn người để user thấy
+                    listContainer.parentElement.scrollIntoView({ behavior: 'smooth' });
+                    listContainer.parentElement.classList.add('border', 'border-danger'); // Nháy đỏ cảnh báo
+                    setTimeout(() => listContainer.parentElement.classList.remove('border', 'border-danger'), 2000);
+                }
+            });
+        }
+    });
+</script>

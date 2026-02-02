@@ -1,0 +1,113 @@
+<%- include('../partials/header') %>
+
+    <div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">Thống kê Nhân viên</h1>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle shadow-sm border datatable-init">
+            <thead class="table-light">
+                <tr>
+                    <th>STT</th>
+                    <th>Họ tên</th>
+                    <th>Chức vụ</th>
+                    <th class="text-center">Tổng việc</th>
+                    <th class="text-center text-primary">Đang làm</th>
+                    <th class="text-center text-success">Đã xong</th>
+                    <th class="text-center text-danger">Quá hạn</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% users.forEach((u, index)=> { %>
+                    <tr style="cursor: pointer;" onclick="window.location.href='/employees/<%= u.id %>/tasks'">
+                        <td>
+                            <%= index + 1 %>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="bg-primary text-white rounded-circle d-flex justify-content-center align-items-center me-2"
+                                    style="width: 35px; height: 35px;">
+                                    <%= u.fullname.charAt(0) %>
+                                </div>
+                                <div>
+                                    <strong>
+                                        <%= u.fullname %>
+                                    </strong><br>
+                                    <small class="text-muted">
+                                        <%= u.Department ? u.Department.name : '' %>
+                                    </small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <% if(u.role==='LEADER' ) { %>
+                                <span class="badge bg-warning text-dark">Tổ trưởng</span>
+                                <% } else if(u.role==='DEPUTY' ) { %>
+                                    <span class="badge bg-info text-dark">Phó phòng</span>
+                                    <% } else { %>
+                                        <span class="badge bg-secondary">Nhân viên</span>
+                                        <% } %>
+                        </td>
+
+                        <td class="text-center fw-bold fs-5">
+                            <%= u.stats.total %>
+                        </td>
+                        <td class="text-center fw-bold fs-5 text-primary">
+                            <%= u.stats.inProgress %>
+                        </td>
+                        <td class="text-center fw-bold fs-5 text-success">
+                            <%= u.stats.completed %>
+                        </td>
+                        <td class="text-center fw-bold fs-5 text-danger">
+                            <%= u.stats.overdue %>
+                        </td>
+
+                        <td onclick="event.stopPropagation()">
+                            <% if (typeof currentUserRole !=='undefined' && currentUserRole==='HEAD' ) { %>
+                                <% if (u.role==='STAFF' ) { %>
+                                    <button onclick="setLeaderRole('<%= u.id %>', 'promote')"
+                                        class="btn btn-sm btn-outline-warning text-dark">
+                                        <span data-feather="chevrons-up"></span> Lên Tổ trưởng
+                                    </button>
+                                    <% } else if (u.role==='LEADER' ) { %>
+                                        <button onclick="setLeaderRole('<%= u.id %>', 'demote')"
+                                            class="btn btn-sm btn-outline-secondary">
+                                            <span data-feather="chevrons-down"></span> Xuống NV
+                                        </button>
+                                        <% } %>
+                                            <% } %>
+                        </td>
+                    </tr>
+                    <% }) %>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        function setLeaderRole(userId, action) {
+            const msg = action === 'promote' ? 'Bổ nhiệm nhân viên này làm Tổ trưởng?' : 'Hủy chức Tổ trưởng của người này?';
+            if (!confirm(msg)) return;
+
+            fetch('/employees/set-role', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, action })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        // Reload lại trang để cập nhật trạng thái
+                        window.location.reload();
+                    } else {
+                        alert('Lỗi: ' + data.message);
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Lỗi kết nối server');
+                });
+        }
+    </script>
+
+    <%- include('../partials/footer') %>

@@ -1,0 +1,105 @@
+<%- include('../partials/header') %>
+
+    <div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <div class="d-flex align-items-center">
+            <a href="/employees/stats" class="btn btn-outline-secondary me-3">&larr; Quay lại</a>
+            <div>
+                <h1 class="h2 mb-0">
+                    <%= employee.fullname %>
+                </h1>
+                <small class="text-muted">
+                    <% if(employee.role==='LEADER' ) { %> <span class="badge bg-warning text-dark">Tổ trưởng</span>
+                        <% } else if(employee.role==='DEPUTY' ) { %> <span class="badge bg-info text-dark">Phó
+                                phòng</span>
+                            <% } else { %> <span class="badge bg-secondary">Nhân viên</span>
+                                <% } %>
+                                    - <%= employee.Department ? employee.Department.name : '' %>
+                </small>
+            </div>
+        </div>
+
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createTaskModal"
+            data-preselect="<%= employee.id %>"> <span data-feather="plus-circle"></span> Giao việc cho <%=
+                employee.fullname %>
+        </button>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-light">
+            <h6 class="mb-0">Danh sách công việc đang đảm nhận</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle mb-0 datatable-init">
+                    <thead class="table-light">
+                        <tr>
+                            <th>STT</th>
+                            <th>Tiêu đề công việc</th>
+                            <th>Hạn chót</th>
+                            <th>Độ ưu tiên</th>
+                            <th>Trạng thái</th>
+                            <th>Ngày giao</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% if (tasks && tasks.length> 0) { %>
+                            <% tasks.forEach((task, index)=> { %>
+                                <tr>
+                                    <td>
+                                        <%= index + 1 %>
+                                    </td>
+                                    <td>
+                                        <strong>
+                                            <%= task.title %>
+                                        </strong><br>
+                                        <small class="text-muted">
+                                            <%= task.description %>
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <%= task.formattedDueDate %>
+                                    </td>
+                                    <td>
+                                        <span
+                                            class="badge bg-<%= task.priority === 'High' ? 'danger' : (task.priority === 'Medium' ? 'warning' : 'secondary') %>">
+                                            <%= task.priority %>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">
+                                            <%= task.status %>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <%= new Date(task.createdAt).toLocaleDateString('vi-VN') %>
+                                    </td>
+                                </tr>
+                                <% }) %>
+                                    <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <%- include('../partials/modal-create-task') %>
+
+        <script>
+            function openAssignModalForUser(userId) {
+                const modalEl = document.getElementById('createTaskModal');
+                const modal = new bootstrap.Modal(modalEl);
+                modal.show();
+
+                modalEl.addEventListener('shown.bs.modal', function () {
+                    const select = document.getElementById('userSelectBox');
+                    if (select) {
+                        Array.from(select.options).forEach(opt => opt.selected = false);
+                        Array.from(select.options).forEach(opt => {
+                            if (opt.value == userId) opt.selected = true;
+                        });
+                    }
+                }, { once: true });
+            }
+        </script>
+
+        <%- include('../partials/footer') %>

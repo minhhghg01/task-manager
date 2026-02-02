@@ -1,0 +1,59 @@
+<div class="position-sticky pt-3">
+    <ul class="nav flex-column">
+        <li class="nav-item">
+            <a class="nav-link" href="/dashboard">
+                <span data-feather="home"></span>
+                Tổng quan (Dashboard)
+            </a>
+        </li>
+
+        <h6 class="sidebar-heading px-3 mt-3 mb-1 text-muted">Quản lý công việc</h6>
+
+        <li class="nav-item">
+            <a class="nav-link" href="/tasks/general">
+                <span data-feather="grid"></span>
+                Công việc chung
+            </a>
+        </li>
+
+        <% if (user && user.role !=='ADMIN' && user.role !=='DIRECTOR' ) { %>
+            <li class="nav-item">
+                <a class="nav-link" href="/tasks/my-tasks">
+                    <span data-feather="check-square"></span>
+                    Việc của tôi
+                </a>
+            </li>
+            <% } %>
+
+                <% if (user && user.role !=='ADMIN' ) { %>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/tasks/assigned">
+                            <span data-feather="send"></span>
+                            Việc đã giao
+                        </a>
+                    </li>
+                    <% } %>
+
+                        <% if (user && user.role==='ADMIN' ) { %>
+                            <h6 class="sidebar-heading px-3 mt-4 mb-1 text-muted">Hệ thống</h6>
+                            <li class="nav-item"><a class="nav-link" href="/admin/users"><span
+                                        data-feather="users"></span> Quản lý Nhân sự</a></li>
+                            <li class="nav-item"><a class="nav-link" href="/admin/departments"><span
+                                        data-feather="layers"></span> Quản lý Khoa/Phòng</a></li>
+                            <li class="nav-item"><a class="nav-link" href="/admin/logs"><span
+                                        data-feather="activity"></span> Lịch sử tác động</a></li>
+                            <% } %>
+
+                                <% if (user && ['DIRECTOR', 'DEPUTY_DIRECTOR' , 'HEAD' , 'DEPUTY' , 'LEADER'
+                                    ].includes(user.role)) { %>
+                                    <h6 class="sidebar-heading px-3 mt-4 mb-1 text-muted">Tác vụ</h6>
+
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="/employees/stats">
+                                            <span data-feather="users"></span>
+                                            <span>+ Nhân viên</span>
+                                        </a>
+                                    </li>
+                                    <% } %>
+    </ul>
+</div>
