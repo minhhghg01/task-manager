@@ -24,13 +24,13 @@ const getAdminStats = async () => {
         const totalUsers = await User.count();
         const totalTasks = await Task.count();
 
-        const completedTasks = await Task.count({ where: { status: 'Completed' } });
+        const completedTasks = await Task.count({ where: { status: 'Hoàn thành' } });
         const inProgressTasks = await Task.count({
-            where: { status: { [Op.in]: ['New', 'In_Progress', 'Pending'] } }
+            where: { status: { [Op.in]: ['Mới tạo', 'Đang thực hiện', 'Đang chờ', 'Hoàn thành', 'Quá hạn'] } }
         });
         const overdueTasks = await Task.count({
             where: {
-                status: { [Op.ne]: 'Completed' },
+                status: { [Op.ne]: 'Hoàn thành' },
                 due_date: { [Op.lt]: new Date() }
             }
         });
@@ -179,9 +179,9 @@ module.exports = (io) => {
                         ...sub.toJSON(),
                         stats: {
                             total: subTasks.length,
-                            completed: subTasks.filter(t => t.status === 'Completed').length,
-                            inProgress: subTasks.filter(t => ['New', 'In_Progress', 'Pending'].includes(t.status)).length,
-                            overdue: subTasks.filter(t => t.status !== 'Completed' && new Date(t.due_date) < now).length
+                            completed: subTasks.filter(t => t.status === 'Hoàn thành').length,
+                            inProgress: subTasks.filter(t => ['Mới tạo', 'Đang thực hiện', 'Đang chờ', 'Hoàn thành', 'Quá hạn'].includes(t.status)).length,
+                            overdue: subTasks.filter(t => t.status !== 'Hoàn thành' && new Date(t.due_date) < now).length
                         }
                     });
                 }

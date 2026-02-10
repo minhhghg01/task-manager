@@ -23,17 +23,30 @@
                         <div class="col-md-4 mb-3">
                             <label class="form-label fw-bold">Độ ưu tiên</label>
                             <select name="priority" class="form-select">
-                                <option value="Medium" selected>Bình thường</option>
-                                <option value="High" class="text-danger fw-bold">Cao (Gấp)</option>
-                                <option value="Low">Thấp</option>
+                                <option value="Trung bình" selected>Trung bình</option>
+                                <option value="Cao (Gấp)" class="text-danger fw-bold">Cao (Gấp)</option>
+                                <option value="Thấp">Thấp</option>
                             </select>
                         </div>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label fw-bold">Mô tả chi tiết</label>
-                        <textarea name="description" class="form-control" rows="4"
+                        <textarea name="description" class="form-control" rows="3"
                             placeholder="Mô tả nội dung, yêu cầu cụ thể..."></textarea>
+                    </div>
+
+                    <div class="row bg-light p-2 rounded mb-3 border mx-0">
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label fw-bold text-primary">Ngày bắt đầu</label>
+                            <input type="datetime-local" name="start_date" id="startDateInput" class="form-control">
+                            <div class="form-text small">Mặc định là thời điểm hiện tại.</div>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label fw-bold text-danger">Hạn chót (Deadline)</label>
+                            <input type="datetime-local" name="due_date" id="dueDateInput" class="form-control">
+                            <div class="form-text small">Bỏ trống nếu không giới hạn thời gian.</div>
+                        </div>
                     </div>
 
                     <div class="mb-3">
@@ -46,42 +59,32 @@
                             10MB).</small>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-7 mb-3">
-                            <label class="form-label fw-bold">Người nhận việc <span class="text-danger">*</span></label>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Người nhận việc <span class="text-danger">*</span></label>
 
-                            <div class="card p-2"
-                                style="max-height: 200px; overflow-y: auto; background-color: #f8f9fa;">
+                        <div class="card p-2" style="background-color: #f8f9fa;">
+                            <div class="form-check border-bottom pb-2 mb-2">
+                                <input class="form-check-input" type="checkbox" id="selectAllUsers">
+                                <label class="form-check-label fw-bold text-primary" for="selectAllUsers">
+                                    Chọn tất cả nhân viên
+                                </label>
+                            </div>
 
-                                <div class="form-check border-bottom pb-2 mb-2">
-                                    <input class="form-check-input" type="checkbox" id="selectAllUsers">
-                                    <label class="form-check-label fw-bold text-primary" for="selectAllUsers">
-                                        Chọn tất cả nhân viên
-                                    </label>
-                                </div>
-
-                                <div id="userListContainer">
-                                    <div class="text-center text-muted py-3">
-                                        <div class="spinner-border spinner-border-sm" role="status"></div> Đang tải danh
-                                        sách...
-                                    </div>
+                            <div id="userListContainer" style="max-height: 200px; overflow-y: auto;">
+                                <div class="text-center text-muted py-3">
+                                    <div class="spinner-border spinner-border-sm" role="status"></div> Đang tải danh
+                                    sách...
                                 </div>
                             </div>
-                            <small class="text-muted">Có thể chọn nhiều người cùng lúc.</small>
                         </div>
-
-                        <div class="col-md-5 mb-3">
-                            <label class="form-label fw-bold">Hạn chót (Deadline)</label>
-                            <input type="datetime-local" name="due_date" class="form-control">
-                            <div class="form-text">Bỏ trống nếu không giới hạn thời gian.</div>
-                        </div>
+                        <small class="text-muted">Có thể chọn nhiều người cùng lúc.</small>
                     </div>
 
                 </div>
 
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                    <button type="submit" class="btn btn-success">
+                    <button type="submit" class="btn btn-success fw-bold">
                         <span data-feather="send" style="width: 16px"></span> Giao việc ngay
                     </button>
                 </div>
@@ -97,24 +100,40 @@
         const selectAllCheckbox = document.getElementById('selectAllUsers');
         const form = document.getElementById('createTaskForm');
 
-        // Biến lưu ID người cần chọn trước (nếu có)
+        // Các input thời gian
+        const startDateInput = document.getElementById('startDateInput');
+        const dueDateInput = document.getElementById('dueDateInput');
+
         let preSelectUserId = null;
 
         // 1. KHI MỞ MODAL
         modal.addEventListener('show.bs.modal', function (event) {
-            // Lấy nút bấm đã kích hoạt modal
             const button = event.relatedTarget;
-            // Lấy ID từ thuộc tính data-preselect (nếu bấm từ trang nhân viên)
             preSelectUserId = button ? button.getAttribute('data-preselect') : null;
-
-            // Reset checkbox "Chọn tất cả"
             if (selectAllCheckbox) selectAllCheckbox.checked = false;
 
-            // Gọi API lấy danh sách
+            // --- LOGIC THỜI GIAN ---
+            // Lấy giờ hiện tại theo múi giờ local (Việt Nam)
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            const currentDateTime = now.toISOString().slice(0, 16); // format: YYYY-MM-DDTHH:mm
+
+            // Set giá trị mặc định và giới hạn min
+            if (startDateInput) {
+                startDateInput.value = currentDateTime; // Mặc định là bây giờ
+                startDateInput.min = currentDateTime;   // Không chọn quá khứ
+            }
+
+            if (dueDateInput) {
+                dueDateInput.value = ""; // Reset hạn chót
+                dueDateInput.min = currentDateTime; // Hạn chót phải sau hiện tại
+            }
+            // -----------------------
+
             loadUsers();
         });
 
-        // 2. HÀM LOAD USER VÀ TỰ ĐỘNG TICK
+        // 2. HÀM LOAD USER (Đã sửa giao diện checkbox)
         function loadUsers() {
             listContainer.innerHTML = '<div class="text-center text-muted py-3"><div class="spinner-border spinner-border-sm"></div> Đang tải...</div>';
 
@@ -126,16 +145,19 @@
                     if (data.users && data.users.length > 0) {
                         data.users.forEach(u => {
                             const isChecked = (preSelectUserId && String(preSelectUserId) === String(u.id)) ? 'checked' : '';
+                            const bgClass = isChecked ? 'bg-warning bg-opacity-10' : 'bg-white';
 
-                            // Highlight nền vàng nhẹ nếu người này được chọn mặc định
-                            const bgClass = isChecked ? 'bg-warning bg-opacity-10' : '';
-
+                            // Dùng d-flex để căn chỉnh đẹp hơn, tránh lỗi khuất checkbox
                             const div = document.createElement('div');
-                            div.className = `form-check mb-1 p-2 rounded ${bgClass}`;
+                            div.className = `d-flex align-items-center mb-1 p-2 border rounded ${bgClass}`;
+
                             div.innerHTML = `
-                                <input class="form-check-input user-checkbox" type="checkbox" 
-                                       name="assigned_to" value="${u.id}" id="user_${u.id}" ${isChecked}>
-                                <label class="form-check-label w-100" style="cursor:pointer" for="user_${u.id}">
+                                <div class="me-2">
+                                    <input class="form-check-input user-checkbox" type="checkbox" 
+                                           name="assigned_to" value="${u.id}" id="user_${u.id}" ${isChecked}
+                                           style="width: 1.2em; height: 1.2em; cursor: pointer;">
+                                </div>
+                                <label class="flex-grow-1 mb-0" style="cursor:pointer; user-select: none;" for="user_${u.id}">
                                     <strong>${u.fullname}</strong> 
                                     <span class="badge bg-secondary ms-1" style="font-size: 0.7em">${u.role}</span>
                                 </label>
@@ -160,16 +182,15 @@
             });
         }
 
-        // 4. CHẶN SUBMIT NẾU CHƯA CHỌN AI (Validate Client-side)
+        // 4. VALIDATE SUBMIT
         if (form) {
             form.addEventListener('submit', function (e) {
                 const checked = document.querySelectorAll('.user-checkbox:checked');
                 if (checked.length === 0) {
-                    e.preventDefault(); // Ngừng gửi
+                    e.preventDefault();
                     alert('Vui lòng chọn ít nhất một người nhận việc!');
-                    // Scroll tới chỗ chọn người để user thấy
                     listContainer.parentElement.scrollIntoView({ behavior: 'smooth' });
-                    listContainer.parentElement.classList.add('border', 'border-danger'); // Nháy đỏ cảnh báo
+                    listContainer.parentElement.classList.add('border', 'border-danger');
                     setTimeout(() => listContainer.parentElement.classList.remove('border', 'border-danger'), 2000);
                 }
             });

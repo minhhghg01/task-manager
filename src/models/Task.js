@@ -5,10 +5,10 @@ const Task = sequelize.define('Task', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     title: { type: DataTypes.STRING, allowNull: false },
     description: { type: DataTypes.TEXT },
-    priority: { type: DataTypes.ENUM('Low', 'Medium', 'High'), defaultValue: 'Medium' },
+    priority: { type: DataTypes.ENUM('Thấp', 'Trung bình', 'Cao (Gấp)'), defaultValue: 'Trung bình' },
     status: {
-        type: DataTypes.ENUM('New', 'In_Progress', 'Pending', 'Completed', 'Overdue'),
-        defaultValue: 'New'
+        type: DataTypes.ENUM('Mới tạo', 'Đang thực hiện', 'Đang chờ', 'Hoàn thành', 'Quá hạn'),
+        defaultValue: 'Mới tạo'
     },
     assigned_by: { type: DataTypes.INTEGER, allowNull: false },
     assigned_to: {

@@ -1,304 +1,347 @@
 <%- include('../partials/header') %>
 
-    <div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
-        <a href="javascript:history.back()" class="btn btn-outline-secondary">&larr; Quay lại</a>
-        <h4>Chi tiết công việc #<%= task.id %>
-        </h4>
-    </div>
+    <% /* LOGIC MAU SAC (Color Logic) */ var pColor='secondary' ; if (task.priority=='Cao (Gấp)' ) pColor='danger' ;
+        else if (task.priority=='Trung bình' ) pColor='warning text-dark' ; else if (task.priority=='Thấp' )
+        pColor='info text-dark' ; var sColor='primary' ; if (task.status=='Mới tạo' ) sColor='info text-dark' ; else if
+        (task.status=='Hoàn thành' ) sColor='success' ; else if (task.status=='Quá hạn' ) sColor='danger' ; else if
+        (task.status=='Đang chờ' ) sColor='warning text-dark' ; /* LOGIC NGAY THANG (Date Logic) */ var
+        startDateString="Chưa cập nhật" ; if (task.start_date) { startDateString=new
+        Date(task.start_date).toLocaleString('vi-VN', { hour: '2-digit' , minute: '2-digit' , day: '2-digit' ,
+        month: '2-digit' , year: 'numeric' }); } else if (task.createdAt) { startDateString=new
+        Date(task.createdAt).toLocaleString('vi-VN', { hour: '2-digit' , minute: '2-digit' , day: '2-digit' ,
+        month: '2-digit' , year: 'numeric' }); } %>
 
-    <div class="row">
-        <div class="col-md-7">
-            <div class="card shadow-sm mb-4">
-                <div class="card-body">
-                    <h3 class="card-title text-primary">
-                        <%= task.title %>
-                    </h3>
-                    <div class="mb-3">
-                        <span class="badge bg-secondary">
-                            <%= task.priority %>
-                        </span>
-                        <span id="statusBadge"
-                            class="badge bg-<%= task.status==='Completed'?'success':(task.status==='Overdue'?'danger':'primary') %>">
-                            <%= task.status %>
-                        </span>
-                        <span class="text-muted ms-2">Hạn: <%= task.formattedDueDate %></span>
-                    </div>
+        <style>
+            /* CSS THANH TIEN DO GOP (Merged Progress Bar) */
+            .progress-wrapper {
+                position: relative;
+                height: 24px;
+                background-color: #e9ecef;
+                border-radius: 12px;
+                overflow: hidden;
+                box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+            }
 
-                    <p class="card-text bg-light p-3 rounded" style="white-space: pre-wrap;">
-                        <%= task.description %>
-                    </p>
+            .progress-visual {
+                height: 100%;
+                background: linear-gradient(90deg, #dc3545 0%, #ffc107 50%, #198754 100%);
+                /* Red -> Yellow -> Green */
+                width: 0%;
+                transition: width 0.3s ease;
+            }
 
-                    <% if(task.attachment_path) { %>
-                        <div class="alert alert-info d-flex align-items-center">
-                            <span data-feather="paperclip" class="me-2"></span>
-                            <div>
-                                <strong>Tài liệu đính kèm:</strong><br>
+            .progress-slider {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                opacity: 0;
+                /* An di de hien thi visual ben duoi */
+                cursor: pointer;
+                margin: 0;
+            }
+
+            .progress-label {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                font-size: 12px;
+                color: #333;
+                text-shadow: 0 0 2px #fff;
+                pointer-events: none;
+            }
+        </style>
+
+        <div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
+            <a href="javascript:history.back()" class="btn btn-outline-secondary">&larr; Quay lại</a>
+            <h4>Chi tiết công việc #<%= task.id %>
+            </h4>
+        </div>
+
+        <div class="row">
+            <div class="col-md-7">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+
+                        <div class="mb-3">
+                            <span class="badge bg-<%= pColor %> me-1">
+                                <%= task.priority %>
+                            </span>
+                            <span id="statusBadge" class="badge bg-<%= sColor %>">
+                                <%= task.status %>
+                            </span>
+                        </div>
+
+                        <h3 class="card-title text-primary mb-4">
+                            <%= task.title %>
+                        </h3>
+
+                        <div class="row mb-3 g-2">
+                            <div class="col-6">
+                                <div class="p-2 border rounded bg-light h-100">
+                                    <small class="text-muted d-block"><i data-feather="calendar" style="width:14px"></i>
+                                        Ngày bắt đầu:</small>
+                                    <strong class="text-primary">
+                                        <%= startDateString %>
+                                    </strong>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="p-2 border rounded bg-light h-100">
+                                    <small class="text-muted d-block"><i data-feather="clock" style="width:14px"></i>
+                                        Hạn chót:</small>
+                                    <strong class="<%= task.status==='Quá hạn'?'text-danger':'' %>">
+                                        <%= task.formattedDueDate %>
+                                    </strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="fw-bold text-muted small">Nội dung:</label>
+                            <div class="bg-white p-3 border rounded" style="white-space: pre-wrap; min-height: 80px;">
+                                <%= task.description %>
+                            </div>
+                        </div>
+
+                        <% if(task.attachment_path) { %>
+                            <div class="alert alert-info p-2 mb-3 d-flex align-items-center">
+                                <span data-feather="paperclip" class="me-2"></span>
                                 <a href="<%= task.attachment_path %>" download
-                                    class="text-decoration-underline fw-bold">
-                                    Tải xuống tài liệu
-                                </a>
+                                    class="fw-bold text-decoration-underline">Tải tài liệu đính kèm</a>
                             </div>
-                        </div>
-                        <% } %>
+                            <% } %>
 
-                            <hr>
-                            <div class="row">
-                                <div class="col-6">
-                                    <strong>Người giao:</strong>
-                                    <%= task.Creator.fullname %><br>
-                                        <strong>Người nhận:</strong>
-                                        <%= task.assigneeNames %>
-                                </div>
-                                <div class="col-6 text-end">
-                                    <div class="display-6 fw-bold text-primary" id="progressDisplay">
-                                        <%= task.progress %>%
-                                    </div>
-                                    <small>Tiến độ hiện tại</small>
-                                </div>
-                            </div>
-
-                            <% if (isAssignee || isAdmin) { %>
                                 <hr>
-                                <form id="progressForm" class="mt-3">
-                                    <label class="form-label fw-bold">Cập nhật tiến độ:</label>
-                                    <div class="d-flex align-items-center">
-                                        <input type="range" class="form-range flex-grow-1 me-3" id="progressRange"
-                                            min="0" max="100" value="<%= task.progress %>"
-                                            oninput="document.getElementById('progressOutput').value = this.value">
-                                        <output id="progressOutput" class="fw-bold fs-5">
-                                            <%= task.progress %>
-                                        </output>%
-                                    </div>
-                                    <button type="submit" class="btn btn-primary mt-2" id="btnUpdateProgress">Cập
-                                        nhật</button>
-                                </form>
-                                <% } %>
 
-                                    <% if (isAssigner || isAdmin) { %>
-                                        <hr>
-                                        <form id="scoreForm" class="mt-3 bg-light p-3 rounded border">
-                                            <label class="form-label fw-bold text-danger">Đánh giá / Chấm điểm:</label>
-                                            <div class="input-group mb-2">
-                                                <input type="number" id="scoreInput" class="form-control"
-                                                    placeholder="Nhập điểm (0-100)" value="<%= task.score %>" min="0"
-                                                    max="100" required>
-                                                <span class="input-group-text">/ 100</span>
-                                                <button class="btn btn-danger" type="submit">Lưu điểm</button>
-                                            </div>
-                                            <div id="scoreResult">
-                                                <% if(task.score !==null) { %>
-                                                    <small class="text-success">Đã chấm: <strong>
-                                                            <%= task.score %> điểm
-                                                        </strong></small>
-                                                    <% } %>
-                                            </div>
-                                        </form>
-                                        <% } else if (task.score !==null) { %>
-                                            <div class="alert alert-success mt-3">
-                                                <strong>Kết quả đánh giá:</strong>
-                                                <%= task.score %>/100 điểm
-                                            </div>
+                                <div class="row mb-4">
+                                    <div class="col-6">
+                                        <small class="text-muted">Người giao:</small><br>
+                                        <strong>
+                                            <%= task.Creator.fullname %>
+                                        </strong>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">Người nhận:</small><br>
+                                        <strong>
+                                            <%= task.assigneeNames %>
+                                        </strong>
+                                    </div>
+                                </div>
+
+                                <div class="card bg-light border-0 p-3 mb-3">
+                                    <label class="fw-bold text-primary mb-2">Cập nhật tiến độ:</label>
+
+                                    <form id="progressForm" class="d-flex align-items-center gap-2">
+                                        <div class="flex-grow-1 progress-wrapper">
+                                            <div class="progress-visual" id="progressVisual"
+                                                style="width: <%= task.progress %>%;"></div>
+                                            <div class="progress-label"><span id="progVal">
+                                                    <%= task.progress %>
+                                                </span>%</div>
+                                            <input type="range" class="progress-slider" id="progressRange" min="0"
+                                                max="100" value="<%= task.progress %>" <%=(isAssignee || isAdmin) ? ''
+                                                : 'disabled' %> >
+                                        </div>
+
+                                        <% if ((isAssignee || isAdmin) && task.status !=='Quá hạn' ) { %>
+                                            <button type="submit" class="btn btn-primary btn-sm"
+                                                id="btnUpdateProgress">Lưu</button>
                                             <% } %>
+                                    </form>
+                                </div>
+
+                                <% if (isAssigner || isAdmin) { %>
+                                    <div class="p-3 border rounded bg-white">
+                                        <form id="scoreForm" class="d-flex align-items-center gap-2">
+                                            <label class="fw-bold text-danger text-nowrap">Chấm điểm:</label>
+                                            <input type="number" id="scoreInput" class="form-control"
+                                                placeholder="0-100" value="<%= task.score %>" min="0" max="100">
+                                            <button class="btn btn-danger btn-sm">Lưu</button>
+                                        </form>
+                                        <div id="scoreResult" class="mt-2 text-end">
+                                            <% if(task.score !==null) { %>
+                                                <small class="text-success fw-bold">Đã chấm: <%= task.score %>
+                                                        điểm</small>
+                                                <% } %>
+                                        </div>
+                                    </div>
+                                    <% } else if (task.score !==null) { %>
+                                        <div class="alert alert-success mt-3 text-center p-2">
+                                            <strong>Kết quả đánh giá: <%= task.score %>/100 điểm</strong>
+                                        </div>
+                                        <% } %>
+
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="col-md-5">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-white p-0">
-                    <ul class="nav nav-tabs nav-fill" id="taskTab" role="tablist">
-                        <li class="nav-item">
-                            <button class="nav-link active" id="comments-tab" data-bs-toggle="tab"
-                                data-bs-target="#comments" type="button">Thảo luận</button>
-                        </li>
-                        <li class="nav-item">
-                            <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history"
-                                type="button">Lịch sử</button>
-                        </li>
-                    </ul>
-                </div>
-
-                <div class="card-body d-flex flex-column p-0">
-                    <div class="tab-content flex-grow-1 overflow-auto p-3" id="taskTabContent"
-                        style="max-height: 500px;">
-
-                        <div class="tab-pane fade show active" id="comments">
-                            <div id="commentList">
-                                <% if (task.TaskComments && task.TaskComments.length> 0) { %>
-                                    <% task.TaskComments.forEach(cmt=> { %>
-                                        <div class="mb-3">
-                                            <div class="d-flex justify-content-between">
-                                                <strong>
-                                                    <%= cmt.User ? cmt.User.fullname : 'Ẩn danh' %>
-                                                </strong>
-                                                <small class="text-muted" style="font-size:0.8em">
-                                                    <%= new Date(cmt.createdAt).toLocaleString('vi-VN') %>
-                                                </small>
-                                            </div>
-                                            <div class="bg-light p-2 rounded border-start border-3 border-primary">
-                                                <%= cmt.comment %>
-                                            </div>
-                                        </div>
-                                        <% }) %>
-                                            <% } else { %>
-                                                <p class="text-muted text-center mt-4" id="noCommentText">Chưa có bình
-                                                    luận nào.</p>
-                                                <% } %>
-                            </div>
-                        </div>
-
-                        <div class="tab-pane fade" id="history">
-                            <ul class="list-group list-group-flush" id="historyList">
-                                <% if (task.history && task.history.length> 0) { %>
-                                    <% task.history.forEach(log=> { %>
-                                        <li class="list-group-item px-0">
-                                            <div class="d-flex justify-content-between">
-                                                <strong>
-                                                    <%= log.User ? log.User.fullname : 'Hệ thống' %>
-                                                </strong>
-                                                <small class="text-muted" style="font-size:0.8em">
-                                                    <%= new Date(log.createdAt).toLocaleString('vi-VN') %>
-                                                </small>
-                                            </div>
-                                            <span class="text-muted small fst-italic">
-                                                <%= log.details %>
-                                            </span>
-                                        </li>
-                                        <% }) %>
-                                            <% } %>
-                            </ul>
-                        </div>
+            <div class="col-md-5">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-white p-0">
+                        <ul class="nav nav-tabs nav-fill" id="taskTab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active fw-bold" id="comments-tab" data-bs-toggle="tab"
+                                    data-bs-target="#comments" type="button" role="tab">Thảo luận</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link fw-bold" id="history-tab" data-bs-toggle="tab"
+                                    data-bs-target="#history" type="button" role="tab">Lịch sử</button>
+                            </li>
+                        </ul>
                     </div>
 
-                    <form id="commentForm" class="mt-auto border-top p-3 bg-light">
-                        <div class="input-group">
-                            <input type="text" id="commentInput" class="form-control" placeholder="Viết bình luận..."
-                                required autocomplete="off">
-                            <button class="btn btn-primary" type="submit"><span data-feather="send"></span></button>
+                    <div class="card-body p-0 d-flex flex-column">
+                        <div class="tab-content flex-grow-1 overflow-auto p-3" id="taskTabContent"
+                            style="max-height: 600px;">
+
+                            <div class="tab-pane fade show active" id="comments" role="tabpanel">
+                                <div id="commentList">
+                                    <% if (task.TaskComments && task.TaskComments.length> 0) { %>
+                                        <% task.TaskComments.forEach(cmt=> { %>
+                                            <div class="mb-3">
+                                                <div class="d-flex justify-content-between">
+                                                    <strong>
+                                                        <%= cmt.User ? cmt.User.fullname : 'Ẩn danh' %>
+                                                    </strong>
+                                                    <small class="text-muted" style="font-size:0.7em">
+                                                        <%= new Date(cmt.createdAt).toLocaleString('vi-VN') %>
+                                                    </small>
+                                                </div>
+                                                <div
+                                                    class="bg-light p-2 rounded border-start border-3 border-primary text-break">
+                                                    <%= cmt.comment %>
+                                                </div>
+                                            </div>
+                                            <% }) %>
+                                                <% } else { %>
+                                                    <p class="text-center text-muted mt-4" id="noCommentText">Chưa có
+                                                        thảo luận.</p>
+                                                    <% } %>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="history" role="tabpanel">
+                                <ul class="list-group list-group-flush" id="historyList">
+                                    <% if (task.history && task.history.length> 0) { %>
+                                        <% task.history.forEach(log=> { %>
+                                            <li class="list-group-item px-0 py-2">
+                                                <div class="d-flex justify-content-between">
+                                                    <strong>
+                                                        <%= log.User ? log.User.fullname : 'Hệ thống' %>
+                                                    </strong>
+                                                    <small class="text-muted" style="font-size:0.7em">
+                                                        <%= new Date(log.createdAt).toLocaleString('vi-VN') %>
+                                                    </small>
+                                                </div>
+                                                <span class="small fst-italic text-muted">
+                                                    <%= log.details %>
+                                                </span>
+                                            </li>
+                                            <% }) %>
+                                                <% } else { %>
+                                                    <li class="list-group-item text-center text-muted">Chưa có lịch sử
+                                                        hoạt động.</li>
+                                                    <% } %>
+                                </ul>
+                            </div>
                         </div>
-                    </form>
+
+                        <form id="commentForm" class="mt-auto border-top p-2 bg-light">
+                            <div class="input-group">
+                                <input type="text" id="commentInput" class="form-control"
+                                    placeholder="Viết bình luận..." required autocomplete="off">
+                                <button class="btn btn-primary"><i data-feather="send"></i></button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <script>
-        const taskId = '<%= task.id %>';
+        <script>
+            const taskId = '<%= task.id %>';
 
-        // 1. XỬ LÝ UPDATE PROGRESS (AJAX)
-        const progressForm = document.getElementById('progressForm');
-        if (progressForm) {
-            progressForm.addEventListener('submit', function (e) {
+            // 1. THANH TIEN DO VISUAL (Cap nhat mau khi keo)
+            const rangeInput = document.getElementById('progressRange');
+            const visualBar = document.getElementById('progressVisual');
+            const valDisplay = document.getElementById('progVal');
+
+            if (rangeInput) {
+                rangeInput.addEventListener('input', function () {
+                    visualBar.style.width = this.value + '%';
+                    valDisplay.innerText = this.value;
+                });
+            }
+
+            // 2. SUBMIT TIEN DO
+            const pForm = document.getElementById('progressForm');
+            if (pForm) {
+                pForm.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    const btn = document.getElementById('btnUpdateProgress');
+                    const val = rangeInput.value;
+
+                    btn.textContent = '...'; btn.disabled = true;
+
+                    fetch(`/tasks/${taskId}/progress`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ progress: val })
+                    })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success) {
+                                location.reload();
+                            } else {
+                                alert('Lỗi: ' + data.message);
+                                btn.disabled = false; btn.textContent = 'Lưu';
+                            }
+                        });
+                });
+            }
+
+            // 3. SUBMIT DIEM
+            const sForm = document.getElementById('scoreForm');
+            if (sForm) sForm.addEventListener('submit', e => {
                 e.preventDefault();
-                const btn = document.getElementById('btnUpdateProgress');
-                const val = document.getElementById('progressRange').value;
-
-                btn.disabled = true;
-                btn.textContent = 'Đang lưu...';
-
-                fetch(`/tasks/${taskId}/progress`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ progress: val })
-                })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.success) {
-                            // Update UI ngay lập tức
-                            document.getElementById('progressDisplay').innerText = val + '%';
-                            const badge = document.getElementById('statusBadge');
-                            badge.innerText = data.status;
-
-                            // Đổi màu badge
-                            badge.className = `badge bg-${data.status === 'Completed' ? 'success' : (data.status === 'Overdue' ? 'danger' : 'primary')}`;
-
-                            // Thêm log vào tab lịch sử (giả lập)
-                            const historyList = document.getElementById('historyList');
-                            const li = document.createElement('li');
-                            li.className = 'list-group-item px-0';
-                            li.innerHTML = `
-                        <div class="d-flex justify-content-between">
-                            <strong>Bạn</strong>
-                            <small class="text-muted" style="font-size:0.8em">Vừa xong</small>
-                        </div>
-                        <span class="text-muted small fst-italic">Cập nhật tiến độ: ${val}% (Trạng thái: ${data.status})</span>
-                    `;
-                            historyList.prepend(li);
-                        }
-                        btn.disabled = false;
-                        btn.textContent = 'Cập nhật';
-                    });
+                const v = document.getElementById('scoreInput').value;
+                fetch(`/tasks/${taskId}/score`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ score: v }) })
+                    .then(r => r.json()).then(d => { if (d.success) { alert('Đã chấm điểm!'); location.reload(); } });
             });
-        }
 
-        // 2. XỬ LÝ GỬI COMMENT (AJAX)
-        const commentForm = document.getElementById('commentForm');
-        if (commentForm) {
-            commentForm.addEventListener('submit', function (e) {
+            // 4. SUBMIT COMMENT
+            const cForm = document.getElementById('commentForm');
+            if (cForm) cForm.addEventListener('submit', e => {
                 e.preventDefault();
-                const input = document.getElementById('commentInput');
-                const content = input.value.trim();
-                if (!content) return;
+                const inp = document.getElementById('commentInput');
+                const v = inp.value.trim();
+                if (!v) return;
 
-                fetch(`/tasks/${taskId}/comment`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content: content })
-                })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.success) {
-                            input.value = ''; // Xóa ô nhập
-
-                            // Ẩn dòng "chưa có comment"
+                fetch(`/tasks/${taskId}/comment`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: v }) })
+                    .then(r => r.json()).then(d => {
+                        if (d.success) {
+                            inp.value = '';
                             const noCmt = document.getElementById('noCommentText');
                             if (noCmt) noCmt.style.display = 'none';
 
-                            // Thêm comment mới vào list
                             const list = document.getElementById('commentList');
                             const div = document.createElement('div');
                             div.className = 'mb-3';
-                            div.innerHTML = `
-                        <div class="d-flex justify-content-between">
-                            <strong>${data.comment.user}</strong>
-                            <small class="text-muted" style="font-size:0.8em">Vừa xong</small>
-                        </div>
-                        <div class="bg-light p-2 rounded border-start border-3 border-primary">
-                            ${data.comment.content}
-                        </div>
-                    `;
+                            div.innerHTML = `<div class="d-flex justify-content-between"><strong>${d.comment.user}</strong><small class="text-muted" style="font-size:0.7em">Vừa xong</small></div><div class="bg-light p-2 rounded border-start border-3 border-primary text-break">${d.comment.content}</div>`;
                             list.appendChild(div);
 
-                            // Scroll xuống dưới cùng
                             const container = document.getElementById('taskTabContent');
                             container.scrollTop = container.scrollHeight;
                         }
                     });
             });
-        }
+        </script>
 
-        // 3. XỬ LÝ CHẤM ĐIỂM (AJAX)
-        const scoreForm = document.getElementById('scoreForm');
-        if (scoreForm) {
-            scoreForm.addEventListener('submit', function (e) {
-                e.preventDefault();
-                const val = document.getElementById('scoreInput').value;
-
-                fetch(`/tasks/${taskId}/score`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ score: val })
-                })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.success) {
-                            document.getElementById('scoreResult').innerHTML =
-                                `<small class="text-success">Đã chấm: <strong>${val} điểm</strong></small>`;
-                            alert('Đã lưu điểm thành công!');
-                        }
-                    });
-            });
-        }
-    </script>
-
-    <%- include('../partials/footer') %>
+        <%- include('../partials/footer') %>

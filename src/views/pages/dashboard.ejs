@@ -74,16 +74,16 @@
 
                             <td>
                                 <span
-                                    class="badge bg-<%= task.priority === 'High' ? 'danger' : (task.priority === 'Medium' ? 'warning' : 'secondary') %>">
+                                    class="badge bg-<%= task.priority === 'Cao' ? 'danger' : (task.priority === 'Trung bình' ? 'warning' : 'secondary') %>">
                                     <%= task.priority %>
                                 </span>
                             </td>
 
                             <td>
-                                <% let statusColor='secondary' ; if(task.status==='New' ) statusColor='info text-dark' ;
-                                    if(task.status==='In_Progress' ) statusColor='primary' ;
-                                    if(task.status==='Completed' ) statusColor='success' ; if(task.status==='Overdue' )
-                                    statusColor='danger' ; %>
+                                <% let statusColor='secondary' ; if(task.status==='Mới tạo' )
+                                    statusColor='info text-dark' ; if(task.status==='Đang thực hiện' )
+                                    statusColor='primary' ; if(task.status==='Hoàn thành' ) statusColor='success' ;
+                                    if(task.status==='Quá hạn' ) statusColor='danger' ; %>
                                     <span class="badge bg-<%= statusColor %>">
                                         <%= task.status %>
                                     </span>

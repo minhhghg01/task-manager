@@ -76,6 +76,12 @@ class TaskService {
             }
         }
 
+        // --- XỬ LÝ NGÀY BẮT ĐẦU ---
+        let startDate = new Date(); // Mặc định lấy giờ server
+        if (taskData.start_date) {
+            startDate = new Date(taskData.start_date); // Nếu form gửi lên thì lấy theo form
+        }
+
         const assignedToString = JSON.stringify(assigneeIds);
         const newTask = await Task.create({
             title: taskData.title,
@@ -84,8 +90,9 @@ class TaskService {
             department_id: currentUser.departments_id,
             assigned_by: currentUser.id,
             assigned_to: assignedToString,
+            start_date: startDate,
             due_date: taskData.due_date || null,
-            status: 'New',
+            status: 'Mới tạo',
             attachment_path: file ? `/uploads/${file.filename}` : null
         });
 
@@ -176,11 +183,11 @@ class TaskService {
         const prog = parseInt(progress);
 
         if (prog === 100) {
-            newStatus = 'Completed';
+            newStatus = 'Hoàn thành';
             task.completed_date = now;
         } else {
-            if (dueDate && now > dueDate) newStatus = 'Overdue';
-            else newStatus = 'In_Progress';
+            if (dueDate && now > dueDate) newStatus = 'Quá hạn';
+            else newStatus = 'Đang thực hiện';
         }
 
         await task.update({ progress: prog, status: newStatus });
