@@ -5,6 +5,23 @@
         <h1 class="h2">
             <%= (typeof pageTitle !=='undefined' ) ? pageTitle : 'Tổng quan công việc' %>
         </h1>
+
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <% if (user.role !=='ADMIN' && user.role !=='STAFF' ) { %>
+                <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-2"
+                    data-bs-toggle="modal" data-bs-target="#createTaskModal">
+                    <span data-feather="plus"></span> Giao việc mới
+                </button>
+                <% } %>
+
+                    <% if (user.role==='STAFF' || (typeof filterType !=='undefined' && filterType==='mine' )) { %>
+                        <button type="button"
+                            class="btn btn-sm btn-outline-success d-flex align-items-center gap-2 ms-2"
+                            data-bs-toggle="modal" data-bs-target="#createTaskModal" data-auto-self="true">
+                            <span data-feather="user-check"></span> Tự tạo việc
+                        </button>
+                        <% } %>
+        </div>
     </div>
 
     <div class="table-responsive">
@@ -58,13 +75,16 @@
                             </td>
 
                             <td>
-                                <% const dueDate=task.due_date ? new Date(task.due_date) : null; const now=new Date();
-                                    const isOverdue=dueDate && dueDate < now && task.status !=='Completed' ; %>
+                                <% /* Logic quá hạn: Hết hạn VÀ chưa hoàn thành */ var dueDate=task.due_date ? new
+                                    Date(task.due_date) : null; var now=new Date(); var isOverdue=dueDate && dueDate <
+                                    now && task.status !=='Hoàn thành' ; %>
+
                                     <span class="<%= isOverdue ? 'text-danger fw-bold' : '' %>">
                                         <%= task.formattedDueDate %>
                                     </span>
-                                    <% if(isOverdue) { %> <i data-feather="alert-circle" class="text-danger"
-                                            style="width:14px"></i>
+
+                                    <% if(isOverdue) { %>
+                                        <i data-feather="alert-circle" class="text-danger" style="width:14px"></i>
                                         <% } %>
                             </td>
 
@@ -73,18 +93,20 @@
                             </td>
 
                             <td>
-                                <span
-                                    class="badge bg-<%= task.priority === 'Cao' ? 'danger' : (task.priority === 'Trung bình' ? 'warning' : 'secondary') %>">
-                                    <%= task.priority %>
-                                </span>
+                                <% var pColor='secondary' ; if(task.priority=='Cao (Gấp)' ) pColor='danger' ; else
+                                    if(task.priority=='Trung bình' ) pColor='warning text-dark' ; else
+                                    if(task.priority=='Thấp' ) pColor='info text-dark' ; %>
+                                    <span class="badge bg-<%= pColor %>">
+                                        <%= task.priority %>
+                                    </span>
                             </td>
 
                             <td>
-                                <% let statusColor='secondary' ; if(task.status==='Mới tạo' )
-                                    statusColor='info text-dark' ; if(task.status==='Đang thực hiện' )
-                                    statusColor='primary' ; if(task.status==='Hoàn thành' ) statusColor='success' ;
-                                    if(task.status==='Quá hạn' ) statusColor='danger' ; %>
-                                    <span class="badge bg-<%= statusColor %>">
+                                <% var sColor='secondary' ; if(task.status=='Mới tạo' ) sColor='info text-dark' ; else
+                                    if(task.status=='Đang thực hiện' ) sColor='primary' ; else
+                                    if(task.status=='Hoàn thành' ) sColor='success' ; else if(task.status=='Quá hạn' )
+                                    sColor='danger' ; else if(task.status=='Đang chờ' ) sColor='warning text-dark' ; %>
+                                    <span class="badge bg-<%= sColor %>">
                                         <%= task.status %>
                                     </span>
                             </td>

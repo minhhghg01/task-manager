@@ -47,10 +47,12 @@ class TaskService {
         return processedTasks;
     }
 
-    // --- TẠO TASK MỚI ---
+    // --- TẠO TASK MỚI (ĐÃ SỬA LOGIC TỰ GIAO VIỆC) ---
     static async createTask(currentUser, taskData, file) {
         let assigneeIds = [];
         const raw = taskData.assigned_to;
+
+        // Chuẩn hóa assigneeIds thành mảng
         if (Array.isArray(raw)) assigneeIds = raw;
         else if (typeof raw === 'string') {
             if (raw.trim().startsWith('[')) { try { assigneeIds = JSON.parse(raw); } catch (e) { assigneeIds = []; } }
@@ -63,13 +65,21 @@ class TaskService {
             throw new Error('Vui lòng chọn ít nhất một người nhận việc!');
         }
 
+        // Logic kiểm tra cấp bậc
         const roleWeight = { 'ADMIN': 99, 'DIRECTOR': 10, 'DEPUTY_DIRECTOR': 9, 'HEAD': 5, 'DEPUTY': 4, 'LEADER': 3, 'STAFF': 1 };
         const myWeight = roleWeight[currentUser.role] || 0;
 
         if (assigneeIds.length > 0) {
             const targetUsers = await User.findAll({ where: { id: { [Op.in]: assigneeIds } } });
+
             for (const target of targetUsers) {
+                // [QUAN TRỌNG] Nếu giao cho chính mình -> Bỏ qua kiểm tra cấp bậc
+                if (String(target.id) === String(currentUser.id)) {
+                    continue;
+                }
+
                 const targetWeight = roleWeight[target.role] || 0;
+                // Nếu giao cho người khác mà cấp họ cao hơn hoặc bằng -> Chặn
                 if (myWeight <= targetWeight && currentUser.role !== 'ADMIN') {
                     throw new Error(`Không thể giao việc cho cấp trên/ngang cấp (${target.fullname})`);
                 }
@@ -77,22 +87,23 @@ class TaskService {
         }
 
         // --- XỬ LÝ NGÀY BẮT ĐẦU ---
-        let startDate = new Date(); // Mặc định lấy giờ server
+        let startDate = new Date();
         if (taskData.start_date) {
-            startDate = new Date(taskData.start_date); // Nếu form gửi lên thì lấy theo form
+            startDate = new Date(taskData.start_date);
         }
 
         const assignedToString = JSON.stringify(assigneeIds);
+
         const newTask = await Task.create({
             title: taskData.title,
             description: taskData.description,
-            priority: taskData.priority,
+            priority: taskData.priority, // Đã là tiếng Việt từ Form (Cao (Gấp), Trung bình, Thấp)
             department_id: currentUser.departments_id,
             assigned_by: currentUser.id,
             assigned_to: assignedToString,
             start_date: startDate,
             due_date: taskData.due_date || null,
-            status: 'Mới tạo',
+            status: 'Mới tạo', // Trạng thái mặc định tiếng Việt
             attachment_path: file ? `/uploads/${file.filename}` : null
         });
 
@@ -125,12 +136,15 @@ class TaskService {
         });
         if (!task) return null;
 
+        // Tự động check quá hạn khi xem chi tiết
         const now = new Date();
         const dueDate = task.due_date ? new Date(task.due_date) : null;
-        if (task.status !== 'Completed' && dueDate && now > dueDate) {
-            if (task.status !== 'Overdue') {
-                await task.update({ status: 'Overdue' });
-                task.status = 'Overdue';
+
+        // Nếu chưa hoàn thành và đã quá hạn
+        if (task.status !== 'Hoàn thành' && dueDate && now > dueDate) {
+            if (task.status !== 'Quá hạn') {
+                await task.update({ status: 'Quá hạn' });
+                task.status = 'Quá hạn';
             }
         }
 
@@ -155,6 +169,13 @@ class TaskService {
         taskData.assigneeList = assignees;
         taskData.formattedDueDate = task.due_date ? new Date(task.due_date).toLocaleString('vi-VN') : 'Không thời hạn';
 
+        // Xử lý start_date hiển thị
+        if (task.start_date) {
+            taskData.formattedStartDate = new Date(task.start_date).toLocaleString('vi-VN');
+        } else {
+            taskData.formattedStartDate = new Date(task.createdAt).toLocaleString('vi-VN');
+        }
+
         let finalHistory = dbHistory.map(h => h.toJSON());
         const hasCreateLog = finalHistory.some(h => h.action === 'CREATE');
 
@@ -172,7 +193,7 @@ class TaskService {
         return taskData;
     }
 
-    // --- CẬP NHẬT TIẾN ĐỘ ---
+    // --- CẬP NHẬT TIẾN ĐỘ (LOGIC STATUS TIẾNG VIỆT) ---
     static async updateProgress(taskId, progress, userId) {
         const task = await Task.findByPk(taskId);
         if (!task) throw new Error('Task không tồn tại');
@@ -186,8 +207,13 @@ class TaskService {
             newStatus = 'Hoàn thành';
             task.completed_date = now;
         } else {
-            if (dueDate && now > dueDate) newStatus = 'Quá hạn';
-            else newStatus = 'Đang thực hiện';
+            // Nếu không phải 100%, kiểm tra xem có quá hạn không
+            if (dueDate && now > dueDate) {
+                newStatus = 'Quá hạn';
+            } else {
+                // Nếu đang là "Mới tạo" hoặc "Hoàn thành" mà sửa về <100 -> Chuyển thành Đang thực hiện
+                newStatus = 'Đang thực hiện';
+            }
         }
 
         await task.update({ progress: prog, status: newStatus });

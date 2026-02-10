@@ -63,6 +63,16 @@
                         <label class="form-label fw-bold">Người nhận việc <span class="text-danger">*</span></label>
 
                         <div class="card p-2" style="background-color: #f8f9fa;">
+
+                            <div class="form-check border-bottom pb-2 mb-2 bg-white p-2 rounded border">
+                                <input class="form-check-input" type="checkbox" id="selfAssignCheck"
+                                    name="is_self_assign" value="true">
+                                <label class="form-check-label fw-bold text-success" for="selfAssignCheck">
+                                    <span data-feather="user-check" style="width: 16px;"></span> Tôi tự thực hiện công
+                                    việc này
+                                </label>
+                            </div>
+
                             <div class="form-check border-bottom pb-2 mb-2">
                                 <input class="form-check-input" type="checkbox" id="selectAllUsers">
                                 <label class="form-check-label fw-bold text-primary" for="selectAllUsers">
@@ -100,6 +110,9 @@
         const selectAllCheckbox = document.getElementById('selectAllUsers');
         const form = document.getElementById('createTaskForm');
 
+        // Element checkbox tự giao việc
+        const selfAssignCheck = document.getElementById('selfAssignCheck');
+
         // Các input thời gian
         const startDateInput = document.getElementById('startDateInput');
         const dueDateInput = document.getElementById('dueDateInput');
@@ -110,30 +123,74 @@
         modal.addEventListener('show.bs.modal', function (event) {
             const button = event.relatedTarget;
             preSelectUserId = button ? button.getAttribute('data-preselect') : null;
-            if (selectAllCheckbox) selectAllCheckbox.checked = false;
+
+            // [MỚI] Kiểm tra xem có phải bấm từ nút "Tự tạo việc" không?
+            const isAutoSelf = button ? button.getAttribute('data-auto-self') === 'true' : false;
+
+            // Reset trạng thái ban đầu
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.disabled = false;
+            }
+            if (selfAssignCheck) {
+                selfAssignCheck.checked = false;
+            }
+            listContainer.style.opacity = '1';
+            listContainer.style.pointerEvents = 'auto';
+
+            // --- LOGIC TỰ ĐỘNG TICK "TÔI TỰ LÀM" ---
+            if (isAutoSelf && selfAssignCheck) {
+                selfAssignCheck.checked = true;
+                // Kích hoạt sự kiện change để chạy logic khóa danh sách (bên dưới)
+                selfAssignCheck.dispatchEvent(new Event('change'));
+            }
+            // ---------------------------------------
 
             // --- LOGIC THỜI GIAN ---
-            // Lấy giờ hiện tại theo múi giờ local (Việt Nam)
             const now = new Date();
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-            const currentDateTime = now.toISOString().slice(0, 16); // format: YYYY-MM-DDTHH:mm
+            const currentDateTime = now.toISOString().slice(0, 16);
 
-            // Set giá trị mặc định và giới hạn min
             if (startDateInput) {
-                startDateInput.value = currentDateTime; // Mặc định là bây giờ
-                startDateInput.min = currentDateTime;   // Không chọn quá khứ
+                startDateInput.value = currentDateTime;
+                startDateInput.min = currentDateTime;
             }
-
             if (dueDateInput) {
-                dueDateInput.value = ""; // Reset hạn chót
-                dueDateInput.min = currentDateTime; // Hạn chót phải sau hiện tại
+                dueDateInput.value = "";
+                dueDateInput.min = currentDateTime;
             }
-            // -----------------------
 
             loadUsers();
         });
 
-        // 2. HÀM LOAD USER (Đã sửa giao diện checkbox)
+        // 2. XỬ LÝ KHI CHỌN "TÔI TỰ LÀM"
+        if (selfAssignCheck) {
+            selfAssignCheck.addEventListener('change', function () {
+                const isSelf = this.checked;
+
+                // Khóa/Mở nút chọn tất cả
+                if (selectAllCheckbox) selectAllCheckbox.disabled = isSelf;
+                if (isSelf && selectAllCheckbox) selectAllCheckbox.checked = false;
+
+                // Khóa/Mở danh sách user
+                const checkboxes = listContainer.querySelectorAll('.user-checkbox');
+                checkboxes.forEach(cb => {
+                    cb.disabled = isSelf;
+                    if (isSelf) cb.checked = false; // Bỏ chọn mọi người khác
+                });
+
+                // Hiệu ứng mờ đi để biết là đang bị khóa
+                if (isSelf) {
+                    listContainer.style.opacity = '0.5';
+                    listContainer.style.pointerEvents = 'none';
+                } else {
+                    listContainer.style.opacity = '1';
+                    listContainer.style.pointerEvents = 'auto';
+                }
+            });
+        }
+
+        // 3. HÀM LOAD USER
         function loadUsers() {
             listContainer.innerHTML = '<div class="text-center text-muted py-3"><div class="spinner-border spinner-border-sm"></div> Đang tải...</div>';
 
@@ -144,17 +201,20 @@
 
                     if (data.users && data.users.length > 0) {
                         data.users.forEach(u => {
+                            // Nếu đang chọn "Tự làm" thì các checkbox sinh ra phải bị disabled ngay
+                            const isSelfMode = selfAssignCheck ? selfAssignCheck.checked : false;
+                            const disabledAttr = isSelfMode ? 'disabled' : '';
+
                             const isChecked = (preSelectUserId && String(preSelectUserId) === String(u.id)) ? 'checked' : '';
                             const bgClass = isChecked ? 'bg-warning bg-opacity-10' : 'bg-white';
 
-                            // Dùng d-flex để căn chỉnh đẹp hơn, tránh lỗi khuất checkbox
                             const div = document.createElement('div');
                             div.className = `d-flex align-items-center mb-1 p-2 border rounded ${bgClass}`;
 
                             div.innerHTML = `
                                 <div class="me-2">
                                     <input class="form-check-input user-checkbox" type="checkbox" 
-                                           name="assigned_to" value="${u.id}" id="user_${u.id}" ${isChecked}
+                                           name="assigned_to" value="${u.id}" id="user_${u.id}" ${isChecked} ${disabledAttr}
                                            style="width: 1.2em; height: 1.2em; cursor: pointer;">
                                 </div>
                                 <label class="flex-grow-1 mb-0" style="cursor:pointer; user-select: none;" for="user_${u.id}">
@@ -164,8 +224,10 @@
                             `;
                             listContainer.appendChild(div);
                         });
+                        if (typeof feather !== 'undefined') feather.replace();
                     } else {
-                        listContainer.innerHTML = '<p class="text-danger text-center mb-0">Không tìm thấy nhân viên cấp dưới.</p>';
+                        // Nếu không có nhân viên cấp dưới (VD: là STAFF), vẫn hiện thông báo nhưng không lỗi
+                        listContainer.innerHTML = '<p class="text-muted text-center mb-0 small">Bạn chưa có nhân viên cấp dưới.</p>';
                     }
                 })
                 .catch(err => {
@@ -174,7 +236,7 @@
                 });
         }
 
-        // 3. XỬ LÝ CHỌN TẤT CẢ
+        // 4. XỬ LÝ CHỌN TẤT CẢ
         if (selectAllCheckbox) {
             selectAllCheckbox.addEventListener('change', function () {
                 const checkboxes = document.querySelectorAll('.user-checkbox');
@@ -182,16 +244,22 @@
             });
         }
 
-        // 4. VALIDATE SUBMIT
+        // 5. VALIDATE SUBMIT
         if (form) {
             form.addEventListener('submit', function (e) {
+                const isSelf = selfAssignCheck ? selfAssignCheck.checked : false;
                 const checked = document.querySelectorAll('.user-checkbox:checked');
-                if (checked.length === 0) {
+
+                if (!isSelf && checked.length === 0) {
                     e.preventDefault();
-                    alert('Vui lòng chọn ít nhất một người nhận việc!');
-                    listContainer.parentElement.scrollIntoView({ behavior: 'smooth' });
-                    listContainer.parentElement.classList.add('border', 'border-danger');
-                    setTimeout(() => listContainer.parentElement.classList.remove('border', 'border-danger'), 2000);
+                    alert('Vui lòng chọn ít nhất một người nhận việc (hoặc chọn "Tôi tự thực hiện")!');
+                    // Scroll và nháy đỏ cảnh báo
+                    const target = document.querySelector('.card.p-2'); // Tìm khung danh sách
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth' });
+                        target.classList.add('border-danger');
+                        setTimeout(() => target.classList.remove('border-danger'), 2000);
+                    }
                 }
             });
         }

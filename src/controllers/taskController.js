@@ -24,6 +24,7 @@ const getAdminStats = async () => {
         const totalUsers = await User.count();
         const totalTasks = await Task.count();
 
+        // Đã sửa status thành Tiếng Việt
         const completedTasks = await Task.count({ where: { status: 'Hoàn thành' } });
         const inProgressTasks = await Task.count({
             where: { status: { [Op.in]: ['Mới tạo', 'Đang thực hiện', 'Đang chờ', 'Hoàn thành', 'Quá hạn'] } }
@@ -45,21 +46,17 @@ const getAdminStats = async () => {
 // --- MAIN CONTROLLER ---
 module.exports = (io) => {
     return {
-        // 1. RENDER DASHBOARD (TRANG CHỦ)
-        // Admin -> Xem Thống kê
-        // User -> Xem Danh sách việc
+        // 1. RENDER DASHBOARD
         renderDashboard: async (req, res) => {
             try {
                 const user = req.session.user;
                 if (!user) return res.redirect('/login');
 
-                // A. NẾU LÀ ADMIN -> Render Dashboard Thống Kê
                 if (user.role === 'ADMIN') {
                     const stats = await getAdminStats();
                     return res.render('pages/admin/dashboard-admin', { stats });
                 }
 
-                // B. NẾU LÀ USER THƯỜNG -> Render Danh sách công việc
                 const tasks = await TaskService.getTasksByUser(user);
                 res.render('pages/dashboard', { user: user, tasks: tasks });
 
@@ -69,39 +66,26 @@ module.exports = (io) => {
             }
         },
 
-        // 2. RENDER TASK LIST (DANH SÁCH CÔNG VIỆC) - MỚI
-        // Hàm này chuyên dùng cho menu "Công việc của tôi"
-        // Admin vào đây sẽ thấy TOÀN BỘ task (do logic bên Service đã quy định Admin được xem all)
+        // 2. RENDER TASK LIST
         renderTaskList: async (req, res) => {
             try {
                 const user = req.session.user;
                 if (!user) return res.redirect('/login');
-
-                // Gọi Service để lấy task (Service đã có logic: Admin lấy hết, User lấy theo phòng)
                 const tasks = await TaskService.getTasksByUser(user);
-
-                // Render view dashboard cũ (cái view có bảng Table)
-                res.render('pages/dashboard', {
-                    user: user,
-                    tasks: tasks
-                });
-
+                res.render('pages/dashboard', { user: user, tasks: tasks });
             } catch (err) {
                 console.error(err);
                 res.status(500).send("Lỗi Server: " + err.message);
             }
         },
 
-        // --- HÀM MỚI: RENDER TASK THEO LOẠI ---
+        // --- RENDER FILTERED TASKS ---
         renderFilteredTasks: async (req, res) => {
             try {
                 const user = req.session.user;
-                const filterType = req.filterType; // Lấy từ middleware router
-
-                // Gọi Service với tham số filterType
+                const filterType = req.filterType;
                 const tasks = await TaskService.getTasksByUser(user, filterType);
 
-                // Đặt tiêu đề trang tương ứng
                 let pageTitle = 'Danh sách công việc';
                 if (filterType === 'general') pageTitle = user.role === 'ADMIN' ? 'Công việc toàn hệ thống' : 'Công việc chung của Khoa/Phòng';
                 if (filterType === 'mine') pageTitle = 'Công việc của tôi (Được giao)';
@@ -110,70 +94,62 @@ module.exports = (io) => {
                 res.render('pages/dashboard', {
                     user: user,
                     tasks: tasks,
-                    pageTitle: pageTitle // Bạn nhớ sửa file dashboard.ejs để hiện biến này nhé (optional)
+                    pageTitle: pageTitle
                 });
-
             } catch (err) {
                 console.error(err);
                 res.status(500).send("Lỗi Server: " + err.message);
             }
         },
 
-        // 3. API TẠO TASK (AJAX + Socket)
+        // 3. API TẠO TASK (ĐÃ SỬA LOGIC TỰ GIAO VIỆC)
         apiCreateTask: async (req, res) => {
             try {
-                // 1. Tạo Task
+                // --- XỬ LÝ TỰ GIAO VIỆC ---
+                // Nếu checkbox "Tôi tự làm" được tích -> Gán ID người nhận là chính mình
+                if (req.body.is_self_assign === 'true') {
+                    req.body.assigned_to = [req.session.user.id];
+                }
+                // --------------------------
+
                 const newTask = await TaskService.createTask(req.session.user, req.body, req.file);
 
-                // 2. Gửi Socket (Xử lý an toàn để tránh crash server)
+                // Gửi Socket (Giữ nguyên)
                 try {
                     let assigneeIds = [];
-                    // newTask.assigned_to lúc này là chuỗi JSON "[1,2]" lấy từ DB ra
                     if (typeof newTask.assigned_to === 'string') {
                         assigneeIds = JSON.parse(newTask.assigned_to);
                     } else if (Array.isArray(newTask.assigned_to)) {
                         assigneeIds = newTask.assigned_to;
                     }
-
                     if (Array.isArray(assigneeIds) && io) {
                         assigneeIds.forEach(userId => {
-                            // Gửi event socket nếu có logic
                             // io.to(userId.toString()).emit('new_task', newTask);
                         });
                     }
                 } catch (socketErr) {
-                    console.error("Lỗi gửi socket (không ảnh hưởng việc tạo task):", socketErr);
+                    console.error("Lỗi socket:", socketErr);
                 }
 
-                // 3. Redirect về Dashboard
                 res.redirect('/dashboard');
 
             } catch (err) {
                 console.error("Lỗi tạo task:", err);
-                // Trả về trang lỗi hoặc alert
-                res.send(`
-                    <script>
-                        alert('Lỗi: ${err.message}');
-                        window.location.href = '/dashboard';
-                    </script>
-                `);
+                res.send(`<script>alert('Lỗi: ${err.message}'); window.history.back();</script>`);
             }
         },
 
-        // 4. THỐNG KÊ NHÂN VIÊN (MỚI)
+        // 4. THỐNG KÊ NHÂN VIÊN
         listEmployeesStats: async (req, res) => {
             try {
                 const user = req.session.user;
                 const UserService = require('../services/userService');
-
                 const subordinates = await UserService.getSubordinates(user);
-                const allTasks = await TaskService.getTasksByUser(user); // Lấy task phòng
-
+                const allTasks = await TaskService.getTasksByUser(user);
                 const statsList = [];
                 const now = new Date();
 
                 for (const sub of subordinates) {
-                    // Logic tính toán giữ nguyên
                     const subTasks = allTasks.filter(t => t.assigneeIds.some(id => String(id) === String(sub.id)));
                     statsList.push({
                         ...sub.toJSON(),
@@ -185,104 +161,52 @@ module.exports = (io) => {
                         }
                     });
                 }
-
-                res.render('pages/employees-stats', {
-                    users: statsList,
-                    currentUserRole: user.role // <--- TRUYỀN THÊM BIẾN NÀY
-                });
+                res.render('pages/employees-stats', { users: statsList, currentUserRole: user.role });
             } catch (err) { res.status(500).send(err.message); }
         },
 
-        // THÊM HÀM MỚI: Xử lý bổ nhiệm Tổ trưởng
+        // --- CÁC HÀM QUẢN LÝ NHÂN VIÊN ---
         setEmployeeRole: async (req, res) => {
             try {
                 const currentUser = req.session.user;
-                const { userId, action } = req.body; // action: 'promote' hoặc 'demote'
+                const { userId, action } = req.body;
+                if (currentUser.role !== 'HEAD' && currentUser.role !== 'ADMIN') return res.status(403).json({ success: false, message: "Không có quyền." });
 
-                // 1. CHECK QUYỀN: Chỉ Trưởng phòng (HEAD) hoặc Admin mới được dùng
-                if (currentUser.role !== 'HEAD' && currentUser.role !== 'ADMIN') {
-                    return res.status(403).json({ success: false, message: "Bạn không có quyền thực hiện hành động này." });
-                }
-
-                // 2. TÌM USER CẦN SỬA
                 const targetUser = await User.findByPk(userId);
-                if (!targetUser) {
-                    return res.status(404).json({ success: false, message: "Nhân viên không tồn tại." });
-                }
+                if (!targetUser) return res.status(404).json({ success: false, message: "Không tìm thấy user." });
 
-                // 3. LOGIC BẢO MẬT QUAN TRỌNG
-                // Nếu người thực hiện là HEAD (không phải Admin)
                 if (currentUser.role === 'HEAD') {
-                    // a. Phải cùng phòng ban
-                    if (targetUser.departments_id !== currentUser.departments_id) {
-                        return res.status(403).json({ success: false, message: "Bạn chỉ được bổ nhiệm nhân viên trong phòng ban của mình." });
-                    }
-
-                    // b. Không được sửa quyền của Admin hoặc Head khác
-                    if (targetUser.role === 'ADMIN' || targetUser.role === 'HEAD') {
-                        return res.status(403).json({ success: false, message: "Bạn không thể thay đổi quyền của cấp trên hoặc ngang cấp." });
-                    }
+                    if (targetUser.departments_id !== currentUser.departments_id) return res.status(403).json({ success: false, message: "Khác phòng ban." });
+                    if (targetUser.role === 'ADMIN' || targetUser.role === 'HEAD') return res.status(403).json({ success: false, message: "Không thể sửa quyền cấp trên." });
                 }
 
-                // 4. XÁC ĐỊNH ROLE MỚI
-                let newRole = 'STAFF'; // Mặc định là nhân viên
-                if (action === 'promote') {
-                    newRole = 'LEADER'; // Lên làm Tổ trưởng
-                }
-
-                // 5. UPDATE DATABASE
+                let newRole = action === 'promote' ? 'LEADER' : 'STAFF';
                 await targetUser.update({ role: newRole });
-
-                // 6. GỬI SOCKET REALTIME (Để bên kia tự F5 nhận quyền mới)
-                if (io) {
-                    io.emit('role_changed', {
-                        userId: targetUser.id,
-                        newRole: newRole,
-                        message: `Chúc mừng! Bạn đã được ${action === 'promote' ? 'bổ nhiệm làm Tổ trưởng' : 'chuyển sang vai trò Nhân viên'}. Hệ thống sẽ cập nhật lại.`
-                    });
-                }
-
+                if (io) io.emit('role_changed', { userId: targetUser.id, newRole: newRole });
                 res.json({ success: true });
-
-            } catch (err) {
-                console.error("Lỗi bổ nhiệm:", err);
-                res.status(500).json({ success: false, message: err.message });
-            }
+            } catch (err) { res.status(500).json({ success: false, message: err.message }); }
         },
 
-        // 5. CHI TIẾT CÔNG VIỆC CỦA 1 NHÂN VIÊN (MỚI)
         viewEmployeeTasks: async (req, res) => {
             try {
                 const targetUserId = req.params.id;
                 const user = req.session.user;
                 const UserService = require('../services/userService');
-
-                // Check xem có quyền xem nhân viên này không
                 const subordinates = await UserService.getSubordinates(user);
                 const targetUser = subordinates.find(u => u.id == targetUserId);
+                if (!targetUser) return res.status(403).send("Không có quyền xem.");
 
-                if (!targetUser) return res.status(403).send("Bạn không có quyền xem nhân viên này");
-
-                // Lấy task của nhân viên đó
                 const allTasks = await TaskService.getTasksByUser(user);
                 const employeeTasks = allTasks.filter(t => {
                     const ids = t.assigneeIds || [];
                     return ids.includes(targetUser.id) || ids.includes(String(targetUser.id));
                 });
 
-                res.render('pages/employee-detail', {
-                    manager: user,
-                    employee: targetUser,
-                    tasks: employeeTasks
-                });
-
-            } catch (err) {
-                res.status(500).send(err.message);
-            }
+                res.render('pages/employee-detail', { manager: user, employee: targetUser, tasks: employeeTasks });
+            } catch (err) { res.status(500).send(err.message); }
         },
 
-        // --- LOGIC CẬP NHẬT TASK ---
-        // --- VIEW CHI TIẾT ---
+        // 5. VIEW CHI TIẾT (ĐÃ SỬA LOGIC QUYỀN CHẤM ĐIỂM)
         viewTaskDetail: async (req, res) => {
             try {
                 const user = req.session.user;
@@ -291,11 +215,48 @@ module.exports = (io) => {
 
                 if (!task) return res.status(404).send('Không tìm thấy công việc');
 
-                const isAssigner = task.assigned_by === user.id;
-                const isAssignee = task.assigneeList.some(u => u.id === user.id);
-                const isAdmin = user.role === 'ADMIN';
+                const isAssigner = String(task.assigned_by) === String(user.id);
+                const assigneeList = task.assigneeList || [];
+                const isAssignee = assigneeList.some(u => String(u.id) === String(user.id));
 
-                res.render('pages/task-detail', { task, user, isAssigner, isAssignee, isAdmin });
+                // --- TÍNH TOÁN QUYỀN CHẤM ĐIỂM (canScore) ---
+                let canScore = false;
+
+                if (user.role === 'ADMIN') {
+                    canScore = true;
+                } else {
+                    // Kiểm tra xem có phải "Tự giao việc" (Người giao == Người nhận)
+                    // Lưu ý: task.assigned_to là chuỗi JSON hoặc mảng ID
+                    let assigneeIds = [];
+                    try { assigneeIds = JSON.parse(task.assigned_to); } catch (e) { assigneeIds = task.assigned_to || []; }
+
+                    const isSelfAssigned = assigneeIds.includes(task.assigned_by) || assigneeIds.includes(String(task.assigned_by));
+
+                    if (isSelfAssigned) {
+                        // NẾU TỰ GIAO: Người làm (chính mình) KHÔNG ĐƯỢC chấm.
+                        // Chỉ cấp trên (HEAD/DEPUTY) mới được chấm.
+                        if (['HEAD', 'DEPUTY'].includes(user.role)) {
+                            // Cấp trên chỉ được chấm nếu KHÔNG PHẢI là người làm task đó
+                            // (Tránh trường hợp Trưởng phòng tự tạo task cho mình rồi tự chấm)
+                            if (String(user.id) !== String(task.assigned_by)) {
+                                canScore = true;
+                            }
+                        }
+                    } else {
+                        // NẾU GIAO CHO NGƯỜI KHÁC: Người giao được quyền chấm.
+                        if (isAssigner) canScore = true;
+                    }
+                }
+                // ---------------------------------------------
+
+                res.render('pages/task-detail', {
+                    task,
+                    user,
+                    isAssigner,
+                    isAssignee,
+                    isAdmin: user.role === 'ADMIN',
+                    canScore: canScore // Truyền biến này xuống View
+                });
             } catch (err) { res.status(500).send(err.message); }
         },
 
@@ -304,11 +265,7 @@ module.exports = (io) => {
             try {
                 const { progress } = req.body;
                 const task = await TaskService.updateProgress(req.params.id, progress, req.session.user.id);
-                res.json({
-                    success: true,
-                    progress: task.progress,
-                    status: task.status
-                });
+                res.json({ success: true, progress: task.progress, status: task.status });
             } catch (err) { res.status(500).json({ success: false, message: err.message }); }
         },
 
@@ -324,7 +281,6 @@ module.exports = (io) => {
         // --- BÌNH LUẬN ---
         postComment: async (req, res) => {
             try {
-                // Form gửi lên name="content", Service sẽ map vào 'comment'
                 const { content } = req.body;
                 const newComment = await TaskService.addComment(req.session.user.id, req.params.id, content);
                 res.json({
@@ -337,16 +293,13 @@ module.exports = (io) => {
                 });
             } catch (err) { res.status(500).json({ success: false, message: err.message }); }
         },
-        // --- API: LẤY DANH SÁCH CẤP DƯỚI (Cho Modal Giao việc) ---
+
+        // --- API GET SUBORDINATES ---
         apiGetSubordinates: async (req, res) => {
             try {
                 const user = req.session.user;
                 const UserService = require('../services/userService');
-
-                // Tái sử dụng logic lấy cấp dưới của UserService
                 const subordinates = await UserService.getSubordinates(user);
-
-                // Trả về JSON để Javascript phía Client (Modal) hiển thị
                 res.json({ users: subordinates });
             } catch (err) {
                 console.error(err);

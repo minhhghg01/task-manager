@@ -1,48 +1,48 @@
 <%- include('../partials/header') %>
 
-    <% /* LOGIC MAU SAC (Color Logic) */ var pColor='secondary' ; if (task.priority=='Cao (Gấp)' ) pColor='danger' ;
-        else if (task.priority=='Trung bình' ) pColor='warning text-dark' ; else if (task.priority=='Thấp' )
-        pColor='info text-dark' ; var sColor='primary' ; if (task.status=='Mới tạo' ) sColor='info text-dark' ; else if
-        (task.status=='Hoàn thành' ) sColor='success' ; else if (task.status=='Quá hạn' ) sColor='danger' ; else if
-        (task.status=='Đang chờ' ) sColor='warning text-dark' ; /* LOGIC NGAY THANG (Date Logic) */ var
-        startDateString="Chưa cập nhật" ; if (task.start_date) { startDateString=new
-        Date(task.start_date).toLocaleString('vi-VN', { hour: '2-digit' , minute: '2-digit' , day: '2-digit' ,
-        month: '2-digit' , year: 'numeric' }); } else if (task.createdAt) { startDateString=new
-        Date(task.createdAt).toLocaleString('vi-VN', { hour: '2-digit' , minute: '2-digit' , day: '2-digit' ,
-        month: '2-digit' , year: 'numeric' }); } %>
+    <% /* --- XỬ LÝ LOGIC MÀU SẮC (Dựa trên dữ liệu Tiếng Việt) --- */ var pColor='secondary' ; if
+        (task.priority=='Cao (Gấp)' ) pColor='danger' ; else if (task.priority=='Trung bình' )
+        pColor='warning text-dark' ; else if (task.priority=='Thấp' ) pColor='info text-dark' ; var sColor='primary' ;
+        if (task.status=='Mới tạo' ) sColor='info text-dark' ; else if (task.status=='Hoàn thành' ) sColor='success' ;
+        else if (task.status=='Quá hạn' ) sColor='danger' ; else if (task.status=='Đang chờ' )
+        sColor='warning text-dark' ; /* --- XỬ LÝ NGÀY THÁNG --- */ var displayStartDate="Chưa cập nhật" ; if
+        (task.start_date) { displayStartDate=new Date(task.start_date).toLocaleString('vi-VN', { hour: '2-digit' ,
+        minute: '2-digit' , day: '2-digit' , month: '2-digit' , year: 'numeric' }); } else if (task.createdAt) {
+        displayStartDate=new Date(task.createdAt).toLocaleString('vi-VN', { hour: '2-digit' , minute: '2-digit' ,
+        day: '2-digit' , month: '2-digit' , year: 'numeric' }); } %>
 
         <style>
-            /* CSS THANH TIEN DO GOP (Merged Progress Bar) */
-            .progress-wrapper {
+            /* CSS THANH TIẾN ĐỘ */
+            .progress-container {
                 position: relative;
-                height: 24px;
+                height: 28px;
                 background-color: #e9ecef;
-                border-radius: 12px;
+                border-radius: 14px;
                 overflow: hidden;
                 box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
             }
 
-            .progress-visual {
+            .progress-fill {
                 height: 100%;
-                background: linear-gradient(90deg, #dc3545 0%, #ffc107 50%, #198754 100%);
-                /* Red -> Yellow -> Green */
                 width: 0%;
-                transition: width 0.3s ease;
+                background: linear-gradient(90deg, #dc3545 0%, #ffc107 50%, #198754 100%);
+                transition: width 0.1s linear;
+                border-radius: 14px;
             }
 
-            .progress-slider {
+            .progress-input {
                 position: absolute;
                 top: 0;
                 left: 0;
                 width: 100%;
                 height: 100%;
                 opacity: 0;
-                /* An di de hien thi visual ben duoi */
                 cursor: pointer;
                 margin: 0;
+                z-index: 10;
             }
 
-            .progress-label {
+            .progress-text {
                 position: absolute;
                 top: 0;
                 left: 0;
@@ -52,10 +52,11 @@
                 align-items: center;
                 justify-content: center;
                 font-weight: bold;
-                font-size: 12px;
+                font-size: 13px;
                 color: #333;
-                text-shadow: 0 0 2px #fff;
+                text-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
                 pointer-events: none;
+                z-index: 5;
             }
         </style>
 
@@ -89,7 +90,7 @@
                                     <small class="text-muted d-block"><i data-feather="calendar" style="width:14px"></i>
                                         Ngày bắt đầu:</small>
                                     <strong class="text-primary">
-                                        <%= startDateString %>
+                                        <%= displayStartDate %>
                                     </strong>
                                 </div>
                             </div>
@@ -137,28 +138,30 @@
                                 </div>
 
                                 <div class="card bg-light border-0 p-3 mb-3">
-                                    <label class="fw-bold text-primary mb-2">Cập nhật tiến độ:</label>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <label class="fw-bold text-primary">Cập nhật tiến độ:</label>
+                                    </div>
 
-                                    <form id="progressForm" class="d-flex align-items-center gap-2">
-                                        <div class="flex-grow-1 progress-wrapper">
-                                            <div class="progress-visual" id="progressVisual"
+                                    <form id="progressForm" class="d-flex align-items-center gap-3">
+                                        <div class="flex-grow-1 progress-container">
+                                            <div class="progress-fill" id="progressVisual"
                                                 style="width: <%= task.progress %>%;"></div>
-                                            <div class="progress-label"><span id="progVal">
+                                            <div class="progress-text"><span id="progVal">
                                                     <%= task.progress %>
                                                 </span>%</div>
-                                            <input type="range" class="progress-slider" id="progressRange" min="0"
+                                            <input type="range" class="progress-input" id="progressRange" min="0"
                                                 max="100" value="<%= task.progress %>" <%=(isAssignee || isAdmin) ? ''
                                                 : 'disabled' %> >
                                         </div>
 
                                         <% if ((isAssignee || isAdmin) && task.status !=='Quá hạn' ) { %>
-                                            <button type="submit" class="btn btn-primary btn-sm"
+                                            <button type="submit" class="btn btn-primary fw-bold px-3"
                                                 id="btnUpdateProgress">Lưu</button>
                                             <% } %>
                                     </form>
                                 </div>
 
-                                <% if (isAssigner || isAdmin) { %>
+                                <% if (canScore) { %>
                                     <div class="p-3 border rounded bg-white">
                                         <form id="scoreForm" class="d-flex align-items-center gap-2">
                                             <label class="fw-bold text-danger text-nowrap">Chấm điểm:</label>
@@ -247,8 +250,8 @@
                                             </li>
                                             <% }) %>
                                                 <% } else { %>
-                                                    <li class="list-group-item text-center text-muted">Chưa có lịch sử
-                                                        hoạt động.</li>
+                                                    <li class="list-group-item text-center text-muted border-0">Chưa có
+                                                        lịch sử hoạt động.</li>
                                                     <% } %>
                                 </ul>
                             </div>
@@ -269,7 +272,7 @@
         <script>
             const taskId = '<%= task.id %>';
 
-            // 1. THANH TIEN DO VISUAL (Cap nhat mau khi keo)
+            // 1. THANH TIẾN ĐỘ
             const rangeInput = document.getElementById('progressRange');
             const visualBar = document.getElementById('progressVisual');
             const valDisplay = document.getElementById('progVal');
@@ -281,7 +284,7 @@
                 });
             }
 
-            // 2. SUBMIT TIEN DO
+            // 2. GỬI API UPDATE TIẾN ĐỘ
             const pForm = document.getElementById('progressForm');
             if (pForm) {
                 pForm.addEventListener('submit', function (e) {
@@ -307,16 +310,16 @@
                 });
             }
 
-            // 3. SUBMIT DIEM
+            // 3. CHẤM ĐIỂM
             const sForm = document.getElementById('scoreForm');
             if (sForm) sForm.addEventListener('submit', e => {
                 e.preventDefault();
                 const v = document.getElementById('scoreInput').value;
                 fetch(`/tasks/${taskId}/score`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ score: v }) })
-                    .then(r => r.json()).then(d => { if (d.success) { alert('Đã chấm điểm!'); location.reload(); } });
+                    .then(r => r.json()).then(d => { if (d.success) { alert('Đã chấm điểm thành công!'); location.reload(); } });
             });
 
-            // 4. SUBMIT COMMENT
+            // 4. BÌNH LUẬN
             const cForm = document.getElementById('commentForm');
             if (cForm) cForm.addEventListener('submit', e => {
                 e.preventDefault();
