@@ -1,56 +1,95 @@
 const { User, Department } = require('../models');
 const { Op } = require('sequelize');
 
+// Định nghĩa thứ tự ưu tiên (Số càng nhỏ chức càng to)
+const ROLE_PRIORITY = {
+    'ADMIN': 0,
+    'DIRECTOR': 1,          // Giám đốc
+    'DEPUTY_DIRECTOR': 2,   // Phó Giám đốc
+    'HEAD': 3,              // Trưởng khoa/phòng
+    'DEPUTY': 4,            // Phó khoa/phòng
+    'LEADER': 5,            // Tổ trưởng
+    'STAFF': 6              // Nhân viên
+};
+
 class UserService {
     static async getSubordinates(currentUser) {
         try {
-            const whereCondition = {
-                departments_id: currentUser.departments_id, // Cùng phòng
-                id: { [Op.ne]: currentUser.id }, // Trừ bản thân
-                status: 'active'
-            };
+            let whereCondition = {};
 
-            // 1. GIÁM ĐỐC: Thấy Phó GĐ + Trưởng khoa các phòng khác
-            if (currentUser.role === 'DIRECTOR') {
-                return await User.findAll({
-                    where: {
-                        [Op.or]: [
-                            { departments_id: currentUser.departments_id }, // Người trong BOD
-                            { role: 'HEAD' } // Các trưởng khoa
-                        ],
-                        id: { [Op.ne]: currentUser.id },
-                        status: 'active'
-                    },
-                    include: [Department]
-                });
+            // 1. ADMIN: Xem tất cả
+            if (currentUser.role === 'ADMIN') {
+                whereCondition = {};
             }
-
-            // 2. TRƯỞNG PHÒNG (HEAD): Thấy tất cả cấp dưới trong phòng
-            if (currentUser.role === 'HEAD') {
-                whereCondition.role = { [Op.in]: ['DEPUTY', 'LEADER', 'STAFF'] };
+            // 2. GIÁM ĐỐC: Xem Ban GĐ + Trưởng khoa
+            else if (currentUser.role === 'DIRECTOR') {
+                whereCondition = {
+                    [Op.or]: [
+                        { departments_id: currentUser.departments_id },
+                        { role: 'HEAD' }
+                    ]
+                };
             }
-            // 3. PHÓ PHÒNG (DEPUTY): Thấy Tổ trưởng và Nhân viên (Không thấy Trưởng phòng)
-            else if (['DEPUTY', 'DEPUTY_DIRECTOR'].includes(currentUser.role)) {
-                whereCondition.role = { [Op.in]: ['LEADER', 'STAFF'] };
+            // 3. PHÓ GIÁM ĐỐC: Xem Ban GĐ (cấp dưới) + Trưởng khoa
+            else if (currentUser.role === 'DEPUTY_DIRECTOR') {
+                whereCondition = {
+                    [Op.or]: [
+                        {
+                            departments_id: currentUser.departments_id,
+                            role: { [Op.notIn]: ['DIRECTOR', 'DEPUTY_DIRECTOR'] }
+                        },
+                        { role: 'HEAD' }
+                    ]
+                };
             }
-            // 4. TỔ TRƯỞNG (LEADER): Chỉ thấy Nhân viên (Không thấy Phó/Trưởng)
+            // 4. TRƯỞNG KHOA / PHÓ KHOA
+            else if (['HEAD', 'DEPUTY'].includes(currentUser.role)) {
+                whereCondition = { departments_id: currentUser.departments_id };
+            }
+            // 5. TỔ TRƯỞNG
             else if (currentUser.role === 'LEADER') {
-                whereCondition.role = 'STAFF';
+                whereCondition = {
+                    departments_id: currentUser.departments_id,
+                    role: 'STAFF'
+                };
             }
-            // 5. NHÂN VIÊN (STAFF): Không thấy ai (Không được giao việc)
+            // 6. NHÂN VIÊN
             else {
                 return [];
             }
 
-            return await User.findAll({
+            // --- BỘ LỌC CHUNG ---
+            if (whereCondition.id) {
+                whereCondition.id = { [Op.and]: [whereCondition.id, { [Op.ne]: currentUser.id }] };
+            } else {
+                whereCondition.id = { [Op.ne]: currentUser.id };
+            }
+            whereCondition.status = 'active';
+
+            // --- LẤY DỮ LIỆU ---
+            const users = await User.findAll({
                 where: whereCondition,
-                include: [Department]
+                include: [{ model: Department, as: 'Department', attributes: ['name'] }],
+                attributes: ['id', 'fullname', 'role', 'departments_id']
+            });
+
+            // --- SẮP XẾP THỦ CÔNG (CUSTOM SORT) ---
+            // Sắp xếp theo chức vụ trước, sau đó đến tên
+            return users.sort((a, b) => {
+                const weightA = ROLE_PRIORITY[a.role] || 99;
+                const weightB = ROLE_PRIORITY[b.role] || 99;
+
+                if (weightA !== weightB) {
+                    return weightA - weightB; // Chức to lên đầu
+                }
+                return a.fullname.localeCompare(b.fullname); // Cùng chức thì xếp tên A-Z
             });
 
         } catch (error) {
-            console.error(error);
+            console.error("Lỗi UserService:", error);
             return [];
         }
     }
 }
+
 module.exports = UserService;

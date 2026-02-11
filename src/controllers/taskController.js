@@ -249,22 +249,37 @@ module.exports = (io) => {
 
                 // --- 3. LỌC DANH SÁCH NGƯỜI ĐƯỢC MỜI ---
                 let availableUsers = [];
-                if (isAdmin) {
-                    // Admin: Mời tất cả
+
+                if (isAdmin || user.role === 'DIRECTOR') {
+                    // 1. Admin & Giám đốc: Mời được tất cả mọi người
                     availableUsers = await User.findAll({ attributes: ['id', 'fullname'] });
-                } else if (user.role === 'HEAD') {
-                    // Trưởng phòng: Mời người cùng phòng HOẶC Trưởng phòng khác
+                }
+                else if (user.role === 'DEPUTY_DIRECTOR') {
+                    // [ĐÃ SỬA] 2. Phó Giám đốc: Chỉ thấy người cùng phòng (Ban GĐ) + Trưởng khoa các nơi
                     availableUsers = await User.findAll({
                         where: {
                             [Op.or]: [
-                                { departments_id: user.departments_id }, // Cùng phòng
-                                { role: 'HEAD' }                         // Hoặc là HEAD
+                                { departments_id: user.departments_id }, // Người trong Ban Giám Đốc
+                                { role: 'HEAD' }                         // Các Trưởng khoa/phòng
                             ]
                         },
                         attributes: ['id', 'fullname']
                     });
-                } else {
-                    // Nhân viên / Phó phòng / Tổ trưởng: Chỉ mời người cùng phòng
+                }
+                else if (user.role === 'HEAD') {
+                    // 3. Trưởng phòng: Mời người cùng phòng HOẶC Trưởng phòng khác
+                    availableUsers = await User.findAll({
+                        where: {
+                            [Op.or]: [
+                                { departments_id: user.departments_id }, // Cùng phòng
+                                { role: 'HEAD' }                         // Trưởng khoa khác
+                            ]
+                        },
+                        attributes: ['id', 'fullname']
+                    });
+                }
+                else {
+                    // 4. Nhân viên / Phó phòng / Tổ trưởng: Chỉ mời người cùng phòng
                     availableUsers = await User.findAll({
                         where: { departments_id: user.departments_id },
                         attributes: ['id', 'fullname']

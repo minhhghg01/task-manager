@@ -206,45 +206,67 @@ class TaskService {
 
     // --- CÁC HÀM LOGIC MỚI ---
 
-    // 1. THÊM NGƯỜI PHỐI HỢP (LOGIC PHÒNG BAN)
+    // 1. THÊM NGƯỜI PHỐI HỢP
     static async addCollaborator(taskId, targetUserId, currentUserId) {
         const task = await Task.findByPk(taskId);
         let collabs = JSON.parse(task.collaborators || '[]');
 
-        if (collabs.some(c => String(c.uid) === String(targetUserId))) throw new Error("Nhân viên này đã có trong danh sách.");
+        if (collabs.some(c => String(c.uid) === String(targetUserId))) {
+            throw new Error("Nhân viên này đã có trong danh sách.");
+        }
 
         const currentUser = await User.findByPk(currentUserId);
         const targetUser = await User.findByPk(targetUserId);
 
-        // --- CHECK QUYỀN MỜI (LOGIC MỚI) ---
-        // Nếu là Admin thì mời ai cũng được
-        if (currentUser.role !== 'ADMIN') {
-            if (currentUser.role === 'HEAD') {
-                // Trưởng phòng: Được mời người cùng phòng HOẶC Trưởng phòng khác
-                const isSameDept = currentUser.departments_id === targetUser.departments_id;
-                const isTargetHead = targetUser.role === 'HEAD';
-                if (!isSameDept && !isTargetHead) {
-                    throw new Error("Trưởng phòng chỉ được mời nhân viên cùng phòng hoặc Trưởng phòng khác.");
-                }
-            } else {
-                // Nhân viên/Phó phòng: Chỉ được mời người cùng phòng
-                if (currentUser.departments_id !== targetUser.departments_id) {
-                    throw new Error("Bạn chỉ được mời nhân viên trong cùng khoa/phòng.");
-                }
+        // --- RULE 1: CHẶN ADMIN ---
+        if (targetUser.role === 'ADMIN') {
+            throw new Error("Không thể mời Admin tham gia công việc.");
+        }
+
+        // --- RULE 2: PHÂN QUYỀN MỜI (LOGIC MỚI) ---
+        let canInvite = false;
+
+        // A. ADMIN: Full quyền (để xử lý sự cố)
+        if (currentUser.role === 'ADMIN') {
+            canInvite = true;
+        }
+        // B. BAN GIÁM ĐỐC (GĐ & PGĐ)
+        else if (['DIRECTOR', 'DEPUTY_DIRECTOR'].includes(currentUser.role)) {
+            // Mời người cùng Ban GĐ HOẶC Trưởng khoa khác
+            const isSameDept = currentUser.departments_id === targetUser.departments_id;
+            const isTargetHead = targetUser.role === 'HEAD';
+
+            if (isSameDept || isTargetHead) {
+                canInvite = true;
             }
         }
-        // ------------------------------------
+        // C. TRƯỞNG PHÒNG: Mời cùng phòng HOẶC Trưởng phòng khác
+        else if (currentUser.role === 'HEAD') {
+            const isSameDept = currentUser.departments_id === targetUser.departments_id;
+            const isTargetHead = targetUser.role === 'HEAD';
+            if (isSameDept || isTargetHead) canInvite = true;
+        }
+        // D. CÒN LẠI: Chỉ cùng phòng
+        else {
+            if (currentUser.departments_id === targetUser.departments_id) canInvite = true;
+        }
 
+        if (!canInvite) {
+            throw new Error("Bạn không có quyền mời nhân viên này (Chỉ được mời cấp dưới trực tiếp hoặc người cùng phòng).");
+        }
+
+        // --- RULE 3: TRẠNG THÁI (MỜI vs CHỈ ĐỊNH) ---
         const myWeight = ROLE_WEIGHTS[currentUser.role] || 0;
         const targetWeight = ROLE_WEIGHTS[targetUser.role] || 0;
+
         let newStatus = 'PENDING';
         let logAction = 'Mời phối hợp';
 
+        // Admin hoặc Cấp trên ép cấp dưới -> Tự động ACCEPT
         if (currentUser.role === 'ADMIN' || myWeight > targetWeight) {
             newStatus = 'ACCEPTED';
             logAction = 'Chỉ định phối hợp';
 
-            // Nếu chỉ định (ép vào) -> Thêm luôn vào danh sách người nhận (assigned_to)
             let assignees = JSON.parse(task.assigned_to || '[]');
             if (!assignees.includes(targetUserId) && !assignees.includes(String(targetUserId))) {
                 assignees.push(targetUserId);
@@ -255,7 +277,13 @@ class TaskService {
         collabs.push({ uid: targetUserId, status: newStatus });
         await task.update({ collaborators: JSON.stringify(collabs) });
 
-        await ActivityLog.create({ user_id: currentUserId, action: 'ADD_COLLAB', entity_type: 'TASK', entity_id: taskId, details: `${logAction}: ${targetUser.fullname}` });
+        await ActivityLog.create({
+            user_id: currentUserId,
+            action: 'ADD_COLLAB',
+            entity_type: 'TASK',
+            entity_id: taskId,
+            details: `${logAction}: ${targetUser.fullname}`
+        });
     }
 
     // 2. PHẢN HỒI LỜI MỜI (SYNC NGƯỜI NHẬN)
