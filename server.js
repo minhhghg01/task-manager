@@ -12,7 +12,9 @@ const seedData = require('./src/config/seedData');
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
+
 const PORT = 3000;
+const HOST = '0.0.0.0'; // <--- [QUAN TRỌNG] Lắng nghe trên mọi IP để mạng LAN truy cập được
 
 // 1. Middleware
 app.use(express.urlencoded({ extended: true }));
@@ -61,7 +63,11 @@ sequelize.sync().then(async () => {
     // Gọi hàm tạo dữ liệu mẫu
     await seedData();
 
-    server.listen(PORT, () => {
-        console.log(`Server đang chạy tại: http://localhost:${PORT}`);
+    // Sửa đoạn listen để lắng nghe HOST
+    server.listen(PORT, HOST, () => {
+        console.log(`--------------------------------------------------`);
+        console.log(`Server đang chạy tại Local:   http://localhost:${PORT}`);
+        console.log(`Truy cập từ mạng LAN:         http://192.168.10.8:${PORT}`);
+        console.log(`--------------------------------------------------`);
     });
 });
