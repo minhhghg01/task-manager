@@ -19,67 +19,79 @@
                 </tr>
             </thead>
             <tbody>
-                <% users.forEach((u, index)=> { %>
-                    <tr style="cursor: pointer;" onclick="window.location.href='/employees/<%= u.id %>/tasks'">
-                        <td>
-                            <%= index + 1 %>
-                        </td>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <div class="bg-primary text-white rounded-circle d-flex justify-content-center align-items-center me-2"
-                                    style="width: 35px; height: 35px;">
-                                    <%= u.fullname.charAt(0) %>
-                                </div>
-                                <div>
-                                    <strong>
-                                        <%= u.fullname %>
-                                    </strong><br>
-                                    <small class="text-muted">
-                                        <%= u.Department ? u.Department.name : '' %>
-                                    </small>
-                                </div>
-                            </div>
-                        </td>
-                        <td>
-                            <% if(u.role==='LEADER' ) { %>
-                                <span class="badge bg-warning text-dark">Tổ trưởng</span>
-                                <% } else if(u.role==='DEPUTY' ) { %>
-                                    <span class="badge bg-info text-dark">Phó phòng</span>
-                                    <% } else { %>
-                                        <span class="badge bg-secondary">Nhân viên</span>
-                                        <% } %>
-                        </td>
+                <% if (typeof users !=='undefined' && users.length> 0) { %>
+                    <% users.forEach((u, index)=> { %>
+                        <tr style="cursor: pointer;" onclick="window.location.href='/employees/<%= u.id %>/tasks'">
 
-                        <td class="text-center fw-bold fs-5">
-                            <%= u.stats.total %>
-                        </td>
-                        <td class="text-center fw-bold fs-5 text-primary">
-                            <%= u.stats.inProgress %>
-                        </td>
-                        <td class="text-center fw-bold fs-5 text-success">
-                            <%= u.stats.completed %>
-                        </td>
-                        <td class="text-center fw-bold fs-5 text-danger">
-                            <%= u.stats.overdue %>
-                        </td>
+                            <td>
+                                <%= index + 1 %>
+                            </td>
 
-                        <td onclick="event.stopPropagation()">
-                            <% if (typeof currentUserRole !=='undefined' && currentUserRole==='HEAD' ) { %>
-                                <% if (u.role==='STAFF' ) { %>
-                                    <button onclick="setLeaderRole('<%= u.id %>', 'promote')"
-                                        class="btn btn-sm btn-outline-warning text-dark">
-                                        <span data-feather="chevrons-up"></span> Lên Tổ trưởng
-                                    </button>
-                                    <% } else if (u.role==='LEADER' ) { %>
-                                        <button onclick="setLeaderRole('<%= u.id %>', 'demote')"
-                                            class="btn btn-sm btn-outline-secondary">
-                                            <span data-feather="chevrons-down"></span> Xuống NV
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-primary text-white rounded-circle d-flex justify-content-center align-items-center me-2"
+                                        style="width: 35px; height: 35px;">
+                                        <%= u.fullname.charAt(0).toUpperCase() %>
+                                    </div>
+                                    <div>
+                                        <strong>
+                                            <%= u.fullname %>
+                                        </strong><br>
+                                        <small class="text-muted">
+                                            <%= u.Department ? u.Department.name : '' %>
+                                        </small>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td>
+                                <% var roleName='Nhân viên' ; var roleClass='secondary' ; if (u.role==='DIRECTOR' ) {
+                                    roleName='Giám đốc' ; roleClass='danger' ; } else if (u.role==='DEPUTY_DIRECTOR' ) {
+                                    roleName='Phó Giám đốc' ; roleClass='danger' ; } else if (u.role==='HEAD' ) {
+                                    roleName='Trưởng khoa' ; roleClass='warning text-dark' ; } else if
+                                    (u.role==='DEPUTY' ) { roleName='Phó khoa' ; roleClass='info text-dark' ; } else if
+                                    (u.role==='LEADER' ) { roleName='Tổ trưởng' ; roleClass='primary' ; } %>
+                                    <span class="badge bg-<%= roleClass %>">
+                                        <%= roleName %>
+                                    </span>
+                            </td>
+
+                            <td class="text-center fw-bold fs-5">
+                                <%= u.stats.total %>
+                            </td>
+                            <td class="text-center fw-bold fs-5 text-primary">
+                                <%= u.stats.inProgress %>
+                            </td>
+                            <td class="text-center fw-bold fs-5 text-success">
+                                <%= u.stats.completed %>
+                            </td>
+                            <td class="text-center fw-bold fs-5 text-danger">
+                                <%= u.stats.overdue %>
+                            </td>
+
+                            <td onclick="event.stopPropagation()">
+                                <% if (typeof currentUserRole !=='undefined' && currentUserRole==='HEAD' ) { %>
+                                    <% if (u.role==='STAFF' ) { %>
+                                        <button onclick="setLeaderRole('<%= u.id %>', 'promote')"
+                                            class="btn btn-sm btn-outline-warning text-dark">
+                                            <span data-feather="chevrons-up"></span> Lên Tổ trưởng
                                         </button>
-                                        <% } %>
+                                        <% } else if (u.role==='LEADER' ) { %>
+                                            <button onclick="setLeaderRole('<%= u.id %>', 'demote')"
+                                                class="btn btn-sm btn-outline-secondary">
+                                                <span data-feather="chevrons-down"></span> Xuống NV
+                                            </button>
                                             <% } %>
-                        </td>
-                    </tr>
-                    <% }) %>
+                                                <% } %>
+                            </td>
+                        </tr>
+                        <% }); %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="9" class="text-center py-4 text-muted">Không tìm thấy nhân viên nào
+                                    </td>
+                                </tr>
+                                <% } %>
             </tbody>
         </table>
     </div>
