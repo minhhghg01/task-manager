@@ -10,7 +10,7 @@ const ROLE_WEIGHTS = {
 };
 
 class TaskService {
-    // --- GIỮ NGUYÊN CÁC HÀM GET & CREATE ---
+    // --- LẤY DANH SÁCH TASK ---
     static async getTasksByUser(user, filterType = 'general') {
         let tasks = [];
         const allUsers = await User.findAll({ attributes: ['id', 'fullname'] });
@@ -18,13 +18,25 @@ class TaskService {
         allUsers.forEach(u => userMap[u.id] = u.fullname);
 
         let whereCondition = {};
+
+        // 1. XÁC ĐỊNH ĐIỀU KIỆN QUERY DB
         if (user.role === 'ADMIN') {
             if (filterType === 'general') whereCondition = {};
-            else return [];
+            else return []; // Admin không có "việc của tôi" theo nghĩa thường
         } else {
-            if (filterType === 'general') whereCondition = { department_id: user.departments_id };
-            else if (filterType === 'mine') whereCondition = { assigned_to: { [Op.like]: `%%` } };
-            else if (filterType === 'assigned_by_me') whereCondition = { assigned_by: user.id };
+            if (filterType === 'general') {
+                // Việc chung: Lấy theo phòng ban
+                whereCondition = { department_id: user.departments_id };
+            } else if (filterType === 'assigned_by_me') {
+                // Việc tôi giao
+                whereCondition = { assigned_by: user.id };
+            } else {
+                // 'mine' (Việc của tôi) hoặc 'invited' (Lời mời)
+                // Do dữ liệu nằm trong cột JSON (collaborators/assigned_to), 
+                // ta lấy rộng ra (toàn bộ hoặc theo phòng) rồi lọc kỹ bằng Javascript bên dưới.
+                // Để chắc chắn không sót việc từ phòng khác mời sang, ta để điều kiện mở:
+                whereCondition = {};
+            }
         }
 
         tasks = await Task.findAll({
@@ -33,25 +45,52 @@ class TaskService {
             order: [['created_at', 'DESC']]
         });
 
+        // 2. XỬ LÝ DỮ LIỆU (PARSE JSON & FORMAT)
         const processedTasks = tasks.map(t => {
             const task = t.toJSON();
+
+            // a. Parse người được giao (assigned_to)
             let assigneeIds = [];
             try {
                 const parsed = JSON.parse(task.assigned_to || '[]');
                 if (Array.isArray(parsed)) assigneeIds = parsed;
             } catch (e) { assigneeIds = []; }
 
+            // b. Parse người phối hợp (collaborators) -> Để lọc Invite
+            let collaborators = [];
+            try {
+                collaborators = JSON.parse(task.collaborators || '[]');
+            } catch (e) { collaborators = []; }
+
             task.assigneeNames = assigneeIds.map(id => userMap[id] || 'Unknown').join(', ');
             task.formattedDueDate = task.due_date ? new Date(task.due_date).toLocaleString('vi-VN') : 'Không thời hạn';
-            return { ...task, assigneeIds };
+
+            // Gán dữ liệu thô vào để dùng cho bộ lọc bên dưới
+            task.assigneeIds = assigneeIds;
+            task.collaboratorList = collaborators;
+
+            return task;
         });
 
-        if (user.role === 'ADMIN' || filterType === 'assigned_by_me' || filterType === 'general') {
-            return processedTasks;
-        }
+        // 3. LỌC KẾT QUẢ CUỐI CÙNG (JAVASCRIPT FILTER)
+        if (user.role === 'ADMIN') return processedTasks;
+        if (filterType === 'general') return processedTasks;
+        if (filterType === 'assigned_by_me') return processedTasks;
+
+        // Lọc: Việc của tôi (Được giao chính hoặc Đã chấp nhận phối hợp)
         if (filterType === 'mine') {
-            return processedTasks.filter(t => t.assigneeIds.some(id => String(id) === String(user.id)));
+            return processedTasks.filter(t =>
+                t.assigneeIds.some(id => String(id) === String(user.id))
+            );
         }
+
+        // Lọc: Lời mời hợp tác (Có tên trong collaborators VÀ trạng thái PENDING)
+        if (filterType === 'invited') {
+            return processedTasks.filter(t =>
+                t.collaboratorList.some(c => String(c.uid) === String(user.id) && c.status === 'PENDING')
+            );
+        }
+
         return processedTasks;
     }
 

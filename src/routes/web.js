@@ -15,26 +15,23 @@ if (!fs.existsSync(uploadDir)) {
 const storage = multer.diskStorage({
     destination: uploadDir,
     filename: function (req, file, cb) {
-        // Xử lý tên file để không bị lỗi tiếng Việt
         const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
         const cleanName = originalName.replace(/[^a-zA-Z0-9.]/g, '_');
         cb(null, 'task-' + Date.now() + '-' + cleanName);
     }
 });
 
-// Bộ lọc file
 const fileFilter = (req, file, cb) => {
-    // Danh sách các loại file cho phép (MIME types)
     const allowedTypes = [
-        'image/jpeg', 'image/png', 'image/gif', // Ảnh
-        'text/plain', // Notepad (.txt)
-        'application/pdf', // PDF
-        'application/msword', // Word .doc
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // Word .docx
-        'application/vnd.ms-excel', // Excel .xls
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // Excel .xlsx
-        'application/vnd.ms-powerpoint', // Powerpoint .ppt
-        'application/vnd.openxmlformats-officedocument.presentationml.presentation' // Powerpoint .pptx
+        'image/jpeg', 'image/png', 'image/gif',
+        'text/plain',
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation'
     ];
 
     if (allowedTypes.includes(file.mimetype)) {
@@ -47,7 +44,7 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
     storage: storage,
     fileFilter: fileFilter,
-    limits: { fileSize: 10 * 1024 * 1024 } // Giới hạn 10MB
+    limits: { fileSize: 10 * 1024 * 1024 }
 });
 
 // --- IMPORT CONTROLLERS ---
@@ -57,30 +54,24 @@ const taskControllerFactory = require('../controllers/taskController');
 
 // --- MIDDLEWARES ---
 const requireAuth = async (req, res, next) => {
-    // 1. Nếu chưa có session -> Đá về login
     if (!req.session.user) return res.redirect('/login');
 
     try {
-        // 2. Lấy thông tin mới nhất từ DB (Chỉ lấy role để tối ưu tốc độ)
         const freshUser = await User.findByPk(req.session.user.id, {
             attributes: ['id', 'role', 'fullname', 'departments_id']
         });
 
-        // 3. Nếu không tìm thấy User trong DB (ví dụ bị Admin xóa) -> Hủy session
         if (!freshUser) {
             req.session.destroy();
             return res.redirect('/login');
         }
 
-        // 4. QUAN TRỌNG: Nếu Role trong DB khác Role trong Session -> Cập nhật Session ngay
         if (req.session.user.role !== freshUser.role) {
             req.session.user.role = freshUser.role;
-            req.session.user.fullname = freshUser.fullname; // Update luôn tên nếu đổi
-            // Lưu lại session
+            req.session.user.fullname = freshUser.fullname;
             req.session.save();
         }
 
-        // 5. Gán user mới nhất vào req để các controller sau dùng
         req.user = freshUser;
         next();
 
@@ -99,7 +90,7 @@ module.exports = (io) => {
     const taskController = taskControllerFactory(io);
 
     // ============================================================
-    // 1. AUTHENTICATION (Đăng nhập, Đăng xuất, Đổi mật khẩu)
+    // 1. AUTHENTICATION
     // ============================================================
     router.get('/login', AuthController.loginPage);
     router.post('/login', AuthController.loginProcess);
@@ -112,36 +103,43 @@ module.exports = (io) => {
     router.get('/', requireAuth, (req, res) => res.redirect('/dashboard'));
     router.get('/dashboard', requireAuth, taskController.renderDashboard);
 
-    // Danh sách: Công việc chung (Toàn bộ hoặc theo Phòng)
+    // Danh sách: Công việc chung
     router.get('/tasks/general', requireAuth, (req, res, next) => {
         req.filterType = 'general';
         next();
     }, taskController.renderFilteredTasks);
 
-    // Danh sách: Việc của tôi (Được giao)
+    // Danh sách: Việc của tôi
     router.get('/tasks/my-tasks', requireAuth, (req, res, next) => {
         req.filterType = 'mine';
         next();
     }, taskController.renderFilteredTasks);
 
-    // Danh sách: Việc đã giao (Tôi là người tạo)
+    // Danh sách: Việc đã giao
     router.get('/tasks/assigned', requireAuth, (req, res, next) => {
         req.filterType = 'assigned_by_me';
         next();
     }, taskController.renderFilteredTasks);
 
+    // [QUAN TRỌNG] Route này PHẢI nằm TRƯỚC route /tasks/:id
+    // Danh sách: Việc được mời (Collaborator Pending)
+    router.get('/tasks/invited', requireAuth, (req, res, next) => {
+        req.filterType = 'invited';
+        next();
+    }, taskController.renderFilteredTasks);
+
     // ============================================================
-    // 3. CHI TIẾT CÔNG VIỆC & TƯƠNG TÁC (QUAN TRỌNG)
+    // 3. CHI TIẾT CÔNG VIỆC & TƯƠNG TÁC
     // ============================================================
-    // Xem chi tiết
+    // Xem chi tiết (Wildcard :id nhận tất cả các chuỗi sau /tasks/, nên phải để cuối cùng trong nhóm GET)
     router.get('/tasks/:id', requireAuth, taskController.viewTaskDetail);
 
     // Các hành động trong trang chi tiết
-    router.post('/tasks/:id/progress', requireAuth, taskController.updateTaskProgress); // Cập nhật tiến độ
-    router.post('/tasks/:id/score', requireAuth, taskController.gradeTask);       // Chấm điểm
-    router.post('/tasks/:id/comment', requireAuth, taskController.postComment);   // Bình luận
+    router.post('/tasks/:id/progress', requireAuth, taskController.updateTaskProgress);
+    router.post('/tasks/:id/score', requireAuth, taskController.gradeTask);
+    router.post('/tasks/:id/comment', requireAuth, taskController.postComment);
 
-    // API Tạo công việc mới (Có upload file)
+    // API Tạo công việc mới
     router.post('/api/tasks', requireAuth, upload.single('attachment'), taskController.apiCreateTask);
 
     // --- ROUTES CHO NGƯỜI PHỐI HỢP & TODO LIST ---
@@ -150,18 +148,11 @@ module.exports = (io) => {
     router.post('/tasks/:id/todos', taskController.apiUpdateTodo);
 
     // ============================================================
-    // 4. QUẢN LÝ NHÂN VIÊN (Dành cho Lãnh đạo)
+    // 4. QUẢN LÝ NHÂN VIÊN
     // ============================================================
-    // Xem bảng thống kê nhân viên
     router.get('/employees/stats', requireAuth, taskController.listEmployeesStats);
-
-    // Xem chi tiết công việc của 1 nhân viên cụ thể
     router.get('/employees/:id/tasks', requireAuth, taskController.viewEmployeeTasks);
-
-    // API Bổ nhiệm / Bãi nhiệm Tổ trưởng
     router.post('/employees/set-role', requireAuth, taskController.setEmployeeRole);
-
-    // API Lấy danh sách cấp dưới (Dùng cho Modal giao việc)
     router.get('/api/users/subordinates', requireAuth, taskController.apiGetSubordinates);
 
     // ============================================================
