@@ -263,45 +263,74 @@ class TaskService {
     // 3. CẬP NHẬT TODO LIST (CHECK QUYỀN)
     static async updateTodoList(taskId, userId, action, payload) {
         const task = await Task.findByPk(taskId);
+        if (!task) throw new Error('Công việc không tồn tại.');
 
-        // --- CHECK QUYỀN SỬA CHECKLIST ---
-        const assignees = JSON.parse(task.assigned_to || '[]');
-        const isCreator = String(task.assigned_by) === String(userId);
-        const isAssignee = assignees.includes(userId) || assignees.includes(String(userId));
-        // Người trong task bao gồm: Người tạo, Người được giao (bao gồm cả người phối hợp ĐÃ ACCEPT)
-        // Vì ở trên ta đã sync người ACCEPT vào assigned_to nên chỉ cần check isAssignee là đủ.
+        // --- BƯỚC 1: KIỂM TRA QUYỀN HẠN CHẶT CHẼ ---
+        let assigneeIds = [];
+        try { assigneeIds = JSON.parse(task.assigned_to || '[]'); } catch (e) { }
 
-        // Tuy nhiên, check thêm Admin cho chắc
-        const currentUser = await User.findByPk(userId); // Cần check role admin
+        // Chuyển tất cả về String để so sánh chính xác
+        const listPeopleInTask = assigneeIds.map(id => String(id));
+        const creatorId = String(task.assigned_by);
+        const currentId = String(userId);
+
+        const currentUser = await User.findByPk(userId);
         const isAdmin = currentUser.role === 'ADMIN';
 
-        if (!isCreator && !isAssignee && !isAdmin) {
-            throw new Error("Bạn không có quyền chỉnh sửa Checklist công việc này.");
+        // Điều kiện: Phải là Admin HOẶC Người tạo HOẶC Người được giao (bao gồm người phối hợp đã Accept)
+        const isAuthorized = isAdmin || (currentId === creatorId) || listPeopleInTask.includes(currentId);
+
+        if (!isAuthorized) {
+            throw new Error("Bạn không tham gia công việc này nên không được phép chỉnh sửa Checklist.");
         }
-        // ---------------------------------
+        // ---------------------------------------------
 
         let todos = JSON.parse(task.todo_list || '[]');
         let logDetail = '';
 
         if (action === 'ADD') {
-            todos.push({ id: Date.now(), text: payload.text, done: false });
-            logDetail = `Thêm checklist: ${payload.text}`;
-        } else if (action === 'TOGGLE') {
+            todos.push({
+                id: Date.now(),
+                text: payload.text,
+                done: false
+            });
+            logDetail = `Thêm việc cần làm: "${payload.text}"`;
+        }
+        else if (action === 'TOGGLE') {
             const index = todos.findIndex(t => t.id == payload.todoId);
             if (index !== -1) {
-                todos[index].done = !todos[index].done;
-                logDetail = `Đánh dấu ${todos[index].done ? 'hoàn thành' : 'chưa xong'}: ${todos[index].text}`;
+                // Đảo ngược trạng thái
+                const newStatus = !todos[index].done;
+                todos[index].done = newStatus;
+
+                // Ghi log rõ ràng Tick hay Bỏ Tick
+                if (newStatus) {
+                    logDetail = `Đã hoàn thành việc: "${todos[index].text}"`;
+                } else {
+                    logDetail = `Bỏ đánh dấu hoàn thành việc: "${todos[index].text}"`;
+                }
             }
-        } else if (action === 'DELETE') {
+        }
+        else if (action === 'DELETE') {
             const index = todos.findIndex(t => t.id == payload.todoId);
             if (index !== -1) {
-                logDetail = `Xóa checklist: ${todos[index].text}`;
+                logDetail = `Xóa việc cần làm: "${todos[index].text}"`;
                 todos.splice(index, 1);
             }
         }
 
-        await task.update({ todo_list: JSON.stringify(todos) });
-        if (logDetail) await ActivityLog.create({ user_id: userId, action: 'UPDATE_TODO', entity_type: 'TASK', entity_id: taskId, details: logDetail });
+        // Chỉ update DB và ghi log nếu có thay đổi hợp lệ
+        if (logDetail) {
+            await task.update({ todo_list: JSON.stringify(todos) });
+
+            await ActivityLog.create({
+                user_id: userId,
+                action: 'UPDATE_TODO',
+                entity_type: 'TASK',
+                entity_id: taskId,
+                details: logDetail
+            });
+        }
 
         return todos;
     }
