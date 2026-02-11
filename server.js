@@ -13,7 +13,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-const PORT = 3000;
+const PORT = 3005;
 const HOST = '0.0.0.0'; // <--- [QUAN TRỌNG] Lắng nghe trên mọi IP để mạng LAN truy cập được
 
 // 1. Middleware
