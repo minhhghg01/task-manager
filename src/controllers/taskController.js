@@ -24,7 +24,6 @@ const getAdminStats = async () => {
         const totalUsers = await User.count();
         const totalTasks = await Task.count();
 
-        // Đã sửa status thành Tiếng Việt
         const completedTasks = await Task.count({ where: { status: 'Hoàn thành' } });
         const inProgressTasks = await Task.count({
             where: { status: { [Op.in]: ['Mới tạo', 'Đang thực hiện', 'Đang chờ', 'Hoàn thành', 'Quá hạn'] } }
@@ -102,19 +101,15 @@ module.exports = (io) => {
             }
         },
 
-        // 3. API TẠO TASK (ĐÃ SỬA LOGIC TỰ GIAO VIỆC)
+        // 3. API TẠO TASK
         apiCreateTask: async (req, res) => {
             try {
-                // --- XỬ LÝ TỰ GIAO VIỆC ---
-                // Nếu checkbox "Tôi tự làm" được tích -> Gán ID người nhận là chính mình
                 if (req.body.is_self_assign === 'true') {
                     req.body.assigned_to = [req.session.user.id];
                 }
-                // --------------------------
 
                 const newTask = await TaskService.createTask(req.session.user, req.body, req.file);
 
-                // Gửi Socket (Giữ nguyên)
                 try {
                     let assigneeIds = [];
                     if (typeof newTask.assigned_to === 'string') {
@@ -165,7 +160,7 @@ module.exports = (io) => {
             } catch (err) { res.status(500).send(err.message); }
         },
 
-        // --- CÁC HÀM QUẢN LÝ NHÂN VIÊN ---
+        // --- QUẢN LÝ NHÂN VIÊN ---
         setEmployeeRole: async (req, res) => {
             try {
                 const currentUser = req.session.user;
@@ -206,7 +201,7 @@ module.exports = (io) => {
             } catch (err) { res.status(500).send(err.message); }
         },
 
-        // 5. VIEW CHI TIẾT (ĐÃ CHUYỂN LOGIC SANG ĐÂY ĐỂ TRÁNH LỖI VIEW)
+        // 5. VIEW CHI TIẾT (ĐÃ UPDATE LOGIC LỌC DROPDOWN & PREPARE DATA)
         viewTaskDetail: async (req, res) => {
             try {
                 const user = req.session.user;
@@ -239,26 +234,42 @@ module.exports = (io) => {
                 }
 
                 // --- 2. XỬ LÝ MÀU SẮC & HIỂN THỊ (PREPARE VIEW DATA) ---
-                const priorityColors = {
-                    'Cao (Gấp)': 'danger', 'Trung bình': 'warning text-dark', 'Thấp': 'info text-dark'
-                };
+                const priorityColors = { 'Cao (Gấp)': 'danger', 'Trung bình': 'warning text-dark', 'Thấp': 'info text-dark' };
                 task.pColor = priorityColors[task.priority] || 'secondary';
 
-                const statusColors = {
-                    'Mới tạo': 'info text-dark', 'Hoàn thành': 'success', 'Quá hạn': 'danger',
-                    'Đang chờ': 'warning text-dark', 'Đang thực hiện': 'primary'
-                };
+                const statusColors = { 'Mới tạo': 'info text-dark', 'Hoàn thành': 'success', 'Quá hạn': 'danger', 'Đang chờ': 'warning text-dark', 'Đang thực hiện': 'primary' };
                 task.sColor = statusColors[task.status] || 'secondary';
 
-                // Xử lý ngày hiển thị an toàn
+                // Xử lý ngày hiển thị
                 if (!task.formattedStartDate) {
                     if (task.start_date) task.formattedStartDate = new Date(task.start_date).toLocaleString('vi-VN');
                     else if (task.createdAt) task.formattedStartDate = new Date(task.createdAt).toLocaleString('vi-VN');
                     else task.formattedStartDate = "Chưa cập nhật";
                 }
 
-                // Lấy danh sách user để mời (cho dropdown)
-                const allUsers = await User.findAll({ attributes: ['id', 'fullname'] });
+                // --- 3. LỌC DANH SÁCH NGƯỜI ĐƯỢC MỜI ---
+                let availableUsers = [];
+                if (isAdmin) {
+                    // Admin: Mời tất cả
+                    availableUsers = await User.findAll({ attributes: ['id', 'fullname'] });
+                } else if (user.role === 'HEAD') {
+                    // Trưởng phòng: Mời người cùng phòng HOẶC Trưởng phòng khác
+                    availableUsers = await User.findAll({
+                        where: {
+                            [Op.or]: [
+                                { departments_id: user.departments_id }, // Cùng phòng
+                                { role: 'HEAD' }                         // Hoặc là HEAD
+                            ]
+                        },
+                        attributes: ['id', 'fullname']
+                    });
+                } else {
+                    // Nhân viên / Phó phòng / Tổ trưởng: Chỉ mời người cùng phòng
+                    availableUsers = await User.findAll({
+                        where: { departments_id: user.departments_id },
+                        attributes: ['id', 'fullname']
+                    });
+                }
 
                 // Render view
                 res.render('pages/task-detail', {
@@ -268,7 +279,7 @@ module.exports = (io) => {
                     isAssignee,
                     isAdmin,
                     canScore,
-                    allUsers
+                    allUsers: availableUsers // Truyền danh sách đã lọc xuống View
                 });
             } catch (err) {
                 console.error(err);
@@ -276,7 +287,7 @@ module.exports = (io) => {
             }
         },
 
-        // --- UPDATE PROGRESS ---
+        // --- API UPDATE PROGRESS ---
         updateTaskProgress: async (req, res) => {
             try {
                 const { progress } = req.body;
@@ -285,7 +296,7 @@ module.exports = (io) => {
             } catch (err) { res.status(500).json({ success: false, message: err.message }); }
         },
 
-        // --- CHẤM ĐIỂM ---
+        // --- API GRADE TASK ---
         gradeTask: async (req, res) => {
             try {
                 const { score } = req.body;
@@ -294,7 +305,7 @@ module.exports = (io) => {
             } catch (err) { res.status(500).json({ success: false, message: err.message }); }
         },
 
-        // --- BÌNH LUẬN ---
+        // --- API COMMENT ---
         postComment: async (req, res) => {
             try {
                 const { content } = req.body;
