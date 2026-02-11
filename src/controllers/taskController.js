@@ -206,7 +206,7 @@ module.exports = (io) => {
             } catch (err) { res.status(500).send(err.message); }
         },
 
-        // 5. VIEW CHI TIẾT (ĐÃ SỬA LOGIC QUYỀN CHẤM ĐIỂM)
+        // 5. VIEW CHI TIẾT (ĐÃ CHUYỂN LOGIC SANG ĐÂY ĐỂ TRÁNH LỖI VIEW)
         viewTaskDetail: async (req, res) => {
             try {
                 const user = req.session.user;
@@ -215,49 +215,65 @@ module.exports = (io) => {
 
                 if (!task) return res.status(404).send('Không tìm thấy công việc');
 
+                // --- 1. XỬ LÝ QUYỀN HẠN ---
                 const isAssigner = String(task.assigned_by) === String(user.id);
-                const assigneeList = task.assigneeList || [];
-                const isAssignee = assigneeList.some(u => String(u.id) === String(user.id));
+                const isAssignee = task.assigneeList.some(u => String(u.id) === String(user.id));
+                const isAdmin = user.role === 'ADMIN';
 
-                // --- TÍNH TOÁN QUYỀN CHẤM ĐIỂM (canScore) ---
+                // Logic quyền chấm điểm
                 let canScore = false;
-
-                if (user.role === 'ADMIN') {
+                if (isAdmin) {
                     canScore = true;
                 } else {
-                    // Kiểm tra xem có phải "Tự giao việc" (Người giao == Người nhận)
-                    // Lưu ý: task.assigned_to là chuỗi JSON hoặc mảng ID
                     let assigneeIds = [];
                     try { assigneeIds = JSON.parse(task.assigned_to); } catch (e) { assigneeIds = task.assigned_to || []; }
-
                     const isSelfAssigned = assigneeIds.includes(task.assigned_by) || assigneeIds.includes(String(task.assigned_by));
 
                     if (isSelfAssigned) {
-                        // NẾU TỰ GIAO: Người làm (chính mình) KHÔNG ĐƯỢC chấm.
-                        // Chỉ cấp trên (HEAD/DEPUTY) mới được chấm.
-                        if (['HEAD', 'DEPUTY'].includes(user.role)) {
-                            // Cấp trên chỉ được chấm nếu KHÔNG PHẢI là người làm task đó
-                            // (Tránh trường hợp Trưởng phòng tự tạo task cho mình rồi tự chấm)
-                            if (String(user.id) !== String(task.assigned_by)) {
-                                canScore = true;
-                            }
+                        if (['HEAD', 'DEPUTY'].includes(user.role) && String(user.id) !== String(task.assigned_by)) {
+                            canScore = true;
                         }
                     } else {
-                        // NẾU GIAO CHO NGƯỜI KHÁC: Người giao được quyền chấm.
                         if (isAssigner) canScore = true;
                     }
                 }
-                // ---------------------------------------------
 
+                // --- 2. XỬ LÝ MÀU SẮC & HIỂN THỊ (PREPARE VIEW DATA) ---
+                const priorityColors = {
+                    'Cao (Gấp)': 'danger', 'Trung bình': 'warning text-dark', 'Thấp': 'info text-dark'
+                };
+                task.pColor = priorityColors[task.priority] || 'secondary';
+
+                const statusColors = {
+                    'Mới tạo': 'info text-dark', 'Hoàn thành': 'success', 'Quá hạn': 'danger',
+                    'Đang chờ': 'warning text-dark', 'Đang thực hiện': 'primary'
+                };
+                task.sColor = statusColors[task.status] || 'secondary';
+
+                // Xử lý ngày hiển thị an toàn
+                if (!task.formattedStartDate) {
+                    if (task.start_date) task.formattedStartDate = new Date(task.start_date).toLocaleString('vi-VN');
+                    else if (task.createdAt) task.formattedStartDate = new Date(task.createdAt).toLocaleString('vi-VN');
+                    else task.formattedStartDate = "Chưa cập nhật";
+                }
+
+                // Lấy danh sách user để mời (cho dropdown)
+                const allUsers = await User.findAll({ attributes: ['id', 'fullname'] });
+
+                // Render view
                 res.render('pages/task-detail', {
                     task,
                     user,
                     isAssigner,
                     isAssignee,
-                    isAdmin: user.role === 'ADMIN',
-                    canScore: canScore // Truyền biến này xuống View
+                    isAdmin,
+                    canScore,
+                    allUsers
                 });
-            } catch (err) { res.status(500).send(err.message); }
+            } catch (err) {
+                console.error(err);
+                res.status(500).send(err.message);
+            }
         },
 
         // --- UPDATE PROGRESS ---
@@ -305,6 +321,35 @@ module.exports = (io) => {
                 console.error(err);
                 res.status(500).json({ error: err.message });
             }
-        }
+        },
+
+        // 6. MỜI PHỐI HỢP
+        // --- API THÊM NGƯỜI PHỐI HỢP ---
+        apiAddCollaborator: async (req, res) => {
+            try {
+                const { targetUserId } = req.body;
+                await TaskService.addCollaborator(req.params.id, targetUserId, req.session.user.id);
+                res.json({ success: true });
+            } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+        },
+
+        // --- API PHẢN HỒI (CHẤP NHẬN/TỪ CHỐI) ---
+        apiRespondCollaborator: async (req, res) => {
+            try {
+                const { action } = req.body;
+                await TaskService.respondCollaborator(req.params.id, req.session.user.id, action);
+                res.json({ success: true });
+            } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+        },
+
+        // --- API TODO LIST ---
+        apiUpdateTodo: async (req, res) => {
+            try {
+                // action: 'ADD', 'TOGGLE', 'DELETE'
+                const { action, text, todoId } = req.body;
+                const newTodos = await TaskService.updateTodoList(req.params.id, req.session.user.id, action, { text, todoId });
+                res.json({ success: true, todos: newTodos });
+            } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+        },
     };
 };

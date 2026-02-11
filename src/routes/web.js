@@ -144,6 +144,11 @@ module.exports = (io) => {
     // API Tạo công việc mới (Có upload file)
     router.post('/api/tasks', requireAuth, upload.single('attachment'), taskController.apiCreateTask);
 
+    // --- ROUTES CHO NGƯỜI PHỐI HỢP & TODO LIST ---
+    router.post('/tasks/:id/collaborators', taskController.apiAddCollaborator);
+    router.post('/tasks/:id/collaborators/respond', taskController.apiRespondCollaborator);
+    router.post('/tasks/:id/todos', taskController.apiUpdateTodo);
+
     // ============================================================
     // 4. QUẢN LÝ NHÂN VIÊN (Dành cho Lãnh đạo)
     // ============================================================

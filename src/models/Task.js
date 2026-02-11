@@ -17,6 +17,18 @@ const Task = sequelize.define('Task', {
         defaultValue: '[]' // Mặc định là mảng rỗng dạng chuỗi
     },
 
+    // --- [MỚI] THÊM 2 CỘT NÀY ---
+    collaborators: {
+        type: DataTypes.TEXT,
+        defaultValue: '[]', // Lưu: [{uid: 1, status: 'ACCEPTED'}, {uid: 2, status: 'PENDING'}]
+        allowNull: false
+    },
+    todo_list: {
+        type: DataTypes.TEXT,
+        defaultValue: '[]', // Lưu: [{"id": 123, "text": "Việc A", "done": false}]
+        allowNull: false
+    },
+
     progress: { type: DataTypes.INTEGER, defaultValue: 0 },
     department_id: { type: DataTypes.INTEGER },
     start_date: { type: DataTypes.DATE },

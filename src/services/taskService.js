@@ -1,6 +1,14 @@
 const { Task, User, Department, TaskComment, ActivityLog } = require('../models');
 const { Op } = require('sequelize');
 
+// BẢNG TRỌNG SỐ CHỨC VỤ (Dùng để so sánh quyền hạn)
+const ROLE_WEIGHTS = {
+    'ADMIN': 99,
+    'DIRECTOR': 10, 'DEPUTY_DIRECTOR': 9, // Ban Giám đốc
+    'HEAD': 5, 'DEPUTY': 4,               // Trưởng/Phó phòng
+    'LEADER': 3, 'STAFF': 1               // Tổ trưởng/Nhân viên
+};
+
 class TaskService {
     // --- LẤY DANH SÁCH TASK ---
     static async getTasksByUser(user, filterType = 'general') {
@@ -47,12 +55,10 @@ class TaskService {
         return processedTasks;
     }
 
-    // --- TẠO TASK MỚI (ĐÃ SỬA LOGIC TỰ GIAO VIỆC) ---
+    // --- TẠO TASK MỚI ---
     static async createTask(currentUser, taskData, file) {
         let assigneeIds = [];
         const raw = taskData.assigned_to;
-
-        // Chuẩn hóa assigneeIds thành mảng
         if (Array.isArray(raw)) assigneeIds = raw;
         else if (typeof raw === 'string') {
             if (raw.trim().startsWith('[')) { try { assigneeIds = JSON.parse(raw); } catch (e) { assigneeIds = []; } }
@@ -65,46 +71,38 @@ class TaskService {
             throw new Error('Vui lòng chọn ít nhất một người nhận việc!');
         }
 
-        // Logic kiểm tra cấp bậc
-        const roleWeight = { 'ADMIN': 99, 'DIRECTOR': 10, 'DEPUTY_DIRECTOR': 9, 'HEAD': 5, 'DEPUTY': 4, 'LEADER': 3, 'STAFF': 1 };
-        const myWeight = roleWeight[currentUser.role] || 0;
+        const myWeight = ROLE_WEIGHTS[currentUser.role] || 0;
 
         if (assigneeIds.length > 0) {
             const targetUsers = await User.findAll({ where: { id: { [Op.in]: assigneeIds } } });
-
             for (const target of targetUsers) {
-                // [QUAN TRỌNG] Nếu giao cho chính mình -> Bỏ qua kiểm tra cấp bậc
-                if (String(target.id) === String(currentUser.id)) {
-                    continue;
-                }
+                // Nếu giao cho chính mình -> Bỏ qua kiểm tra
+                if (String(target.id) === String(currentUser.id)) continue;
 
-                const targetWeight = roleWeight[target.role] || 0;
-                // Nếu giao cho người khác mà cấp họ cao hơn hoặc bằng -> Chặn
+                const targetWeight = ROLE_WEIGHTS[target.role] || 0;
                 if (myWeight <= targetWeight && currentUser.role !== 'ADMIN') {
                     throw new Error(`Không thể giao việc cho cấp trên/ngang cấp (${target.fullname})`);
                 }
             }
         }
 
-        // --- XỬ LÝ NGÀY BẮT ĐẦU ---
         let startDate = new Date();
-        if (taskData.start_date) {
-            startDate = new Date(taskData.start_date);
-        }
+        if (taskData.start_date) startDate = new Date(taskData.start_date);
 
         const assignedToString = JSON.stringify(assigneeIds);
-
         const newTask = await Task.create({
             title: taskData.title,
             description: taskData.description,
-            priority: taskData.priority, // Đã là tiếng Việt từ Form (Cao (Gấp), Trung bình, Thấp)
+            priority: taskData.priority,
             department_id: currentUser.departments_id,
             assigned_by: currentUser.id,
             assigned_to: assignedToString,
             start_date: startDate,
             due_date: taskData.due_date || null,
-            status: 'Mới tạo', // Trạng thái mặc định tiếng Việt
-            attachment_path: file ? `/uploads/${file.filename}` : null
+            status: 'Mới tạo',
+            attachment_path: file ? `/uploads/${file.filename}` : null,
+            collaborators: '[]', // Khởi tạo mảng rỗng
+            todo_list: '[]'      // Khởi tạo mảng rỗng
         });
 
         await ActivityLog.create({
@@ -120,15 +118,13 @@ class TaskService {
         });
     }
 
-    // --- LẤY CHI TIẾT TASK ---
+    // --- LẤY CHI TIẾT TASK (ĐÃ CẬP NHẬT PARSE JSON) ---
     static async getTaskDetail(id) {
         const task = await Task.findByPk(id, {
             include: [
                 { model: User, as: 'Creator', attributes: ['fullname'] },
                 {
-                    model: TaskComment,
-                    as: 'TaskComments',
-                    separate: true,
+                    model: TaskComment, as: 'TaskComments', separate: true,
                     include: [{ model: User, attributes: ['fullname', 'username'] }],
                     order: [['created_at', 'DESC']]
                 }
@@ -136,64 +132,74 @@ class TaskService {
         });
         if (!task) return null;
 
-        // Tự động check quá hạn khi xem chi tiết
+        // Check quá hạn
         const now = new Date();
         const dueDate = task.due_date ? new Date(task.due_date) : null;
-
-        // Nếu chưa hoàn thành và đã quá hạn
-        if (task.status !== 'Hoàn thành' && dueDate && now > dueDate) {
-            if (task.status !== 'Quá hạn') {
-                await task.update({ status: 'Quá hạn' });
-                task.status = 'Quá hạn';
-            }
+        if (task.status !== 'Hoàn thành' && dueDate && now > dueDate && task.status !== 'Quá hạn') {
+            await task.update({ status: 'Quá hạn' });
+            task.status = 'Quá hạn';
         }
 
         const dbHistory = await ActivityLog.findAll({
-            where: {
-                entity_type: 'TASK',
-                entity_id: id,
-                action: { [Op.in]: ['UPDATE_PROGRESS', 'CREATE'] }
-            },
+            where: { entity_type: 'TASK', entity_id: id },
             include: [{ model: User, attributes: ['fullname'] }],
             order: [['created_at', 'DESC']]
         });
 
-        const assigneeIds = JSON.parse(task.assigned_to || '[]');
-        const assignees = await User.findAll({
-            where: { id: { [Op.in]: assigneeIds } },
-            attributes: ['id', 'fullname']
-        });
-
         const taskData = task.toJSON();
+
+        // 1. XỬ LÝ NGƯỜI NHẬN CHÍNH
+        let assigneeIds = [];
+        try { assigneeIds = JSON.parse(taskData.assigned_to || '[]'); } catch (e) { }
+        const assignees = await User.findAll({ where: { id: { [Op.in]: assigneeIds } }, attributes: ['id', 'fullname'] });
         taskData.assigneeNames = assignees.map(u => u.fullname).join(', ');
         taskData.assigneeList = assignees;
+
+        // 2. XỬ LÝ NGƯỜI PHỐI HỢP (COLLABORATORS)
+        let collabsRaw = [];
+        try { collabsRaw = JSON.parse(taskData.collaborators || '[]'); } catch (e) { }
+
+        // Lấy thông tin chi tiết user từ DB
+        const collabIds = collabsRaw.map(c => c.uid);
+        const usersInfo = await User.findAll({
+            where: { id: { [Op.in]: collabIds } },
+            attributes: ['id', 'fullname', 'role']
+        });
+
+        taskData.collaboratorList = collabsRaw.map(c => {
+            const uInfo = usersInfo.find(u => String(u.id) === String(c.uid));
+            return {
+                id: c.uid,
+                fullname: uInfo ? uInfo.fullname : 'Unknown',
+                role: uInfo ? uInfo.role : '',
+                status: c.status // PENDING, ACCEPTED
+            };
+        });
+
+        // 3. XỬ LÝ TODO LIST
+        try { taskData.parsedTodoList = JSON.parse(taskData.todo_list || '[]'); } catch (e) { taskData.parsedTodoList = []; }
+
+        // Format ngày tháng
+        if (task.start_date) taskData.formattedStartDate = new Date(task.start_date).toLocaleString('vi-VN');
+        else taskData.formattedStartDate = new Date(task.createdAt).toLocaleString('vi-VN');
         taskData.formattedDueDate = task.due_date ? new Date(task.due_date).toLocaleString('vi-VN') : 'Không thời hạn';
 
-        // Xử lý start_date hiển thị
-        if (task.start_date) {
-            taskData.formattedStartDate = new Date(task.start_date).toLocaleString('vi-VN');
-        } else {
-            taskData.formattedStartDate = new Date(task.createdAt).toLocaleString('vi-VN');
-        }
-
+        // Gộp History
         let finalHistory = dbHistory.map(h => h.toJSON());
         const hasCreateLog = finalHistory.some(h => h.action === 'CREATE');
-
         if (!hasCreateLog) {
             finalHistory.push({
-                action: 'CREATE',
-                createdAt: task.createdAt,
-                details: `Giao việc mới: ${task.title}`,
+                action: 'CREATE', createdAt: task.createdAt, details: `Giao việc mới: ${task.title}`,
                 User: { fullname: task.Creator ? task.Creator.fullname : 'Người tạo' }
             });
         }
         finalHistory.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
         taskData.history = finalHistory;
+
         return taskData;
     }
 
-    // --- CẬP NHẬT TIẾN ĐỘ (LOGIC STATUS TIẾNG VIỆT) ---
+    // --- CẬP NHẬT TIẾN ĐỘ ---
     static async updateProgress(taskId, progress, userId) {
         const task = await Task.findByPk(taskId);
         if (!task) throw new Error('Task không tồn tại');
@@ -207,25 +213,15 @@ class TaskService {
             newStatus = 'Hoàn thành';
             task.completed_date = now;
         } else {
-            // Nếu không phải 100%, kiểm tra xem có quá hạn không
-            if (dueDate && now > dueDate) {
-                newStatus = 'Quá hạn';
-            } else {
-                // Nếu đang là "Mới tạo" hoặc "Hoàn thành" mà sửa về <100 -> Chuyển thành Đang thực hiện
-                newStatus = 'Đang thực hiện';
-            }
+            if (dueDate && now > dueDate) newStatus = 'Quá hạn';
+            else newStatus = 'Đang thực hiện';
         }
 
         await task.update({ progress: prog, status: newStatus });
-
         await ActivityLog.create({
-            user_id: userId,
-            action: 'UPDATE_PROGRESS',
-            entity_type: 'TASK',
-            entity_id: taskId,
+            user_id: userId, action: 'UPDATE_PROGRESS', entity_type: 'TASK', entity_id: taskId,
             details: `Cập nhật tiến độ: ${prog}% (Trạng thái: ${newStatus})`
         });
-
         return task;
     }
 
@@ -237,10 +233,114 @@ class TaskService {
     // --- BÌNH LUẬN ---
     static async addComment(userId, taskId, textContent) {
         return await TaskComment.create({
-            user_id: userId,
-            task_id: taskId,
-            comment: textContent
+            user_id: userId, task_id: taskId, comment: textContent
         });
+    }
+
+    // ============================================================
+    // CÁC HÀM MỚI CHO COLLABORATOR VÀ TODO LIST
+    // ============================================================
+
+    // 1. THÊM NGƯỜI PHỐI HỢP
+    static async addCollaborator(taskId, targetUserId, currentUserId) {
+        const task = await Task.findByPk(taskId);
+        let collabs = JSON.parse(task.collaborators || '[]');
+
+        // Kiểm tra trùng
+        if (collabs.some(c => String(c.uid) === String(targetUserId))) {
+            throw new Error("Nhân viên này đã có trong danh sách phối hợp.");
+        }
+
+        const currentUser = await User.findByPk(currentUserId);
+        const targetUser = await User.findByPk(targetUserId);
+
+        // --- LOGIC QUYỀN LỰC ---
+        const myWeight = ROLE_WEIGHTS[currentUser.role] || 0;
+        const targetWeight = ROLE_WEIGHTS[targetUser.role] || 0;
+
+        let newStatus = 'PENDING'; // Mặc định là Mời
+        let logAction = 'Mời phối hợp';
+
+        // Nếu là Admin HOẶC Cấp trên -> Ép vào luôn (ACCEPTED)
+        if (currentUser.role === 'ADMIN' || myWeight > targetWeight) {
+            newStatus = 'ACCEPTED';
+            logAction = 'Chỉ định phối hợp';
+        }
+
+        collabs.push({ uid: targetUserId, status: newStatus });
+        await task.update({ collaborators: JSON.stringify(collabs) });
+
+        await ActivityLog.create({
+            user_id: currentUserId, action: 'ADD_COLLAB', entity_type: 'TASK', entity_id: taskId,
+            details: `${logAction}: ${targetUser.fullname} (${newStatus === 'ACCEPTED' ? 'Đã thêm' : 'Chờ duyệt'})`
+        });
+    }
+
+    // 2. PHẢN HỒI LỜI MỜI
+    static async respondCollaborator(taskId, currentUserId, action) {
+        // action: 'ACCEPT', 'DECLINE', 'REMOVE'
+        const task = await Task.findByPk(taskId);
+        let collabs = JSON.parse(task.collaborators || '[]');
+
+        const index = collabs.findIndex(c => String(c.uid) === String(currentUserId));
+        if (index === -1) throw new Error("Bạn không có trong danh sách phối hợp.");
+
+        let logDetail = '';
+        if (action === 'ACCEPT') {
+            collabs[index].status = 'ACCEPTED';
+            logDetail = 'Đã chấp nhận lời mời phối hợp';
+        } else if (action === 'DECLINE') {
+            collabs.splice(index, 1); // Xóa khỏi mảng
+            logDetail = 'Đã từ chối lời mời phối hợp';
+        } else if (action === 'REMOVE') {
+            collabs.splice(index, 1); // Xóa khỏi mảng
+            logDetail = 'Đã rời khỏi nhóm phối hợp';
+        }
+
+        await task.update({ collaborators: JSON.stringify(collabs) });
+
+        await ActivityLog.create({
+            user_id: currentUserId, action: 'RESPOND_COLLAB', entity_type: 'TASK', entity_id: taskId,
+            details: logDetail
+        });
+    }
+
+    // 3. CẬP NHẬT TODO LIST
+    static async updateTodoList(taskId, userId, action, payload) {
+        const task = await Task.findByPk(taskId);
+        let todos = JSON.parse(task.todo_list || '[]');
+        let logDetail = '';
+
+        if (action === 'ADD') {
+            todos.push({
+                id: Date.now(), // Tạo ID tạm
+                text: payload.text,
+                done: false
+            });
+            logDetail = `Thêm checklist: ${payload.text}`;
+        } else if (action === 'TOGGLE') {
+            const index = todos.findIndex(t => t.id == payload.todoId);
+            if (index !== -1) {
+                todos[index].done = !todos[index].done;
+                logDetail = `Đánh dấu ${todos[index].done ? 'hoàn thành' : 'chưa xong'}: ${todos[index].text}`;
+            }
+        } else if (action === 'DELETE') {
+            const index = todos.findIndex(t => t.id == payload.todoId);
+            if (index !== -1) {
+                logDetail = `Xóa checklist: ${todos[index].text}`;
+                todos.splice(index, 1);
+            }
+        }
+
+        await task.update({ todo_list: JSON.stringify(todos) });
+
+        if (logDetail) {
+            await ActivityLog.create({
+                user_id: userId, action: 'UPDATE_TODO', entity_type: 'TASK', entity_id: taskId,
+                details: logDetail
+            });
+        }
+        return todos;
     }
 }
 
