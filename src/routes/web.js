@@ -15,9 +15,38 @@ if (!fs.existsSync(uploadDir)) {
 const storage = multer.diskStorage({
     destination: uploadDir,
     filename: function (req, file, cb) {
-        const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-        const cleanName = originalName.replace(/[^a-zA-Z0-9.]/g, '_');
-        cb(null, 'task-' + Date.now() + '-' + cleanName);
+        try {
+            // 1. Lấy thông tin User
+            // Ưu tiên lấy từ req.user (do middleware requireAuth gán vào), nếu không có thì lấy session
+            const user = req.user || req.session.user || {};
+            const deptId = user.departments_id || '0'; // ID Phòng
+            const userId = user.id || '0';             // ID Người giao
+
+            // 2. Tạo chuỗi thời gian HHMM_DDMM
+            const now = new Date();
+            const HH = String(now.getHours()).padStart(2, '0');
+            const MM = String(now.getMinutes()).padStart(2, '0');
+            const DD = String(now.getDate()).padStart(2, '0');
+            const MO = String(now.getMonth() + 1).padStart(2, '0'); // Tháng bắt đầu từ 0
+            const timeString = `${HH}${MM}_${DD}${MO}`;
+
+            // 3. Xử lý tên file gốc
+            // Giải mã UTF-8 để không bị lỗi font tiếng Việt
+            const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+
+            // Thay khoảng trắng bằng gạch dưới, giữ nguyên dấu tiếng Việt để dễ đọc
+            // Hoặc dùng replace(/[^a-zA-Z0-9.]/g, '_') nếu muốn xóa hết dấu (tùy bạn chọn)
+            const cleanName = originalName.replace(/\s+/g, '_');
+
+            // 4. Ráp tên file theo công thức: "id phòng_id người_time_tên"
+            const finalName = `${deptId}_${userId}_${timeString}_${cleanName}`;
+
+            cb(null, finalName);
+        } catch (error) {
+            console.error("Lỗi đặt tên file:", error);
+            // Fallback an toàn: Dùng timestamp nếu có lỗi
+            cb(null, Date.now() + '_' + file.originalname);
+        }
     }
 });
 
