@@ -1,10 +1,10 @@
 <%- include('../partials/header') %>
 
-    <% /* --- 1. XỬ LÝ MÀU SẮC (Dùng Map an toàn) --- */ const pMap={ 'Cao (Gấp)' : 'danger' , 'Trung bình'
-        : 'warning text-dark' , 'Thấp' : 'info text-dark' }; const pColor=pMap[task.priority] || 'secondary' ; const
-        sMap={ 'Mới tạo' : 'info text-dark' , 'Hoàn thành' : 'success' , 'Quá hạn' : 'danger' , 'Đang chờ'
-        : 'warning text-dark' , 'Đang thực hiện' : 'primary' }; const sColor=sMap[task.status] || 'secondary' ; /* ---
-        2. XỬ LÝ NGÀY THÁNG --- */ let displayStartDate="Chưa cập nhật" ; if (task.formattedStartDate) {
+    <% /* --- 1. XỬ LÝ MÀU SẮC --- */ const pMap={ 'Cao (Gấp)' : 'danger' , 'Trung bình' : 'warning text-dark' , 'Thấp'
+        : 'info text-dark' }; const pColor=pMap[task.priority] || 'secondary' ; const sMap={ 'Mới tạo'
+        : 'info text-dark' , 'Hoàn thành' : 'success' , 'Quá hạn' : 'danger' , 'Đang chờ' : 'warning text-dark'
+        , 'Đang thực hiện' : 'primary' }; const sColor=sMap[task.status] || 'secondary' ; /* --- 2. XỬ LÝ NGÀY THÁNG ---
+        */ let displayStartDate="Chưa cập nhật" ; if (task.formattedStartDate) {
         displayStartDate=task.formattedStartDate; } else { const d=task.start_date || task.createdAt; if (d) {
         displayStartDate=new Date(d).toLocaleString('vi-VN', { hour: '2-digit' , minute: '2-digit' , day: '2-digit' ,
         month: '2-digit' , year: 'numeric' }); } } %>
@@ -97,9 +97,18 @@
                             <span class="badge bg-<%= pColor %> me-1">
                                 <%= task.priority %>
                             </span>
-                            <span id="statusBadge" class="badge bg-<%= sColor %>">
+                            <span id="statusBadge" class="badge bg-<%= sColor %> me-1">
                                 <%= task.status %>
                             </span>
+
+                            <% if (task.tags && task.tags.trim() !=='' ) { %>
+                                <% task.tags.split(',').forEach(tag=> { %>
+                                    <span class="badge border border-info text-info me-1">
+                                        <i data-feather="tag" style="width: 10px; height: 10px;"></i>
+                                        <%= tag.trim() %>
+                                    </span>
+                                    <% }) %>
+                                        <% } %>
                         </div>
 
                         <h3 class="card-title text-primary mb-4">
@@ -129,8 +138,9 @@
 
                         <div class="mb-3">
                             <label class="fw-bold text-muted small">Nội dung:</label>
-                            <div class="bg-white p-3 border rounded" style="white-space: pre-wrap; min-height: 80px;">
-                                <%= task.description %>
+                            <div class="bg-white p-3 border rounded text-break"
+                                style="white-space: pre-line; min-height: 80px;">
+                                <%= task.description ? task.description.trim() : 'Không có mô tả' %>
                             </div>
                         </div>
 
@@ -187,13 +197,15 @@
                                         </form>
                                         <div id="scoreResult" class="mt-2 text-end">
                                             <% if(task.score !==null) { %><small class="text-success fw-bold">Đã chấm:
-                                                    <%= task.score %> điểm</small>
+                                                    <%= task.score %> điểm
+                                                </small>
                                                 <% } %>
                                         </div>
                                     </div>
                                     <% } else if (task.score !==null) { %>
                                         <div class="alert alert-success mt-3 text-center p-2"><strong>Kết quả đánh giá:
-                                                <%= task.score %>/100 điểm</strong></div>
+                                                <%= task.score %>/100 điểm
+                                            </strong></div>
                                         <% } %>
                     </div>
                 </div>
@@ -486,6 +498,27 @@
                 if (!inp.value.trim()) return;
                 fetch(`/tasks/${taskId}/comment`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: inp.value }) })
                     .then(r => r.json()).then(d => { if (d.success) location.reload(); });
+            });
+
+            // [MỚI] SCRIPT GIỮ TRẠNG THÁI TAB SAU KHI RELOAD
+            document.addEventListener("DOMContentLoaded", function () {
+                // 1. Khôi phục tab
+                var activeTab = localStorage.getItem('activeTaskTab');
+                if (activeTab) {
+                    var tabTrigger = document.querySelector(`button[data-bs-target="${activeTab}"]`);
+                    if (tabTrigger) {
+                        var tab = new bootstrap.Tab(tabTrigger);
+                        tab.show();
+                    }
+                }
+
+                // 2. Lưu tab khi click
+                var tabEl = document.querySelectorAll('button[data-bs-toggle="tab"]');
+                tabEl.forEach(function (el) {
+                    el.addEventListener('shown.bs.tab', function (event) {
+                        localStorage.setItem('activeTaskTab', event.target.getAttribute('data-bs-target'));
+                    });
+                });
             });
         </script>
 
