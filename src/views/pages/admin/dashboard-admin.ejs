@@ -1,38 +1,37 @@
 <%- include('../../partials/header') %>
 
-    <div
-        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-        <h1 class="h2">Dashboard Quản Trị</h1>
-    </div>
+    <h2 class="mb-4">Dashboard Quản Trị</h2>
 
     <div class="row mb-4">
-        <div class="col-md-6 col-xl-3 mb-3">
-            <div class="card bg-primary text-white h-100">
+        <div class="col-md-4">
+            <div class="card text-white bg-primary h-100">
                 <div class="card-body">
                     <h5 class="card-title">Khoa / Phòng</h5>
-                    <h2 class="display-4">
-                        <%= stats.totalDepts %>
-                    </h2>
+                    <h1 class="display-4 fw-bold">
+                        <%= stats.totalDepartments %>
+                    </h1>
                 </div>
             </div>
         </div>
-        <div class="col-md-6 col-xl-3 mb-3">
-            <div class="card bg-success text-white h-100">
+
+        <div class="col-md-4">
+            <div class="card text-white bg-success h-100">
                 <div class="card-body">
                     <h5 class="card-title">Tổng Nhân sự</h5>
-                    <h2 class="display-4">
+                    <h1 class="display-4 fw-bold">
                         <%= stats.totalUsers %>
-                    </h2>
+                    </h1>
                 </div>
             </div>
         </div>
-        <div class="col-md-6 col-xl-3 mb-3">
-            <div class="card bg-info text-white h-100">
+
+        <div class="col-md-4">
+            <div class="card text-white bg-info h-100">
                 <div class="card-body">
                     <h5 class="card-title">Tổng Công việc</h5>
-                    <h2 class="display-4">
+                    <h1 class="display-4 fw-bold">
                         <%= stats.totalTasks %>
-                    </h2>
+                    </h1>
                 </div>
             </div>
         </div>
@@ -40,35 +39,37 @@
 
     <h4 class="mb-3">Tình trạng công việc toàn viện</h4>
     <div class="row">
-        <div class="col-md-4 mb-3">
+        <div class="col-md-4">
             <div class="card border-success h-100">
-                <div class="card-body text-success">
-                    <h5 class="card-title">Đã hoàn thành</h5>
-                    <h2 class="display-5 fw-bold">
-                        <%= stats.completedTasks %>
-                    </h2>
+                <div class="card-body">
+                    <h5 class="card-title text-success">Đã hoàn thành</h5>
+                    <h1 class="display-4 fw-bold text-success">
+                        <%= stats.completed %>
+                    </h1>
                 </div>
             </div>
         </div>
-        <div class="col-md-4 mb-3">
+
+        <div class="col-md-4">
             <div class="card border-warning h-100">
-                <div class="card-body text-warning">
-                    <h5 class="card-title">Đang thực hiện</h5>
-                    <h2 class="display-5 fw-bold">
-                        <%= stats.inProgressTasks %>
-                    </h2>
-                    <small>Bao gồm: Mới, Đang làm, Chờ duyệt</small>
+                <div class="card-body">
+                    <h5 class="card-title text-warning">Đang thực hiện</h5>
+                    <h1 class="display-4 fw-bold text-warning">
+                        <%= stats.inProgress %>
+                    </h1>
+                    <small class="text-muted">Bao gồm: Mới, Đang làm, Chờ duyệt</small>
                 </div>
             </div>
         </div>
-        <div class="col-md-4 mb-3">
+
+        <div class="col-md-4">
             <div class="card border-danger h-100">
-                <div class="card-body text-danger">
-                    <h5 class="card-title">Quá hạn</h5>
-                    <h2 class="display-5 fw-bold">
-                        <%= stats.overdueTasks %>
-                    </h2>
-                    <small>Cần đôn đốc xử lý gấp</small>
+                <div class="card-body">
+                    <h5 class="card-title text-danger">Quá hạn</h5>
+                    <h1 class="display-4 fw-bold text-danger">
+                        <%= stats.overdue %>
+                    </h1>
+                    <small class="text-danger">Cần đôn đốc xử lý gấp</small>
                 </div>
             </div>
         </div>

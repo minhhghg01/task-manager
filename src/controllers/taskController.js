@@ -45,22 +45,69 @@ const getAdminStats = async () => {
 // --- MAIN CONTROLLER ---
 module.exports = (io) => {
     return {
-        // 1. RENDER DASHBOARD
+        // ============================================================
+        // 1. RENDER DASHBOARD (Đã fix logic đếm cho cả Admin và User)
+        // ============================================================
         renderDashboard: async (req, res) => {
             try {
                 const user = req.session.user;
                 if (!user) return res.redirect('/login');
 
+                const { Task, User, Department } = require('../models');
+
+                let tasks = [];
+                let totalUsers = 0;
+                let totalDepartments = 0;
+
+                // --- A. LẤY DỮ LIỆU ---
                 if (user.role === 'ADMIN') {
-                    const stats = await getAdminStats();
-                    return res.render('pages/admin/dashboard-admin', { stats });
+                    tasks = await Task.findAll({ include: [{ model: User, as: 'Creator' }] });
+                    totalUsers = await User.count();
+                    totalDepartments = await Department.count();
+                } else {
+                    tasks = await TaskService.getTasksByUser(user, 'general');
                 }
 
-                const tasks = await TaskService.getTasksByUser(user);
-                res.render('pages/dashboard', { user: user, tasks: tasks });
+                // --- B. HÀM CHECK QUÁ HẠN ---
+                const now = new Date();
+                const checkOverdue = (t) => {
+                    if (t.status === 'Quá hạn') return true;
+                    if (t.status !== 'Hoàn thành' && t.due_date) {
+                        return new Date(t.due_date) < now;
+                    }
+                    return false;
+                };
+
+                // --- C. TÍNH TOÁN THỐNG KÊ ---
+                const stats = {
+                    // Dữ liệu Admin
+                    totalDepartments: totalDepartments,
+                    totalUsers: totalUsers,
+
+                    // Dữ liệu Task
+                    totalTasks: tasks.length, // Đổi tên thành totalTasks cho rõ nghĩa
+
+                    completed: tasks.filter(t => t.status === 'Hoàn thành').length,
+
+                    overdue: tasks.filter(t => checkOverdue(t)).length,
+
+                    inProgress: tasks.filter(t =>
+                        ['Mới tạo', 'Đang thực hiện', 'Đang chờ'].includes(t.status) &&
+                        !checkOverdue(t)
+                    ).length
+                };
+
+                const viewName = user.role === 'ADMIN' ? 'pages/admin/dashboard-admin' : 'pages/dashboard';
+
+                res.render(viewName, {
+                    user: user,
+                    tasks: tasks,
+                    stats: stats,
+                    pageTitle: user.role === 'ADMIN' ? 'Dashboard Quản Trị' : 'Tổng quan công việc'
+                });
 
             } catch (err) {
-                console.error(err);
+                console.error("Lỗi Dashboard:", err);
                 res.status(500).send("Lỗi Server: " + err.message);
             }
         },
@@ -134,30 +181,61 @@ module.exports = (io) => {
             }
         },
 
-        // 4. THỐNG KÊ NHÂN VIÊN
+        // ============================================================
+        // 4. THỐNG KÊ NHÂN VIÊN (Đã fix lỗi 'task is not defined')
+        // ============================================================
         listEmployeesStats: async (req, res) => {
             try {
                 const user = req.session.user;
                 const UserService = require('../services/userService');
+                const { Task } = require('../models');
+
                 const subordinates = await UserService.getSubordinates(user);
-                const allTasks = await TaskService.getTasksByUser(user);
+                const rawTasks = await Task.findAll();
+
+                // Parse JSON 1 lần duy nhất
+                const allTasks = rawTasks.map(t => {
+                    const taskObj = t.toJSON();
+                    try { taskObj.assigneeIds = JSON.parse(taskObj.assigned_to || '[]'); }
+                    catch (e) { taskObj.assigneeIds = []; }
+                    return taskObj;
+                });
+
                 const statsList = [];
                 const now = new Date();
 
+                const checkOverdue = (t) => {
+                    if (t.status === 'Quá hạn') return true;
+                    if (t.status !== 'Hoàn thành' && t.due_date) return new Date(t.due_date) < now;
+                    return false;
+                };
+
                 for (const sub of subordinates) {
-                    const subTasks = allTasks.filter(t => t.assigneeIds.some(id => String(id) === String(sub.id)));
+                    // Lọc task của user này
+                    const subTasks = allTasks.filter(t =>
+                        Array.isArray(t.assigneeIds) &&
+                        t.assigneeIds.some(id => String(id) === String(sub.id)) // <-- Đã sửa 'task' thành 't'
+                    );
+
                     statsList.push({
                         ...sub.toJSON(),
                         stats: {
                             total: subTasks.length,
                             completed: subTasks.filter(t => t.status === 'Hoàn thành').length,
-                            inProgress: subTasks.filter(t => ['Mới tạo', 'Đang thực hiện', 'Đang chờ', 'Hoàn thành', 'Quá hạn'].includes(t.status)).length,
-                            overdue: subTasks.filter(t => t.status !== 'Hoàn thành' && new Date(t.due_date) < now).length
+                            overdue: subTasks.filter(t => checkOverdue(t)).length,
+                            inProgress: subTasks.filter(t =>
+                                ['Mới tạo', 'Đang thực hiện', 'Đang chờ'].includes(t.status) &&
+                                !checkOverdue(t)
+                            ).length
                         }
                     });
                 }
+
                 res.render('pages/employees-stats', { users: statsList, currentUserRole: user.role });
-            } catch (err) { res.status(500).send(err.message); }
+            } catch (err) {
+                console.error(err);
+                res.status(500).send(err.message);
+            }
         },
 
         // --- QUẢN LÝ NHÂN VIÊN ---
