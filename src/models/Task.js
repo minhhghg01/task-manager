@@ -17,7 +17,6 @@ const Task = sequelize.define('Task', {
         defaultValue: '[]' // Mặc định là mảng rỗng dạng chuỗi
     },
 
-    // --- [MỚI] THÊM 2 CỘT NÀY ---
     collaborators: {
         type: DataTypes.TEXT,
         defaultValue: '[]', // Lưu: [{uid: 1, status: 'ACCEPTED'}, {uid: 2, status: 'PENDING'}]
@@ -33,10 +32,15 @@ const Task = sequelize.define('Task', {
     department_id: { type: DataTypes.INTEGER },
     start_date: { type: DataTypes.DATE },
     due_date: { type: DataTypes.DATE },
-    log_update: { type: DataTypes.TEXT },
-    completed_date: { type: DataTypes.DATE },
+    // log_update: { type: DataTypes.TEXT },
+    // completed_date: { type: DataTypes.DATE },
     score: { type: DataTypes.INTEGER, defaultValue: null },
     attachment_path: { type: DataTypes.STRING },
+
+    tags: {
+        type: DataTypes.STRING, // Lưu dạng chuỗi (VD: "Marketing, Gấp")
+        allowNull: true         // Cho phép để trống (null)
+    }
 }, {
     timestamps: true,
     underscored: true

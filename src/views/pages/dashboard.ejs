@@ -33,13 +33,14 @@
             <thead class="table-dark">
                 <tr>
                     <th style="width: 5%">STT</th>
-                    <th style="width: 25%">Tiêu đề</th>
+                    <th style="width: 21%">Tiêu đề</th>
                     <th style="width: 15%">Người nhận</th>
+                    <th style="width: 15%">Bắt đầu</th>
                     <th style="width: 15%">Hạn chót</th>
-                    <th style="width: 15%">Người tạo</th>
-                    <th style="width: 10%">Độ ưu tiên</th>
-                    <th style="width: 10%">Trạng thái</th>
-                    <th style="width: 5%">Ngày tạo</th>
+                    <th style="width: 10%">Người tạo</th>
+                    <th style="width: 7%">Ưu tiên</th>
+                    <th style="width: 7%">Trạng thái</th>
+                    <th style="width: 5%">Nhãn</th>
                 </tr>
             </thead>
             <tbody>
@@ -79,12 +80,15 @@
                             </td>
 
                             <td>
-                                <% /* Logic quá hạn: Hết hạn VÀ chưa hoàn thành */ var dueDate=task.due_date ? new
-                                    Date(task.due_date) : null; var now=new Date(); var isOverdue=dueDate && dueDate <
-                                    now && task.status !=='Hoàn thành' ; %>
+                                <%= task.start_date ? new Date(task.start_date).toLocaleDateString('vi-VN') : '---' %>
+                            </td>
 
+                            <td>
+                                <% var dueDate=task.due_date ? new Date(task.due_date) : null; var now=new Date(); var
+                                    isOverdue=dueDate && dueDate < now && task.status !=='Hoàn thành' ; %>
                                     <span class="<%= isOverdue ? 'text-danger fw-bold' : '' %>">
-                                        <%= task.formattedDueDate %>
+                                        <%= task.formattedDueDate || (dueDate ? dueDate.toLocaleDateString('vi-VN')
+                                            : '---' ) %>
                                     </span>
 
                                     <% if(isOverdue) { %>
@@ -116,11 +120,21 @@
                             </td>
 
                             <td>
-                                <%= new Date(task.createdAt).toLocaleDateString('vi-VN') %>
+                                <% if (task.tags) { %>
+                                    <span class="badge border border-info text-info">
+                                        <%= task.tags %>
+                                    </span>
+                                    <% } else { %>
+                                        <span class="text-muted">---</span>
+                                        <% } %>
                             </td>
                         </tr>
                         <% }); %>
-                            <% } %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="9" class="text-center text-muted py-3">Không có dữ liệu</td>
+                                </tr>
+                                <% } %>
             </tbody>
         </table>
     </div>

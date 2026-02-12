@@ -28,6 +28,24 @@
                                 <option value="Thấp">Thấp</option>
                             </select>
                         </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Thẻ (Tags)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white"><i data-feather="tag"></i></span>
+                                <input type="text" name="tags" class="form-control" list="datalistOptions"
+                                    placeholder="Nhập thẻ... (Ví dụ: Marketing, Gấp, Dự án A)">
+
+                                <datalist id="datalistOptions">
+                                    <% if (typeof suggestedTags !=='undefined' && suggestedTags.length> 0) { %>
+                                        <% suggestedTags.forEach(tag=> { %>
+                                            <option value="<%= tag %>">
+                                                <% }) %>
+                                                    <% } %>
+                                </datalist>
+                            </div>
+                            <div class="form-text">Nhập để phân loại công việc, không bắt buộc.</div>
+                        </div>
                     </div>
 
                     <div class="mb-3">

@@ -46,7 +46,7 @@ const getAdminStats = async () => {
 module.exports = (io) => {
     return {
         // ============================================================
-        // 1. RENDER DASHBOARD (Đã fix logic đếm cho cả Admin và User)
+        // 1. RENDER DASHBOARD (Đã thêm logic lấy Tag để gợi ý)
         // ============================================================
         renderDashboard: async (req, res) => {
             try {
@@ -68,7 +68,21 @@ module.exports = (io) => {
                     tasks = await TaskService.getTasksByUser(user, 'general');
                 }
 
-                // --- B. HÀM CHECK QUÁ HẠN ---
+                // --- [MỚI] B. TỔNG HỢP TAG ĐỂ GỢI Ý ---
+                // Lấy tất cả tag từ DB để làm danh sách gợi ý (datalist)
+                const allTasksRaw = await Task.findAll({ attributes: ['tags'] });
+                const rawTags = allTasksRaw
+                    .map(t => t.tags)
+                    .filter(t => t) // Lọc bỏ null
+                    .map(t => t.split(',')) // Tách nếu nhập "Tag1, Tag2"
+                    .flat()
+                    .map(t => t.trim())
+                    .filter(t => t !== '');
+
+                const uniqueTags = [...new Set(rawTags)]; // Danh sách Tag duy nhất
+                // ------------------------------------
+
+                // --- C. HÀM CHECK QUÁ HẠN ---
                 const now = new Date();
                 const checkOverdue = (t) => {
                     if (t.status === 'Quá hạn') return true;
@@ -78,19 +92,13 @@ module.exports = (io) => {
                     return false;
                 };
 
-                // --- C. TÍNH TOÁN THỐNG KÊ ---
+                // --- D. TÍNH TOÁN THỐNG KÊ ---
                 const stats = {
-                    // Dữ liệu Admin
                     totalDepartments: totalDepartments,
                     totalUsers: totalUsers,
-
-                    // Dữ liệu Task
-                    totalTasks: tasks.length, // Đổi tên thành totalTasks cho rõ nghĩa
-
+                    totalTasks: tasks.length,
                     completed: tasks.filter(t => t.status === 'Hoàn thành').length,
-
                     overdue: tasks.filter(t => checkOverdue(t)).length,
-
                     inProgress: tasks.filter(t =>
                         ['Mới tạo', 'Đang thực hiện', 'Đang chờ'].includes(t.status) &&
                         !checkOverdue(t)
@@ -103,7 +111,8 @@ module.exports = (io) => {
                     user: user,
                     tasks: tasks,
                     stats: stats,
-                    pageTitle: user.role === 'ADMIN' ? 'Dashboard Quản Trị' : 'Tổng quan công việc'
+                    pageTitle: user.role === 'ADMIN' ? 'Dashboard Quản Trị' : 'Tổng quan công việc',
+                    suggestedTags: uniqueTags // <--- Truyền biến này xuống View để hiện gợi ý
                 });
 
             } catch (err) {
@@ -155,6 +164,8 @@ module.exports = (io) => {
                     req.body.assigned_to = [req.session.user.id];
                 }
 
+                // Req.body sẽ chứa cả trường 'tags' từ form gửi lên
+                // TaskService.createTask sẽ nhận toàn bộ body để tạo Task
                 const newTask = await TaskService.createTask(req.session.user, req.body, req.file);
 
                 try {
@@ -182,7 +193,7 @@ module.exports = (io) => {
         },
 
         // ============================================================
-        // 4. THỐNG KÊ NHÂN VIÊN (Đã fix lỗi 'task is not defined')
+        // 4. THỐNG KÊ NHÂN VIÊN
         // ============================================================
         listEmployeesStats: async (req, res) => {
             try {
@@ -193,7 +204,6 @@ module.exports = (io) => {
                 const subordinates = await UserService.getSubordinates(user);
                 const rawTasks = await Task.findAll();
 
-                // Parse JSON 1 lần duy nhất
                 const allTasks = rawTasks.map(t => {
                     const taskObj = t.toJSON();
                     try { taskObj.assigneeIds = JSON.parse(taskObj.assigned_to || '[]'); }
@@ -211,10 +221,9 @@ module.exports = (io) => {
                 };
 
                 for (const sub of subordinates) {
-                    // Lọc task của user này
                     const subTasks = allTasks.filter(t =>
                         Array.isArray(t.assigneeIds) &&
-                        t.assigneeIds.some(id => String(id) === String(sub.id)) // <-- Đã sửa 'task' thành 't'
+                        t.assigneeIds.some(id => String(id) === String(sub.id))
                     );
 
                     statsList.push({
@@ -238,7 +247,7 @@ module.exports = (io) => {
             }
         },
 
-        // --- QUẢN LÝ NHÂN VIÊN ---
+        // --- CÁC HÀM KHÁC GIỮ NGUYÊN ---
         setEmployeeRole: async (req, res) => {
             try {
                 const currentUser = req.session.user;
@@ -279,7 +288,6 @@ module.exports = (io) => {
             } catch (err) { res.status(500).send(err.message); }
         },
 
-        // 5. VIEW CHI TIẾT (ĐÃ UPDATE LOGIC LỌC DROPDOWN & PREPARE DATA)
         viewTaskDetail: async (req, res) => {
             try {
                 const user = req.session.user;
@@ -288,12 +296,10 @@ module.exports = (io) => {
 
                 if (!task) return res.status(404).send('Không tìm thấy công việc');
 
-                // --- 1. XỬ LÝ QUYỀN HẠN ---
                 const isAssigner = String(task.assigned_by) === String(user.id);
                 const isAssignee = task.assigneeList.some(u => String(u.id) === String(user.id));
                 const isAdmin = user.role === 'ADMIN';
 
-                // Logic quyền chấm điểm
                 let canScore = false;
                 if (isAdmin) {
                     canScore = true;
@@ -311,68 +317,51 @@ module.exports = (io) => {
                     }
                 }
 
-                // --- 2. XỬ LÝ MÀU SẮC & HIỂN THỊ (PREPARE VIEW DATA) ---
                 const priorityColors = { 'Cao (Gấp)': 'danger', 'Trung bình': 'warning text-dark', 'Thấp': 'info text-dark' };
                 task.pColor = priorityColors[task.priority] || 'secondary';
 
                 const statusColors = { 'Mới tạo': 'info text-dark', 'Hoàn thành': 'success', 'Quá hạn': 'danger', 'Đang chờ': 'warning text-dark', 'Đang thực hiện': 'primary' };
                 task.sColor = statusColors[task.status] || 'secondary';
 
-                // Xử lý ngày hiển thị
                 if (!task.formattedStartDate) {
                     if (task.start_date) task.formattedStartDate = new Date(task.start_date).toLocaleString('vi-VN');
                     else if (task.createdAt) task.formattedStartDate = new Date(task.createdAt).toLocaleString('vi-VN');
                     else task.formattedStartDate = "Chưa cập nhật";
                 }
 
-                // --- 3. LỌC DANH SÁCH NGƯỜI ĐƯỢC MỜI ---
+                // Lọc người mời (Logic cũ của bạn)
                 let availableUsers = [];
-
                 if (isAdmin || user.role === 'DIRECTOR') {
-                    // 1. Admin & Giám đốc: Mời được tất cả mọi người
                     availableUsers = await User.findAll({ attributes: ['id', 'fullname'] });
-                }
-                else if (user.role === 'DEPUTY_DIRECTOR') {
-                    // [ĐÃ SỬA] 2. Phó Giám đốc: Chỉ thấy người cùng phòng (Ban GĐ) + Trưởng khoa các nơi
+                } else if (user.role === 'DEPUTY_DIRECTOR') {
                     availableUsers = await User.findAll({
                         where: {
                             [Op.or]: [
-                                { departments_id: user.departments_id }, // Người trong Ban Giám Đốc
-                                { role: 'HEAD' }                         // Các Trưởng khoa/phòng
+                                { departments_id: user.departments_id },
+                                { role: 'HEAD' }
                             ]
                         },
                         attributes: ['id', 'fullname']
                     });
-                }
-                else if (user.role === 'HEAD') {
-                    // 3. Trưởng phòng: Mời người cùng phòng HOẶC Trưởng phòng khác
+                } else if (user.role === 'HEAD') {
                     availableUsers = await User.findAll({
                         where: {
                             [Op.or]: [
-                                { departments_id: user.departments_id }, // Cùng phòng
-                                { role: 'HEAD' }                         // Trưởng khoa khác
+                                { departments_id: user.departments_id },
+                                { role: 'HEAD' }
                             ]
                         },
                         attributes: ['id', 'fullname']
                     });
-                }
-                else {
-                    // 4. Nhân viên / Phó phòng / Tổ trưởng: Chỉ mời người cùng phòng
+                } else {
                     availableUsers = await User.findAll({
                         where: { departments_id: user.departments_id },
                         attributes: ['id', 'fullname']
                     });
                 }
 
-                // Render view
                 res.render('pages/task-detail', {
-                    task,
-                    user,
-                    isAssigner,
-                    isAssignee,
-                    isAdmin,
-                    canScore,
-                    allUsers: availableUsers // Truyền danh sách đã lọc xuống View
+                    task, user, isAssigner, isAssignee, isAdmin, canScore, allUsers: availableUsers
                 });
             } catch (err) {
                 console.error(err);
@@ -380,7 +369,6 @@ module.exports = (io) => {
             }
         },
 
-        // --- API UPDATE PROGRESS ---
         updateTaskProgress: async (req, res) => {
             try {
                 const { progress } = req.body;
@@ -389,7 +377,6 @@ module.exports = (io) => {
             } catch (err) { res.status(500).json({ success: false, message: err.message }); }
         },
 
-        // --- API GRADE TASK ---
         gradeTask: async (req, res) => {
             try {
                 const { score } = req.body;
@@ -398,7 +385,6 @@ module.exports = (io) => {
             } catch (err) { res.status(500).json({ success: false, message: err.message }); }
         },
 
-        // --- API COMMENT ---
         postComment: async (req, res) => {
             try {
                 const { content } = req.body;
@@ -414,7 +400,6 @@ module.exports = (io) => {
             } catch (err) { res.status(500).json({ success: false, message: err.message }); }
         },
 
-        // --- API GET SUBORDINATES ---
         apiGetSubordinates: async (req, res) => {
             try {
                 const user = req.session.user;
@@ -427,8 +412,6 @@ module.exports = (io) => {
             }
         },
 
-        // 6. MỜI PHỐI HỢP
-        // --- API THÊM NGƯỜI PHỐI HỢP ---
         apiAddCollaborator: async (req, res) => {
             try {
                 const { targetUserId } = req.body;
@@ -437,7 +420,6 @@ module.exports = (io) => {
             } catch (e) { res.status(500).json({ success: false, message: e.message }); }
         },
 
-        // --- API PHẢN HỒI (CHẤP NHẬN/TỪ CHỐI) ---
         apiRespondCollaborator: async (req, res) => {
             try {
                 const { action } = req.body;
@@ -446,10 +428,8 @@ module.exports = (io) => {
             } catch (e) { res.status(500).json({ success: false, message: e.message }); }
         },
 
-        // --- API TODO LIST ---
         apiUpdateTodo: async (req, res) => {
             try {
-                // action: 'ADD', 'TOGGLE', 'DELETE'
                 const { action, text, todoId } = req.body;
                 const newTodos = await TaskService.updateTodoList(req.params.id, req.session.user.id, action, { text, todoId });
                 res.json({ success: true, todos: newTodos });

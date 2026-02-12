@@ -22,7 +22,7 @@ class TaskService {
         // 1. XÁC ĐỊNH ĐIỀU KIỆN QUERY DB
         if (user.role === 'ADMIN') {
             if (filterType === 'general') whereCondition = {};
-            else return []; // Admin không có "việc của tôi" theo nghĩa thường
+            else return [];
         } else {
             if (filterType === 'general') {
                 // Việc chung: Lấy theo phòng ban
@@ -31,10 +31,7 @@ class TaskService {
                 // Việc tôi giao
                 whereCondition = { assigned_by: user.id };
             } else {
-                // 'mine' (Việc của tôi) hoặc 'invited' (Lời mời)
-                // Do dữ liệu nằm trong cột JSON (collaborators/assigned_to), 
-                // ta lấy rộng ra (toàn bộ hoặc theo phòng) rồi lọc kỹ bằng Javascript bên dưới.
-                // Để chắc chắn không sót việc từ phòng khác mời sang, ta để điều kiện mở:
+                // 'mine' hoặc 'invited' -> Lấy rộng rồi lọc sau
                 whereCondition = {};
             }
         }
@@ -42,7 +39,7 @@ class TaskService {
         tasks = await Task.findAll({
             where: whereCondition,
             include: [{ model: User, as: 'Creator', attributes: ['fullname'] }],
-            order: [['created_at', 'DESC']]
+            order: [['createdAt', 'DESC']] // Sửa created_at -> createdAt (theo mặc định Sequelize)
         });
 
         // 2. XỬ LÝ DỮ LIỆU (PARSE JSON & FORMAT)
@@ -94,9 +91,12 @@ class TaskService {
         return processedTasks;
     }
 
+    // --- TẠO CÔNG VIỆC MỚI (ĐÃ SỬA LƯU TAGS) ---
     static async createTask(currentUser, taskData, file) {
         let assigneeIds = [];
         const raw = taskData.assigned_to;
+
+        // Xử lý người nhận
         if (Array.isArray(raw)) assigneeIds = raw;
         else if (typeof raw === 'string') {
             if (raw.trim().startsWith('[')) { try { assigneeIds = JSON.parse(raw); } catch (e) { assigneeIds = []; } }
@@ -107,6 +107,7 @@ class TaskService {
 
         if (assigneeIds.length === 0) throw new Error('Vui lòng chọn ít nhất một người nhận việc!');
 
+        // Check quyền giao việc cho cấp trên
         const myWeight = ROLE_WEIGHTS[currentUser.role] || 0;
         if (assigneeIds.length > 0) {
             const targetUsers = await User.findAll({ where: { id: { [Op.in]: assigneeIds } } });
@@ -134,7 +135,10 @@ class TaskService {
             status: 'Mới tạo',
             attachment_path: file ? `/uploads/${file.filename}` : null,
             collaborators: '[]',
-            todo_list: '[]'
+            todo_list: '[]',
+
+            // [MỚI] THÊM DÒNG NÀY ĐỂ LƯU TAG
+            tags: taskData.tags || null
         });
 
         await ActivityLog.create({
@@ -149,7 +153,7 @@ class TaskService {
         const task = await Task.findByPk(id, {
             include: [
                 { model: User, as: 'Creator', attributes: ['fullname'] },
-                { model: TaskComment, as: 'TaskComments', separate: true, include: [{ model: User, attributes: ['fullname', 'username'] }], order: [['created_at', 'DESC']] }
+                { model: TaskComment, as: 'TaskComments', separate: true, include: [{ model: User, attributes: ['fullname', 'username'] }], order: [['createdAt', 'DESC']] }
             ]
         });
         if (!task) return null;
@@ -164,7 +168,7 @@ class TaskService {
         const dbHistory = await ActivityLog.findAll({
             where: { entity_type: 'TASK', entity_id: id },
             include: [{ model: User, attributes: ['fullname'] }],
-            order: [['created_at', 'DESC']]
+            order: [['createdAt', 'DESC']]
         });
 
         const taskData = task.toJSON();

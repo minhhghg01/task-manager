@@ -1,6 +1,0 @@
-Admin
-	CRUD users
-	CRUD departments
-
-USers
-	CRUD task 3 nhánh
