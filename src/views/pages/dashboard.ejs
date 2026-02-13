@@ -5,9 +5,9 @@
         class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-3 mb-4 border-bottom">
         <div>
             <h1 class="h2 fw-bold text-primary">
-                <%= (typeof pageTitle !=='undefined' ) ? pageTitle : 'Tổng quan công việc' %>
+                <%= (locals.pageTitle) ? pageTitle : 'Tổng quan công việc' %>
             </h1>
-            <% if (typeof isDashboard !=='undefined' && isDashboard) { %>
+            <% if (locals.isDashboard) { %>
                 <small class="text-muted">Xin chào, <strong>
                         <%= user.fullname %>
                     </strong>! Dưới đây là báo cáo hiệu suất của bạn.</small>
@@ -25,7 +25,7 @@
                 </button>
                 <% } %>
 
-                    <% if (user.role==='STAFF' || (typeof filterType !=='undefined' && filterType==='mine' )) { %>
+                    <% if (user.role==='STAFF' || (locals.filterType && filterType==='mine' )) { %>
                         <button type="button"
                             class="btn btn-sm btn-outline-success d-flex align-items-center gap-2 shadow-sm"
                             data-bs-toggle="modal" data-bs-target="#createTaskModal" data-auto-self="true">
@@ -35,8 +35,8 @@
         </div>
     </div>
 
-    <% /* --- TRƯỜNG HỢP 1: TRANG DASHBOARD (CHỈ HIỆN BIỂU ĐỒ) --- */ %>
-        <% if (typeof isDashboard !=='undefined' && isDashboard) { %>
+    <% /* --- TRƯỜNG HỢP 1: TRANG DASHBOARD (HIỆN BIỂU ĐỒ) --- */ %>
+        <% if (locals.isDashboard) { %>
 
             <div class="row mb-4">
                 <div class="col-md-5 mb-3 mb-md-0">
@@ -49,13 +49,13 @@
                                     <div class="rounded-circle d-flex align-items-center justify-content-center bg-gradient bg-primary text-white shadow"
                                         style="width: 80px; height: 80px;">
                                         <span class="fs-2 fw-bold">
-                                            <%= (typeof myAvgScore !=='undefined' ) ? myAvgScore : '--' %>
+                                            <%= (locals.myAvgScore) ? myAvgScore : '--' %>
                                         </span>
                                     </div>
                                 </div>
                                 <div class="flex-grow-1 ms-3">
                                     <h4 class="mb-0 fw-bold text-dark">Điểm trung bình</h4>
-                                    <small class="text-muted">Đánh giá trên các công việc bạn đã hoàn thành.</small>
+                                    <small class="text-muted">Đánh giá trên các công việc của bạn.</small>
                                 </div>
                             </div>
 
@@ -63,7 +63,7 @@
                                 <div class="col-4">
                                     <div class="p-2 border rounded bg-light h-100">
                                         <h5 class="text-success mb-0 fw-bold">
-                                            <%= typeof stats !=='undefined' ? stats.completed : 0 %>
+                                            <%= (locals.stats) ? stats.completed : 0 %>
                                         </h5>
                                         <small class="text-muted" style="font-size: 0.75rem;">Hoàn thành</small>
                                     </div>
@@ -71,7 +71,7 @@
                                 <div class="col-4">
                                     <div class="p-2 border rounded bg-light h-100">
                                         <h5 class="text-primary mb-0 fw-bold">
-                                            <%= typeof stats !=='undefined' ? stats.inProgress : 0 %>
+                                            <%= (locals.stats) ? stats.inProgress : 0 %>
                                         </h5>
                                         <small class="text-muted" style="font-size: 0.75rem;">Đang làm</small>
                                     </div>
@@ -79,7 +79,7 @@
                                 <div class="col-4">
                                     <div class="p-2 border rounded bg-light h-100">
                                         <h5 class="text-danger mb-0 fw-bold">
-                                            <%= typeof stats !=='undefined' ? stats.overdue : 0 %>
+                                            <%= (locals.stats) ? stats.overdue : 0 %>
                                         </h5>
                                         <small class="text-muted" style="font-size: 0.75rem;">Quá hạn</small>
                                     </div>
@@ -94,16 +94,29 @@
                         <div class="card-body">
                             <h6 class="card-title text-uppercase text-muted fw-bold mb-3 small">Tỷ lệ trạng thái công
                                 việc</h6>
-                            <div
-                                style="height: 200px; width: 100%; display: flex; justify-content: center; position: relative;">
+
+                            <div style="height: 260px; width: 100%; position: relative;">
                                 <canvas id="taskStatusChart"></canvas>
-                                <% if ((typeof stats==='undefined' ) || (stats.completed + stats.inProgress +
-                                    stats.overdue===0)) { %>
-                                    <div
-                                        class="position-absolute top-50 start-50 translate-middle text-muted small bg-white px-2">
-                                        Chưa có dữ liệu
+
+                                <% const hasData=(typeof stats !=='undefined' ) && (stats.completed + stats.inProgress +
+                                    stats.overdue> 0);
+                                    %>
+
+                                    <div class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center"
+                                        style="pointer-events: none; padding-bottom: 30px;">
+                                        <% if (hasData) { %>
+                                            <h1 class="mb-0 fw-bold text-dark"
+                                                style="font-size: 2.5rem; line-height: 1;">
+                                                <%= stats.totalTasks %>
+                                            </h1>
+                                            <span class="text-muted fw-bold text-uppercase"
+                                                style="font-size: 0.7rem; letter-spacing: 1px;">
+                                                Công việc
+                                            </span>
+                                            <% } else { %>
+                                                <span class="text-muted small bg-white px-2">Chưa có dữ liệu</span>
+                                                <% } %>
                                     </div>
-                                    <% } %>
                             </div>
                         </div>
                     </div>
@@ -114,13 +127,14 @@
                 document.addEventListener("DOMContentLoaded", function () {
                     const ctx = document.getElementById('taskStatusChart');
                     if (ctx) {
-                        const completed = <%= typeof stats !== 'undefined' ? stats.completed : 0 %>;
-                        const inProgress = <%= typeof stats !== 'undefined' ? stats.inProgress : 0 %>;
-                        const overdue = <%= typeof stats !== 'undefined' ? stats.overdue : 0 %>;
+                        const completed = <%= (locals.stats) ? stats.completed : 0 %>;
+                        const inProgress = <%= (locals.stats) ? stats.inProgress : 0 %>;
+                        const overdue = <%= (locals.stats) ? stats.overdue : 0 %>;
                         const total = completed + inProgress + overdue;
 
+                        // Nếu không có dữ liệu thì hiện 1 vòng xám
                         const data = total === 0 ? [1] : [completed, inProgress, overdue];
-                        const colors = total === 0 ? ['#e9ecef'] : ['#198754', '#0d6efd', '#dc3545'];
+                        const colors = total === 0 ? ['#f8f9fa'] : ['#198754', '#0d6efd', '#dc3545'];
                         const labels = total === 0 ? ['Chưa có dữ liệu'] : ['Hoàn thành', 'Đang thực hiện', 'Quá hạn'];
 
                         new Chart(ctx, {
@@ -130,16 +144,27 @@
                                 datasets: [{
                                     data: data,
                                     backgroundColor: colors,
-                                    borderWidth: 0,
+                                    borderWidth: 2, // Viền trắng cho đẹp
+                                    borderColor: '#ffffff',
                                     hoverOffset: 4
                                 }]
                             },
                             options: {
                                 responsive: true,
                                 maintainAspectRatio: false,
-                                cutout: '70%',
+                                cutout: '75%', // Làm vòng tròn mỏng hơn chút cho hiện đại
                                 plugins: {
-                                    legend: { position: 'right', labels: { usePointStyle: true, boxWidth: 8 } }
+                                    legend: {
+                                        position: 'bottom', // [QUAN TRỌNG] Đưa chú thích xuống dưới để hình tròn cân đối
+                                        labels: {
+                                            usePointStyle: true,
+                                            padding: 20,
+                                            font: { size: 11 }
+                                        }
+                                    },
+                                    tooltip: {
+                                        enabled: total !== 0 // Ẩn tooltip nếu không có dữ liệu
+                                    }
                                 }
                             }
                         });
@@ -147,7 +172,7 @@
                 });
             </script>
 
-            <% /* --- TRƯỜNG HỢP 2: CÁC TRANG DANH SÁCH KHÁC (CHỈ HIỆN BẢNG) --- */ %>
+            <% /* --- TRƯỜNG HỢP 2: CÁC TRANG DANH SÁCH KHÁC (HIỆN BẢNG) --- */ %>
                 <% } else { %>
 
                     <div class="card shadow-sm border-0 rounded-3">
