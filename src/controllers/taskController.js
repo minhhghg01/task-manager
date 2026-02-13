@@ -410,12 +410,56 @@ module.exports = (io) => {
             } catch (err) { res.status(500).json({ success: false, message: err.message }); }
         },
 
+        // --- API LẤY DANH SÁCH CẤP DƯỚI (ĐÃ FIX QUYỀN HẠN) ---
         apiGetSubordinates: async (req, res) => {
             try {
-                const user = req.session.user;
-                const UserService = require('../services/userService');
-                const subordinates = await UserService.getSubordinates(user);
+                const currentUser = req.session.user;
+                const { User } = require('../models');
+                const { Op } = require('sequelize');
+
+                // 1. Định nghĩa thứ tự cấp bậc (Số càng nhỏ chức càng to)
+                const ROLE_HIERARCHY = {
+                    'ADMIN': 1,
+                    'DIRECTOR': 2,          // Giám đốc
+                    'DEPUTY_DIRECTOR': 3,   // Phó Giám đốc
+                    'HEAD': 4,              // Trưởng phòng/Khoa
+                    'DEPUTY': 5,            // Phó phòng/Khoa
+                    'LEADER': 6,            // Tổ trưởng/Nhóm trưởng
+                    'STAFF': 7              // Nhân viên
+                };
+
+                const myRank = ROLE_HIERARCHY[currentUser.role] || 99;
+
+                // 2. Điều kiện lọc cơ bản: Cùng phòng ban (Trừ Admin/Giám đốc thấy hết)
+                let whereCondition = {};
+
+                if (['ADMIN', 'DIRECTOR'].includes(currentUser.role)) {
+                    whereCondition = {}; // Thấy toàn bộ công ty
+                } else {
+                    whereCondition = { departments_id: currentUser.departments_id };
+                }
+
+                // 3. Lấy danh sách user tiềm năng
+                const allUsers = await User.findAll({
+                    where: whereCondition,
+                    attributes: ['id', 'fullname', 'role', 'departments_id']
+                });
+
+                // 4. [QUAN TRỌNG] Lọc chỉ lấy người có chức vụ THẤP HƠN (Số Rank LỚN HƠN)
+                // Ví dụ: HEAD (4) chỉ thấy DEPUTY (5), LEADER (6), STAFF (7)
+                // Không thấy HEAD (4) ngang cấp, không thấy ADMIN (1)
+                const subordinates = allUsers.filter(u => {
+                    // Không lấy chính mình
+                    if (u.id === currentUser.id) return false;
+
+                    const userRank = ROLE_HIERARCHY[u.role] || 99;
+
+                    // Chỉ lấy người có Rank số lớn hơn (nghĩa là chức vụ thấp hơn)
+                    return userRank > myRank;
+                });
+
                 res.json({ users: subordinates });
+
             } catch (err) {
                 console.error(err);
                 res.status(500).json({ error: err.message });
