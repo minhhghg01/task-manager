@@ -15,6 +15,7 @@
                     <th class="text-center text-primary">Đang làm</th>
                     <th class="text-center text-success">Đã xong</th>
                     <th class="text-center text-danger">Quá hạn</th>
+                    <th class="text-center">Điểm TB</th>
                     <th>Thao tác</th>
                 </tr>
             </thead>
@@ -69,6 +70,23 @@
                                 <%= u.stats.overdue %>
                             </td>
 
+                            <td class="text-center">
+                                <% if (u.stats.avgScore) { %>
+                                    <% let scoreColor='secondary' ; const score=parseFloat(u.stats.avgScore); if(score>=
+                                        80) scoreColor = 'success'; // Giỏi
+                                        else if(score >= 50) scoreColor = 'warning text-dark'; // Khá
+                                        else scoreColor = 'danger'; // Yếu
+                                        %>
+                                        <span
+                                            class="badge bg-<%= scoreColor %> rounded-pill border border-<%= scoreColor %>"
+                                            style="font-size: 0.9rem;">
+                                            <%= u.stats.avgScore %>
+                                        </span>
+                                        <% } else { %>
+                                            <span class="text-muted small fst-italic">---</span>
+                                            <% } %>
+                            </td>
+
                             <td onclick="event.stopPropagation()">
                                 <% if (typeof currentUserRole !=='undefined' && currentUserRole==='HEAD' ) { %>
                                     <% if (u.role==='STAFF' ) { %>
@@ -109,7 +127,6 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        // Reload lại trang để cập nhật trạng thái
                         window.location.reload();
                     } else {
                         alert('Lỗi: ' + data.message);

@@ -46,7 +46,7 @@ const getAdminStats = async () => {
 module.exports = (io) => {
     return {
         // ============================================================
-        // 1. RENDER DASHBOARD (Đã thêm logic lấy Tag để gợi ý)
+        // 1. RENDER DASHBOARD (CẬP NHẬT)
         // ============================================================
         renderDashboard: async (req, res) => {
             try {
@@ -54,65 +54,77 @@ module.exports = (io) => {
                 if (!user) return res.redirect('/login');
 
                 const { Task, User, Department } = require('../models');
+                // const TaskService = require('../services/taskService'); // Nếu cần
 
-                let tasks = [];
                 let totalUsers = 0;
                 let totalDepartments = 0;
 
-                // --- A. LẤY DỮ LIỆU ---
+                // --- 1. LẤY SỐ LIỆU TỔNG QUAN (ADMIN) ---
                 if (user.role === 'ADMIN') {
-                    tasks = await Task.findAll({ include: [{ model: User, as: 'Creator' }] });
                     totalUsers = await User.count();
                     totalDepartments = await Department.count();
-                } else {
-                    tasks = await TaskService.getTasksByUser(user, 'general');
                 }
 
-                // --- [MỚI] B. TỔNG HỢP TAG ĐỂ GỢI Ý ---
-                // Lấy tất cả tag từ DB để làm danh sách gợi ý (datalist)
-                const allTasksRaw = await Task.findAll({ attributes: ['tags'] });
-                const rawTags = allTasksRaw
-                    .map(t => t.tags)
-                    .filter(t => t) // Lọc bỏ null
-                    .map(t => t.split(',')) // Tách nếu nhập "Tag1, Tag2"
-                    .flat()
-                    .map(t => t.trim())
-                    .filter(t => t !== '');
+                // --- 2. LẤY TOÀN BỘ TASK CỦA USER ĐỂ TÍNH TOÁN BIỂU ĐỒ ---
+                // (Không cần phân trang hay filter phức tạp vì Dashboard chỉ cần số liệu thống kê)
+                const allTasksDB = await Task.findAll();
 
-                const uniqueTags = [...new Set(rawTags)]; // Danh sách Tag duy nhất
-                // ------------------------------------
+                // Lọc ra task liên quan đến User (Người nhận)
+                const myTasks = allTasksDB.filter(t => {
+                    let assigneeIds = [];
+                    try { assigneeIds = JSON.parse(t.assigned_to || '[]'); } catch (e) { }
+                    if (Array.isArray(assigneeIds)) {
+                        return assigneeIds.some(id => String(id) === String(user.id));
+                    }
+                    return false;
+                });
 
-                // --- C. HÀM CHECK QUÁ HẠN ---
+                // --- 3. TÍNH TOÁN CHART ---
                 const now = new Date();
                 const checkOverdue = (t) => {
                     if (t.status === 'Quá hạn') return true;
-                    if (t.status !== 'Hoàn thành' && t.due_date) {
-                        return new Date(t.due_date) < now;
-                    }
+                    if (t.status !== 'Hoàn thành' && t.due_date) return new Date(t.due_date) < now;
                     return false;
                 };
 
-                // --- D. TÍNH TOÁN THỐNG KÊ ---
                 const stats = {
-                    totalDepartments: totalDepartments,
                     totalUsers: totalUsers,
-                    totalTasks: tasks.length,
-                    completed: tasks.filter(t => t.status === 'Hoàn thành').length,
-                    overdue: tasks.filter(t => checkOverdue(t)).length,
-                    inProgress: tasks.filter(t =>
-                        ['Mới tạo', 'Đang thực hiện', 'Đang chờ'].includes(t.status) &&
-                        !checkOverdue(t)
+                    totalDepartments: totalDepartments,
+                    totalTasks: myTasks.length,
+                    completed: myTasks.filter(t => t.status === 'Hoàn thành').length,
+                    overdue: myTasks.filter(t => checkOverdue(t)).length,
+                    inProgress: myTasks.filter(t =>
+                        ['Mới tạo', 'Đang thực hiện', 'Đang chờ'].includes(t.status) && !checkOverdue(t)
                     ).length
                 };
 
+                // --- 4. TÍNH ĐIỂM TRUNG BÌNH ---
+                const scoredTasks = myTasks.filter(t =>
+                    t.score !== null && t.score !== undefined && String(t.score).trim() !== '' && !isNaN(parseFloat(t.score))
+                );
+
+                let myAvgScore = '---';
+                if (scoredTasks.length > 0) {
+                    const totalScore = scoredTasks.reduce((sum, t) => sum + parseFloat(t.score), 0);
+                    myAvgScore = (totalScore / scoredTasks.length).toFixed(1);
+                }
+
+                // --- 5. RENDER ---
+                // Lưu ý: Không cần truyền biến 'tasks' (danh sách) nữa vì Dashboard không hiện bảng
                 const viewName = user.role === 'ADMIN' ? 'pages/admin/dashboard-admin' : 'pages/dashboard';
 
                 res.render(viewName, {
                     user: user,
-                    tasks: tasks,
                     stats: stats,
-                    pageTitle: user.role === 'ADMIN' ? 'Dashboard Quản Trị' : 'Tổng quan công việc',
-                    suggestedTags: uniqueTags // <--- Truyền biến này xuống View để hiện gợi ý
+                    myAvgScore: myAvgScore,
+                    pageTitle: 'Tổng quan công việc',
+
+                    // [QUAN TRỌNG] Cờ đánh dấu đây là trang Dashboard chính
+                    isDashboard: true,
+
+                    // Vẫn cần truyền mảng rỗng hoặc null để tránh lỗi check if(tasks) bên view
+                    tasks: [],
+                    suggestedTags: []
                 });
 
             } catch (err) {
@@ -203,17 +215,46 @@ module.exports = (io) => {
         },
 
         // ============================================================
-        // 4. THỐNG KÊ NHÂN VIÊN
+        // 4. THỐNG KÊ NHÂN VIÊN (ĐÃ SỬA: SẮP XẾP THEO CHỨC VỤ)
         // ============================================================
         listEmployeesStats: async (req, res) => {
             try {
                 const user = req.session.user;
-                const UserService = require('../services/userService');
-                const { Task } = require('../models');
+                const { User, Task, Department } = require('../models');
 
-                const subordinates = await UserService.getSubordinates(user);
+                // 1. Định nghĩa Rank để sắp xếp (Số càng nhỏ chức càng to)
+                const ROLE_HIERARCHY = {
+                    'ADMIN': 1,
+                    'DIRECTOR': 2,
+                    'DEPUTY_DIRECTOR': 3,
+                    'HEAD': 4,
+                    'DEPUTY': 5,
+                    'LEADER': 6,
+                    'STAFF': 7
+                };
+                const myRank = ROLE_HIERARCHY[user.role] || 99;
+
+                // 2. Lấy danh sách user trong phòng
+                let whereCondition = {};
+                if (!['ADMIN', 'DIRECTOR'].includes(user.role)) {
+                    whereCondition = { departments_id: user.departments_id };
+                }
+
+                const allUsersInDept = await User.findAll({
+                    where: whereCondition,
+                    include: [{ model: Department, as: 'Department' }]
+                });
+
+                // 3. Lọc cấp dưới (Bỏ Admin, bỏ cấp trên/ngang cấp)
+                const subordinates = allUsersInDept.filter(u => {
+                    if (u.id === user.id) return false;
+                    if (u.role === 'ADMIN') return false;
+                    const userRank = ROLE_HIERARCHY[u.role] || 99;
+                    return userRank > myRank;
+                });
+
+                // 4. Tính toán thống kê
                 const rawTasks = await Task.findAll();
-
                 const allTasks = rawTasks.map(t => {
                     const taskObj = t.toJSON();
                     try { taskObj.assigneeIds = JSON.parse(taskObj.assigned_to || '[]'); }
@@ -223,7 +264,6 @@ module.exports = (io) => {
 
                 const statsList = [];
                 const now = new Date();
-
                 const checkOverdue = (t) => {
                     if (t.status === 'Quá hạn') return true;
                     if (t.status !== 'Hoàn thành' && t.due_date) return new Date(t.due_date) < now;
@@ -236,19 +276,33 @@ module.exports = (io) => {
                         t.assigneeIds.some(id => String(id) === String(sub.id))
                     );
 
+                    const scoredTasks = subTasks.filter(t =>
+                        t.score !== null && t.score !== undefined && String(t.score).trim() !== '' && !isNaN(parseFloat(t.score))
+                    );
+                    let avgScore = null;
+                    if (scoredTasks.length > 0) {
+                        const totalScore = scoredTasks.reduce((sum, t) => sum + parseFloat(t.score), 0);
+                        avgScore = (totalScore / scoredTasks.length).toFixed(1);
+                    }
+
                     statsList.push({
                         ...sub.toJSON(),
                         stats: {
                             total: subTasks.length,
                             completed: subTasks.filter(t => t.status === 'Hoàn thành').length,
                             overdue: subTasks.filter(t => checkOverdue(t)).length,
-                            inProgress: subTasks.filter(t =>
-                                ['Mới tạo', 'Đang thực hiện', 'Đang chờ'].includes(t.status) &&
-                                !checkOverdue(t)
-                            ).length
+                            inProgress: subTasks.filter(t => ['Mới tạo', 'Đang thực hiện', 'Đang chờ'].includes(t.status) && !checkOverdue(t)).length,
+                            avgScore: avgScore
                         }
                     });
                 }
+
+                // [QUAN TRỌNG] 5. SẮP XẾP DANH SÁCH THEO CHỨC VỤ (Rank nhỏ lên trước)
+                statsList.sort((a, b) => {
+                    const rankA = ROLE_HIERARCHY[a.role] || 99;
+                    const rankB = ROLE_HIERARCHY[b.role] || 99;
+                    return rankA - rankB; // Tăng dần (Chức to lên đầu)
+                });
 
                 res.render('pages/employees-stats', { users: statsList, currentUserRole: user.role });
             } catch (err) {
