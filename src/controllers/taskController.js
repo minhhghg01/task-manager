@@ -157,17 +157,18 @@ module.exports = (io) => {
             }
         },
 
-        // 3. API TẠO TASK
+        // 3. API TẠO TASK (ĐÃ SỬA ĐỂ TRẢ VỀ JSON)
         apiCreateTask: async (req, res) => {
             try {
+                // Xử lý logic tự giao việc
                 if (req.body.is_self_assign === 'true') {
                     req.body.assigned_to = [req.session.user.id];
                 }
 
-                // Req.body sẽ chứa cả trường 'tags' từ form gửi lên
-                // TaskService.createTask sẽ nhận toàn bộ body để tạo Task
+                // Gọi Service để tạo Task (Service sẽ ném lỗi nếu ngày tháng không hợp lệ)
                 const newTask = await TaskService.createTask(req.session.user, req.body, req.file);
 
+                // Xử lý Socket (Thông báo realtime)
                 try {
                     let assigneeIds = [];
                     if (typeof newTask.assigned_to === 'string') {
@@ -184,11 +185,20 @@ module.exports = (io) => {
                     console.error("Lỗi socket:", socketErr);
                 }
 
-                res.redirect('/dashboard');
+                // [THAY ĐỔI]: Trả về JSON thành công -> Frontend sẽ nhận được và reload trang
+                return res.json({
+                    success: true,
+                    message: "Tạo công việc thành công!"
+                });
 
             } catch (err) {
                 console.error("Lỗi tạo task:", err);
-                res.send(`<script>alert('Lỗi: ${err.message}'); window.history.back();</script>`);
+
+                // [THAY ĐỔI]: Trả về JSON lỗi (Status 400) -> Frontend sẽ nhận được và hiện Alert, KHÔNG reload trang
+                return res.status(400).json({
+                    success: false,
+                    message: err.message
+                });
             }
         },
 

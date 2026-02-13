@@ -262,22 +262,58 @@
             });
         }
 
-        // 5. VALIDATE SUBMIT
+        // 5. XỬ LÝ SUBMIT BẰNG AJAX (ĐÃ SỬA)
         if (form) {
-            form.addEventListener('submit', function (e) {
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault(); // CHẶN RELOAD TRANG
+
+                const btnSubmit = form.querySelector('button[type="submit"]');
+                const originalBtnText = btnSubmit.innerHTML;
+
+                // 1. Validate sơ bộ
                 const isSelf = selfAssignCheck ? selfAssignCheck.checked : false;
                 const checked = document.querySelectorAll('.user-checkbox:checked');
 
                 if (!isSelf && checked.length === 0) {
-                    e.preventDefault();
                     alert('Vui lòng chọn ít nhất một người nhận việc (hoặc chọn "Tôi tự thực hiện")!');
-                    // Scroll và nháy đỏ cảnh báo
-                    const target = document.querySelector('.card.p-2'); // Tìm khung danh sách
+                    const target = document.querySelector('.card.p-2');
                     if (target) {
                         target.scrollIntoView({ behavior: 'smooth' });
-                        target.classList.add('border-danger');
+                        target.classList.add('border', 'border-danger');
                         setTimeout(() => target.classList.remove('border-danger'), 2000);
                     }
+                    return;
+                }
+
+                // 2. Gửi dữ liệu bằng AJAX
+                try {
+                    btnSubmit.disabled = true;
+                    btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang xử lý...';
+
+                    const formData = new FormData(this);
+
+                    const response = await fetch('/api/tasks', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        // Thành công -> Mới reload trang
+                        window.location.reload();
+                    } else {
+                        // Thất bại -> Hiện Alert báo lỗi và GIỮ NGUYÊN FORM
+                        alert(result.message || 'Có lỗi xảy ra!');
+                    }
+
+                } catch (err) {
+                    console.error(err);
+                    alert('Lỗi kết nối đến máy chủ!');
+                } finally {
+                    // Khôi phục nút bấm
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = originalBtnText;
                 }
             });
         }

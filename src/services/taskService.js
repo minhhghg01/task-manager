@@ -120,8 +120,20 @@ class TaskService {
             }
         }
 
+        // --- [MỚI] XỬ LÝ VÀ KIỂM TRA NGÀY THÁNG ---
         let startDate = new Date();
-        if (taskData.start_date) startDate = new Date(taskData.start_date);
+        if (taskData.start_date) {
+            startDate = new Date(taskData.start_date);
+        }
+
+        // Nếu có nhập Hạn chót, phải đảm bảo nó lớn hơn hoặc bằng Ngày bắt đầu
+        if (taskData.due_date) {
+            const dueDate = new Date(taskData.due_date);
+            if (dueDate < startDate) {
+                throw new Error('Lỗi: Hạn chót không được nhỏ hơn (sớm hơn) Ngày bắt đầu!');
+            }
+        }
+        // ------------------------------------------
 
         const newTask = await Task.create({
             title: taskData.title,
