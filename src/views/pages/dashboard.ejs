@@ -15,9 +15,20 @@
         </div>
 
         <div class="btn-toolbar mb-2 mb-md-0 gap-2">
-            <a href="/tasks/invited" class="btn btn-sm btn-outline-warning d-flex align-items-center gap-2 shadow-sm">
+
+            <a href="/tasks/invited"
+                class="btn btn-sm btn-outline-warning d-flex align-items-center gap-2 shadow-sm position-relative btn-no-hover">
                 <span data-feather="mail"></span> Lời mời hợp tác
+
+                <% if (typeof invitationCount !=='undefined' && invitationCount> 0) { %>
+                    <span
+                        class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light">
+                        <%= invitationCount %>
+                            <span class="visually-hidden">lời mời mới</span>
+                    </span>
+                    <% } %>
             </a>
+
             <% if (user.role !=='ADMIN' && user.role !=='STAFF' ) { %>
                 <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-2 shadow-sm"
                     data-bs-toggle="modal" data-bs-target="#createTaskModal">
@@ -25,7 +36,7 @@
                 </button>
                 <% } %>
 
-                    <% if (user.role==='STAFF' || (locals.filterType && filterType==='mine' )) { %>
+                    <% if (user.role==='STAFF' || (typeof filterType !=='undefined' && filterType==='mine' )) { %>
                         <button type="button"
                             class="btn btn-sm btn-outline-success d-flex align-items-center gap-2 shadow-sm"
                             data-bs-toggle="modal" data-bs-target="#createTaskModal" data-auto-self="true">
@@ -33,6 +44,24 @@
                         </button>
                         <% } %>
         </div>
+
+        <style>
+            .btn-no-hover {
+                color: #000000 !important;
+                /* Màu chữ vàng */
+                border-color: #ffc107 !important;
+                /* Viền vàng */
+                background-color: #ffc107 !important;
+                /* Nền trong suốt */
+            }
+
+            /* Khi hover vẫn giữ nguyên màu như trên */
+            .btn-no-hover:hover {
+                transform: scale(1.03);
+                transition: all 0.3s ease;
+                cursor: pointer;
+            }
+        </style>
     </div>
 
     <% /* --- TRƯỜNG HỢP 1: TRANG DASHBOARD (HIỆN BIỂU ĐỒ) --- */ %>
@@ -397,31 +426,59 @@
                             const tbody = table.querySelector("tbody");
                             const rows = Array.from(tbody.querySelectorAll("tr"));
 
+                            // 1. HÀM TẠO CHECKLIST CHO DROPDOWN (ĐÃ SỬA LỖI DÍNH TAG)
                             function buildDropdowns() {
                                 const dropdowns = document.querySelectorAll('.filter-dropdown');
+
                                 dropdowns.forEach(dd => {
                                     const colIndex = parseInt(dd.dataset.col);
-                                    const isMultiValue = dd.dataset.multiValue === "true" || colIndex === 2;
+                                    const isTagColumn = colIndex === 8; // Giả sử cột Tag là cột số 8 (như trong code cũ)
+                                    const isMultiValue = dd.dataset.multiValue === "true" || colIndex === 2; // Cột Người nhận hoặc Tag
                                     const container = dd.querySelector('.filter-options-container');
+
                                     let values = new Set();
                                     rows.forEach(row => {
                                         const cell = row.cells[colIndex];
                                         if (cell) {
-                                            let text = cell.innerText.trim();
-                                            if (text && text !== '---' && text !== '-' && text !== 'Chưa giao') {
-                                                if (isMultiValue) {
-                                                    text.split(/[\n,]+/).forEach(val => {
-                                                        val = val.trim();
-                                                        if (val) values.add(val);
+                                            // [LOGIC MỚI CHO CỘT TAG]
+                                            if (isTagColumn) {
+                                                // Tìm tất cả các thẻ badge trong ô này
+                                                const badges = cell.querySelectorAll('.badge');
+                                                if (badges.length > 0) {
+                                                    // Nếu có badge (VD: <span class="badge">A</span> <span class="badge">B</span>)
+                                                    // Lấy nội dung từng badge riêng biệt
+                                                    badges.forEach(b => {
+                                                        const tagText = b.innerText.trim();
+                                                        if (tagText && tagText !== '-') values.add(tagText);
                                                     });
                                                 } else {
-                                                    values.add(text);
+                                                    // Fallback: Nếu không có badge (text thường), tách bằng dấu phẩy
+                                                    const text = cell.innerText.trim();
+                                                    if (text && text !== '---' && text !== '-') {
+                                                        text.split(',').forEach(t => values.add(t.trim()));
+                                                    }
+                                                }
+                                            }
+                                            // [LOGIC CŨ CHO CÁC CỘT KHÁC (Người nhận...)]
+                                            else {
+                                                let text = cell.innerText.trim();
+                                                if (text && text !== '---' && text !== '-' && text !== 'Chưa giao') {
+                                                    if (isMultiValue) {
+                                                        text.split(/[\n,]+/).forEach(val => {
+                                                            val = val.trim();
+                                                            if (val) values.add(val);
+                                                        });
+                                                    } else {
+                                                        values.add(text);
+                                                    }
                                                 }
                                             }
                                         }
                                     });
 
+                                    // Render HTML
                                     let html = `<div class="form-check"><input class="form-check-input select-all" type="checkbox" checked onchange="toggleAll(this)"><label class="form-check-label fst-italic fw-bold">Chọn tất cả</label></div><hr class="my-1">`;
+
                                     Array.from(values).sort().forEach(val => {
                                         html += `<div class="form-check filter-item"><input class="form-check-input filter-check" type="checkbox" checked value="${val}" onchange="applyFilters()"><label class="form-check-label text-wrap small">${val}</label></div>`;
                                     });

@@ -17,28 +17,32 @@ const logAction = async (userId, action, entityType, entityId, details) => {
     }
 };
 
-// --- HÀM HELPER LẤY THỐNG KÊ CHO ADMIN ---
-const getAdminStats = async () => {
+// --- [MỚI] HÀM HELPER ĐẾM SỐ LỜI MỜI (DÙNG CHUNG CHO MỌI TRANG) ---
+const countInvitations = async (user, TaskModel) => {
     try {
-        const totalDepts = await Department.count();
-        const totalUsers = await User.count();
-        const totalTasks = await Task.count();
+        // Lấy tất cả task có cột collaborators
+        const allTasks = await TaskModel.findAll({ attributes: ['collaborators'] });
 
-        const completedTasks = await Task.count({ where: { status: 'Hoàn thành' } });
-        const inProgressTasks = await Task.count({
-            where: { status: { [Op.in]: ['Mới tạo', 'Đang thực hiện', 'Đang chờ', 'Hoàn thành', 'Quá hạn'] } }
-        });
-        const overdueTasks = await Task.count({
-            where: {
-                status: { [Op.ne]: 'Hoàn thành' },
-                due_date: { [Op.lt]: new Date() }
+        let count = 0;
+        allTasks.forEach(t => {
+            let collabs = [];
+            try {
+                // Parse JSON an toàn
+                collabs = (typeof t.collaborators === 'string') ? JSON.parse(t.collaborators || '[]') : (t.collaborators || []);
+            } catch (e) { collabs = []; }
+
+            if (Array.isArray(collabs)) {
+                // Kiểm tra xem user hiện tại có status là PENDING không
+                const hasPending = collabs.some(c => String(c.uid) === String(user.id) && c.status === 'PENDING');
+                if (hasPending) {
+                    count++;
+                }
             }
         });
-
-        return { totalDepts, totalUsers, totalTasks, completedTasks, inProgressTasks, overdueTasks };
-    } catch (error) {
-        console.error("Lỗi thống kê:", error);
-        return { totalDepts: 0, totalUsers: 0, totalTasks: 0, completedTasks: 0, inProgressTasks: 0, overdueTasks: 0 };
+        return count;
+    } catch (e) {
+        console.error("Lỗi đếm lời mời:", e);
+        return 0;
     }
 };
 
@@ -54,7 +58,6 @@ module.exports = (io) => {
                 if (!user) return res.redirect('/login');
 
                 const { Task, User, Department } = require('../models');
-                // const TaskService = require('../services/taskService'); // Nếu cần
 
                 let totalUsers = 0;
                 let totalDepartments = 0;
@@ -65,8 +68,7 @@ module.exports = (io) => {
                     totalDepartments = await Department.count();
                 }
 
-                // --- 2. LẤY TOÀN BỘ TASK CỦA USER ĐỂ TÍNH TOÁN BIỂU ĐỒ ---
-                // (Không cần phân trang hay filter phức tạp vì Dashboard chỉ cần số liệu thống kê)
+                // --- 2. TÍNH TOÁN CHO BIỂU ĐỒ & ĐIỂM SỐ ---
                 const allTasksDB = await Task.findAll();
 
                 // Lọc ra task liên quan đến User (Người nhận)
@@ -79,7 +81,7 @@ module.exports = (io) => {
                     return false;
                 });
 
-                // --- 3. TÍNH TOÁN CHART ---
+                // Tính toán thống kê Chart
                 const now = new Date();
                 const checkOverdue = (t) => {
                     if (t.status === 'Quá hạn') return true;
@@ -98,7 +100,7 @@ module.exports = (io) => {
                     ).length
                 };
 
-                // --- 4. TÍNH ĐIỂM TRUNG BÌNH ---
+                // Tính điểm trung bình
                 const scoredTasks = myTasks.filter(t =>
                     t.score !== null && t.score !== undefined && String(t.score).trim() !== '' && !isNaN(parseFloat(t.score))
                 );
@@ -109,20 +111,23 @@ module.exports = (io) => {
                     myAvgScore = (totalScore / scoredTasks.length).toFixed(1);
                 }
 
-                // --- 5. RENDER ---
-                // Lưu ý: Không cần truyền biến 'tasks' (danh sách) nữa vì Dashboard không hiện bảng
+                // --- [ĐÃ SỬA] 3. TÍNH SỐ LỜI MỜI BẰNG HÀM CHUNG ---
+                const invitationCount = await countInvitations(user, Task);
+
+                // --- 4. RENDER ---
                 const viewName = user.role === 'ADMIN' ? 'pages/admin/dashboard-admin' : 'pages/dashboard';
 
                 res.render(viewName, {
                     user: user,
                     stats: stats,
                     myAvgScore: myAvgScore,
+                    invitationCount: invitationCount, // Truyền biến này xuống View
                     pageTitle: 'Tổng quan công việc',
 
-                    // [QUAN TRỌNG] Cờ đánh dấu đây là trang Dashboard chính
+                    // Cờ đánh dấu đây là trang Dashboard chính (hiện biểu đồ)
                     isDashboard: true,
 
-                    // Vẫn cần truyền mảng rỗng hoặc null để tránh lỗi check if(tasks) bên view
+                    // Dashboard không cần hiện bảng chi tiết nên để rỗng
                     tasks: [],
                     suggestedTags: []
                 });
@@ -133,35 +138,27 @@ module.exports = (io) => {
             }
         },
 
-        // 2. RENDER TASK LIST
+        // ============================================================
+        // 2. RENDER TASK LIST (DANH SÁCH MẶC ĐỊNH)
+        // ============================================================
         renderTaskList: async (req, res) => {
             try {
                 const user = req.session.user;
                 if (!user) return res.redirect('/login');
+
+                // Lấy danh sách task mặc định
                 const tasks = await TaskService.getTasksByUser(user);
-                res.render('pages/dashboard', { user: user, tasks: tasks });
-            } catch (err) {
-                console.error(err);
-                res.status(500).send("Lỗi Server: " + err.message);
-            }
-        },
 
-        // --- RENDER FILTERED TASKS ---
-        renderFilteredTasks: async (req, res) => {
-            try {
-                const user = req.session.user;
-                const filterType = req.filterType;
-                const tasks = await TaskService.getTasksByUser(user, filterType);
-
-                let pageTitle = 'Danh sách công việc';
-                if (filterType === 'general') pageTitle = user.role === 'ADMIN' ? 'Công việc toàn hệ thống' : 'Công việc chung của Khoa/Phòng';
-                if (filterType === 'mine') pageTitle = 'Công việc của tôi (Được giao)';
-                if (filterType === 'assigned_by_me') pageTitle = 'Công việc tôi đã giao';
+                // [MỚI] Đếm lời mời để hiện badge trên Header
+                const invitationCount = await countInvitations(user, Task);
 
                 res.render('pages/dashboard', {
                     user: user,
                     tasks: tasks,
-                    pageTitle: pageTitle
+                    pageTitle: 'Danh sách công việc',
+                    invitationCount: invitationCount, // Truyền xuống view
+                    isDashboard: false, // Để hiện bảng danh sách, ẩn biểu đồ
+                    suggestedTags: [] // Có thể bổ sung logic lấy tag nếu cần
                 });
             } catch (err) {
                 console.error(err);
@@ -169,18 +166,49 @@ module.exports = (io) => {
             }
         },
 
-        // 3. API TẠO TASK (ĐÃ SỬA ĐỂ TRẢ VỀ JSON)
+        // ============================================================
+        // RENDER FILTERED TASKS (VIỆC CHUNG, VIỆC CỦA TÔI...)
+        // ============================================================
+        renderFilteredTasks: async (req, res) => {
+            try {
+                const user = req.session.user;
+                const filterType = req.filterType;
+
+                // Lấy danh sách task theo bộ lọc
+                const tasks = await TaskService.getTasksByUser(user, filterType);
+
+                let pageTitle = 'Danh sách công việc';
+                if (filterType === 'general') pageTitle = user.role === 'ADMIN' ? 'Công việc toàn hệ thống' : 'Công việc chung của Khoa/Phòng';
+                if (filterType === 'mine') pageTitle = 'Công việc của tôi (Được giao)';
+                if (filterType === 'assigned_by_me') pageTitle = 'Công việc tôi đã giao';
+
+                // [MỚI] Đếm lời mời để hiện badge trên Header
+                const invitationCount = await countInvitations(user, Task);
+
+                res.render('pages/dashboard', {
+                    user: user,
+                    tasks: tasks,
+                    pageTitle: pageTitle,
+                    filterType: filterType, // Để active menu nếu cần
+                    invitationCount: invitationCount, // Truyền xuống view
+                    isDashboard: false, // Để hiện bảng danh sách
+                    suggestedTags: []
+                });
+            } catch (err) {
+                console.error(err);
+                res.status(500).send("Lỗi Server: " + err.message);
+            }
+        },
+
+        // 3. API TẠO TASK
         apiCreateTask: async (req, res) => {
             try {
-                // Xử lý logic tự giao việc
                 if (req.body.is_self_assign === 'true') {
                     req.body.assigned_to = [req.session.user.id];
                 }
 
-                // Gọi Service để tạo Task (Service sẽ ném lỗi nếu ngày tháng không hợp lệ)
                 const newTask = await TaskService.createTask(req.session.user, req.body, req.file);
 
-                // Xử lý Socket (Thông báo realtime)
                 try {
                     let assigneeIds = [];
                     if (typeof newTask.assigned_to === 'string') {
@@ -197,44 +225,26 @@ module.exports = (io) => {
                     console.error("Lỗi socket:", socketErr);
                 }
 
-                // [THAY ĐỔI]: Trả về JSON thành công -> Frontend sẽ nhận được và reload trang
-                return res.json({
-                    success: true,
-                    message: "Tạo công việc thành công!"
-                });
+                return res.json({ success: true, message: "Tạo công việc thành công!" });
 
             } catch (err) {
                 console.error("Lỗi tạo task:", err);
-
-                // [THAY ĐỔI]: Trả về JSON lỗi (Status 400) -> Frontend sẽ nhận được và hiện Alert, KHÔNG reload trang
-                return res.status(400).json({
-                    success: false,
-                    message: err.message
-                });
+                return res.status(400).json({ success: false, message: err.message });
             }
         },
 
-        // ============================================================
-        // 4. THỐNG KÊ NHÂN VIÊN (ĐÃ SỬA: SẮP XẾP THEO CHỨC VỤ)
-        // ============================================================
+        // 4. THỐNG KÊ NHÂN VIÊN
         listEmployeesStats: async (req, res) => {
             try {
                 const user = req.session.user;
                 const { User, Task, Department } = require('../models');
 
-                // 1. Định nghĩa Rank để sắp xếp (Số càng nhỏ chức càng to)
                 const ROLE_HIERARCHY = {
-                    'ADMIN': 1,
-                    'DIRECTOR': 2,
-                    'DEPUTY_DIRECTOR': 3,
-                    'HEAD': 4,
-                    'DEPUTY': 5,
-                    'LEADER': 6,
-                    'STAFF': 7
+                    'ADMIN': 1, 'DIRECTOR': 2, 'DEPUTY_DIRECTOR': 3,
+                    'HEAD': 4, 'DEPUTY': 5, 'LEADER': 6, 'STAFF': 7
                 };
                 const myRank = ROLE_HIERARCHY[user.role] || 99;
 
-                // 2. Lấy danh sách user trong phòng
                 let whereCondition = {};
                 if (!['ADMIN', 'DIRECTOR'].includes(user.role)) {
                     whereCondition = { departments_id: user.departments_id };
@@ -245,7 +255,6 @@ module.exports = (io) => {
                     include: [{ model: Department, as: 'Department' }]
                 });
 
-                // 3. Lọc cấp dưới (Bỏ Admin, bỏ cấp trên/ngang cấp)
                 const subordinates = allUsersInDept.filter(u => {
                     if (u.id === user.id) return false;
                     if (u.role === 'ADMIN') return false;
@@ -253,7 +262,6 @@ module.exports = (io) => {
                     return userRank > myRank;
                 });
 
-                // 4. Tính toán thống kê
                 const rawTasks = await Task.findAll();
                 const allTasks = rawTasks.map(t => {
                     const taskObj = t.toJSON();
@@ -297,21 +305,27 @@ module.exports = (io) => {
                     });
                 }
 
-                // [QUAN TRỌNG] 5. SẮP XẾP DANH SÁCH THEO CHỨC VỤ (Rank nhỏ lên trước)
                 statsList.sort((a, b) => {
                     const rankA = ROLE_HIERARCHY[a.role] || 99;
                     const rankB = ROLE_HIERARCHY[b.role] || 99;
-                    return rankA - rankB; // Tăng dần (Chức to lên đầu)
+                    return rankA - rankB;
                 });
 
-                res.render('pages/employees-stats', { users: statsList, currentUserRole: user.role });
+                // [MỚI] Đếm lời mời cả ở trang này nữa (để Header vẫn đúng)
+                const invitationCount = await countInvitations(user, Task);
+
+                res.render('pages/employees-stats', {
+                    users: statsList,
+                    currentUserRole: user.role,
+                    invitationCount: invitationCount // Truyền xuống view
+                });
             } catch (err) {
                 console.error(err);
                 res.status(500).send(err.message);
             }
         },
 
-        // --- CÁC HÀM KHÁC GIỮ NGUYÊN ---
+        // CÁC HÀM KHÁC GIỮ NGUYÊN
         setEmployeeRole: async (req, res) => {
             try {
                 const currentUser = req.session.user;
@@ -348,7 +362,15 @@ module.exports = (io) => {
                     return ids.includes(targetUser.id) || ids.includes(String(targetUser.id));
                 });
 
-                res.render('pages/employee-detail', { manager: user, employee: targetUser, tasks: employeeTasks });
+                // [MỚI]
+                const invitationCount = await countInvitations(user, Task);
+
+                res.render('pages/employee-detail', {
+                    manager: user,
+                    employee: targetUser,
+                    tasks: employeeTasks,
+                    invitationCount: invitationCount
+                });
             } catch (err) { res.status(500).send(err.message); }
         },
 
@@ -393,27 +415,20 @@ module.exports = (io) => {
                     else task.formattedStartDate = "Chưa cập nhật";
                 }
 
-                // Lọc người mời (Logic cũ của bạn)
                 let availableUsers = [];
                 if (isAdmin || user.role === 'DIRECTOR') {
                     availableUsers = await User.findAll({ attributes: ['id', 'fullname'] });
                 } else if (user.role === 'DEPUTY_DIRECTOR') {
                     availableUsers = await User.findAll({
                         where: {
-                            [Op.or]: [
-                                { departments_id: user.departments_id },
-                                { role: 'HEAD' }
-                            ]
+                            [Op.or]: [{ departments_id: user.departments_id }, { role: 'HEAD' }]
                         },
                         attributes: ['id', 'fullname']
                     });
                 } else if (user.role === 'HEAD') {
                     availableUsers = await User.findAll({
                         where: {
-                            [Op.or]: [
-                                { departments_id: user.departments_id },
-                                { role: 'HEAD' }
-                            ]
+                            [Op.or]: [{ departments_id: user.departments_id }, { role: 'HEAD' }]
                         },
                         attributes: ['id', 'fullname']
                     });
@@ -424,8 +439,13 @@ module.exports = (io) => {
                     });
                 }
 
+                // [MỚI]
+                const invitationCount = await countInvitations(user, Task);
+
                 res.render('pages/task-detail', {
-                    task, user, isAssigner, isAssignee, isAdmin, canScore, allUsers: availableUsers
+                    task, user, isAssigner, isAssignee, isAdmin, canScore,
+                    allUsers: availableUsers,
+                    invitationCount: invitationCount
                 });
             } catch (err) {
                 console.error(err);
@@ -464,56 +484,37 @@ module.exports = (io) => {
             } catch (err) { res.status(500).json({ success: false, message: err.message }); }
         },
 
-        // --- API LẤY DANH SÁCH CẤP DƯỚI (ĐÃ FIX QUYỀN HẠN) ---
         apiGetSubordinates: async (req, res) => {
             try {
                 const currentUser = req.session.user;
                 const { User } = require('../models');
                 const { Op } = require('sequelize');
 
-                // 1. Định nghĩa thứ tự cấp bậc (Số càng nhỏ chức càng to)
                 const ROLE_HIERARCHY = {
-                    'ADMIN': 1,
-                    'DIRECTOR': 2,          // Giám đốc
-                    'DEPUTY_DIRECTOR': 3,   // Phó Giám đốc
-                    'HEAD': 4,              // Trưởng phòng/Khoa
-                    'DEPUTY': 5,            // Phó phòng/Khoa
-                    'LEADER': 6,            // Tổ trưởng/Nhóm trưởng
-                    'STAFF': 7              // Nhân viên
+                    'ADMIN': 1, 'DIRECTOR': 2, 'DEPUTY_DIRECTOR': 3,
+                    'HEAD': 4, 'DEPUTY': 5, 'LEADER': 6, 'STAFF': 7
                 };
-
                 const myRank = ROLE_HIERARCHY[currentUser.role] || 99;
 
-                // 2. Điều kiện lọc cơ bản: Cùng phòng ban (Trừ Admin/Giám đốc thấy hết)
                 let whereCondition = {};
-
                 if (['ADMIN', 'DIRECTOR'].includes(currentUser.role)) {
-                    whereCondition = {}; // Thấy toàn bộ công ty
+                    whereCondition = {};
                 } else {
                     whereCondition = { departments_id: currentUser.departments_id };
                 }
 
-                // 3. Lấy danh sách user tiềm năng
                 const allUsers = await User.findAll({
                     where: whereCondition,
                     attributes: ['id', 'fullname', 'role', 'departments_id']
                 });
 
-                // 4. [QUAN TRỌNG] Lọc chỉ lấy người có chức vụ THẤP HƠN (Số Rank LỚN HƠN)
-                // Ví dụ: HEAD (4) chỉ thấy DEPUTY (5), LEADER (6), STAFF (7)
-                // Không thấy HEAD (4) ngang cấp, không thấy ADMIN (1)
                 const subordinates = allUsers.filter(u => {
-                    // Không lấy chính mình
                     if (u.id === currentUser.id) return false;
-
                     const userRank = ROLE_HIERARCHY[u.role] || 99;
-
-                    // Chỉ lấy người có Rank số lớn hơn (nghĩa là chức vụ thấp hơn)
                     return userRank > myRank;
                 });
 
                 res.json({ users: subordinates });
-
             } catch (err) {
                 console.error(err);
                 res.status(500).json({ error: err.message });
