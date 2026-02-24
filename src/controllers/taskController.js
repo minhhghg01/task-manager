@@ -50,7 +50,7 @@ const countInvitations = async (user, TaskModel) => {
 module.exports = (io) => {
     return {
         // ============================================================
-        // 1. RENDER DASHBOARD (CẬP NHẬT)
+        // 1. RENDER DASHBOARD (ĐÃ SỬA LỖI TÍNH TOÁN CHO ADMIN)
         // ============================================================
         renderDashboard: async (req, res) => {
             try {
@@ -68,10 +68,10 @@ module.exports = (io) => {
                     totalDepartments = await Department.count();
                 }
 
-                // --- 2. TÍNH TOÁN CHO BIỂU ĐỒ & ĐIỂM SỐ ---
+                // --- 2. LẤY DỮ LIỆU TASK TỪ DB ---
                 const allTasksDB = await Task.findAll();
 
-                // Lọc ra task liên quan đến User (Người nhận)
+                // Lọc ra task liên quan đến User hiện tại (Người nhận)
                 const myTasks = allTasksDB.filter(t => {
                     let assigneeIds = [];
                     try { assigneeIds = JSON.parse(t.assigned_to || '[]'); } catch (e) { }
@@ -81,7 +81,7 @@ module.exports = (io) => {
                     return false;
                 });
 
-                // Tính toán thống kê Chart
+                // --- 3. TÍNH TOÁN CHART & THỐNG KÊ ---
                 const now = new Date();
                 const checkOverdue = (t) => {
                     if (t.status === 'Quá hạn') return true;
@@ -89,18 +89,24 @@ module.exports = (io) => {
                     return false;
                 };
 
+                // [QUAN TRỌNG] XÁC ĐỊNH NGUỒN DỮ LIỆU ĐỂ THỐNG KÊ
+                // Nếu là ADMIN -> Thống kê trên toàn bộ hệ thống (allTasksDB)
+                // Nếu là USER -> Thống kê trên các việc của cá nhân (myTasks)
+                const tasksForStats = user.role === 'ADMIN' ? allTasksDB : myTasks;
+
                 const stats = {
                     totalUsers: totalUsers,
                     totalDepartments: totalDepartments,
-                    totalTasks: myTasks.length,
-                    completed: myTasks.filter(t => t.status === 'Hoàn thành').length,
-                    overdue: myTasks.filter(t => checkOverdue(t)).length,
-                    inProgress: myTasks.filter(t =>
+                    totalTasks: tasksForStats.length, // Đã lấy đúng nguồn dữ liệu
+                    completed: tasksForStats.filter(t => t.status === 'Hoàn thành').length,
+                    overdue: tasksForStats.filter(t => checkOverdue(t)).length,
+                    inProgress: tasksForStats.filter(t =>
                         ['Mới tạo', 'Đang thực hiện', 'Đang chờ'].includes(t.status) && !checkOverdue(t)
                     ).length
                 };
 
-                // Tính điểm trung bình
+                // --- 4. TÍNH ĐIỂM TRUNG BÌNH CÁ NHÂN ---
+                // Điểm cá nhân thì vẫn luôn tính dựa trên myTasks (kể cả Admin)
                 const scoredTasks = myTasks.filter(t =>
                     t.score !== null && t.score !== undefined && String(t.score).trim() !== '' && !isNaN(parseFloat(t.score))
                 );
@@ -111,23 +117,19 @@ module.exports = (io) => {
                     myAvgScore = (totalScore / scoredTasks.length).toFixed(1);
                 }
 
-                // --- [ĐÃ SỬA] 3. TÍNH SỐ LỜI MỜI BẰNG HÀM CHUNG ---
+                // --- 5. TÍNH SỐ LỜI MỜI BẰNG HÀM CHUNG ---
                 const invitationCount = await countInvitations(user, Task);
 
-                // --- 4. RENDER ---
+                // --- 6. RENDER ---
                 const viewName = user.role === 'ADMIN' ? 'pages/admin/dashboard-admin' : 'pages/dashboard';
 
                 res.render(viewName, {
                     user: user,
                     stats: stats,
                     myAvgScore: myAvgScore,
-                    invitationCount: invitationCount, // Truyền biến này xuống View
-                    pageTitle: 'Tổng quan công việc',
-
-                    // Cờ đánh dấu đây là trang Dashboard chính (hiện biểu đồ)
+                    invitationCount: invitationCount,
+                    pageTitle: user.role === 'ADMIN' ? 'Dashboard Quản Trị' : 'Tổng quan công việc',
                     isDashboard: true,
-
-                    // Dashboard không cần hiện bảng chi tiết nên để rỗng
                     tasks: [],
                     suggestedTags: []
                 });

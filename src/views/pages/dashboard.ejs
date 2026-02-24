@@ -15,7 +15,6 @@
         </div>
 
         <div class="btn-toolbar mb-2 mb-md-0 gap-2">
-
             <a href="/tasks/invited"
                 class="btn btn-sm btn-outline-warning d-flex align-items-center gap-2 shadow-sm position-relative btn-no-hover">
                 <span data-feather="mail"></span> Lời mời hợp tác
@@ -48,14 +47,10 @@
         <style>
             .btn-no-hover {
                 color: #000000 !important;
-                /* Màu chữ vàng */
                 border-color: #ffc107 !important;
-                /* Viền vàng */
                 background-color: #ffc107 !important;
-                /* Nền trong suốt */
             }
 
-            /* Khi hover vẫn giữ nguyên màu như trên */
             .btn-no-hover:hover {
                 transform: scale(1.03);
                 transition: all 0.3s ease;
@@ -66,7 +61,6 @@
 
     <% /* --- TRƯỜNG HỢP 1: TRANG DASHBOARD (HIỆN BIỂU ĐỒ) --- */ %>
         <% if (locals.isDashboard) { %>
-
             <div class="row mb-4">
                 <div class="col-md-5 mb-3 mb-md-0">
                     <div class="card shadow border-0 h-100 rounded-3">
@@ -84,7 +78,7 @@
                                 </div>
                                 <div class="flex-grow-1 ms-3">
                                     <h4 class="mb-0 fw-bold text-dark">Điểm trung bình</h4>
-                                    <small class="text-muted">Đánh giá trên các công việc của bạn.</small>
+                                    <small class="text-muted">Đánh giá trên các công việc bạn đã hoàn thành.</small>
                                 </div>
                             </div>
 
@@ -128,8 +122,7 @@
                                 <canvas id="taskStatusChart"></canvas>
 
                                 <% const hasData=(typeof stats !=='undefined' ) && (stats.completed + stats.inProgress +
-                                    stats.overdue> 0);
-                                    %>
+                                    stats.overdue> 0); %>
 
                                     <div class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center"
                                         style="pointer-events: none; padding-bottom: 30px;">
@@ -161,7 +154,6 @@
                         const overdue = <%= (locals.stats) ? stats.overdue : 0 %>;
                         const total = completed + inProgress + overdue;
 
-                        // Nếu không có dữ liệu thì hiện 1 vòng xám
                         const data = total === 0 ? [1] : [completed, inProgress, overdue];
                         const colors = total === 0 ? ['#f8f9fa'] : ['#198754', '#0d6efd', '#dc3545'];
                         const labels = total === 0 ? ['Chưa có dữ liệu'] : ['Hoàn thành', 'Đang thực hiện', 'Quá hạn'];
@@ -173,7 +165,7 @@
                                 datasets: [{
                                     data: data,
                                     backgroundColor: colors,
-                                    borderWidth: 2, // Viền trắng cho đẹp
+                                    borderWidth: 2,
                                     borderColor: '#ffffff',
                                     hoverOffset: 4
                                 }]
@@ -181,19 +173,13 @@
                             options: {
                                 responsive: true,
                                 maintainAspectRatio: false,
-                                cutout: '75%', // Làm vòng tròn mỏng hơn chút cho hiện đại
+                                cutout: '75%',
                                 plugins: {
                                     legend: {
-                                        position: 'bottom', // [QUAN TRỌNG] Đưa chú thích xuống dưới để hình tròn cân đối
-                                        labels: {
-                                            usePointStyle: true,
-                                            padding: 20,
-                                            font: { size: 11 }
-                                        }
+                                        position: 'bottom',
+                                        labels: { usePointStyle: true, padding: 20, font: { size: 11 } }
                                     },
-                                    tooltip: {
-                                        enabled: total !== 0 // Ẩn tooltip nếu không có dữ liệu
-                                    }
+                                    tooltip: { enabled: total !== 0 }
                                 }
                             }
                         });
@@ -201,13 +187,30 @@
                 });
             </script>
 
-            <% /* --- TRƯỜNG HỢP 2: CÁC TRANG DANH SÁCH KHÁC (HIỆN BẢNG) --- */ %>
+            <% /* --- TRƯỜNG HỢP 2: CÁC TRANG DANH SÁCH KHÁC (HIỆN BẢNG CÓ PHÂN TRANG) --- */ %>
                 <% } else { %>
 
                     <div class="card shadow-sm border-0 rounded-3">
-                        <div class="card-body p-0">
+                        <div class="card-body p-3">
+
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="d-flex align-items-center">
+                                    <select id="pageSize"
+                                        class="form-select form-select-sm w-auto me-2 shadow-none border-secondary-subtle">
+                                        <option value="10" selected>10</option>
+                                        <option value="20">20</option>
+                                        <option value="50">50</option>
+                                        <option value="200">200</option>
+                                        <option value="500">500</option>
+                                        <option value="1000">1000</option>
+                                        <option value="all">Tất cả</option>
+                                    </select>
+                                    <span class="text-muted small">dòng / trang</span>
+                                </div>
+                            </div>
+
                             <div class="table-responsive"
-                                style="min-height: 400px; border-radius: 0.5rem; padding-bottom: 80px;">
+                                style="min-height: 400px; border-radius: 0.5rem; padding-bottom: 20px;">
                                 <table class="table table-hover align-middle mb-0" id="mainTable">
                                     <thead class="sticky-top bg-white"
                                         style="z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
@@ -228,7 +231,7 @@
                                             <td class="p-1">
                                                 <input type="text"
                                                     class="form-control form-control-sm filter-input shadow-none border-secondary-subtle"
-                                                    data-col="1" placeholder="Tìm..." style="font-size: 0.85rem;">
+                                                    data-col="1" placeholder="Tìm kiếm..." style="font-size: 0.85rem;">
                                             </td>
                                             <td class="p-1 position-relative">
                                                 <div class="dropdown filter-dropdown" data-col="2">
@@ -316,21 +319,20 @@
                                             </td>
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                    <tbody id="taskTableBody">
                                         <% if (tasks && tasks.length> 0) { %>
                                             <% tasks.forEach((task, index)=> { %>
-                                                <tr style="cursor: pointer;"
+                                                <tr class="task-row" style="cursor: pointer;"
                                                     onclick="window.location.href='/tasks/<%= task.id %>'">
-                                                    <td class="text-center">
+                                                    <td class="text-center row-index">
                                                         <%= index + 1 %>
                                                     </td>
                                                     <td>
                                                         <strong class="text-dark">
                                                             <%= task.title %>
                                                         </strong>
-                                                        <% if(task.attachment_path) { %>
-                                                            <i data-feather="paperclip" class="text-muted ms-1"
-                                                                style="width:12px"></i>
+                                                        <% if(task.attachment_path) { %><i data-feather="paperclip"
+                                                                class="text-muted ms-1" style="width:12px"></i>
                                                             <% } %>
                                                                 <div class="text-muted text-truncate small mt-1"
                                                                     style="max-width: 250px;">
@@ -345,11 +347,9 @@
                                                                         </div>
                                                                         <% } %>
                                                     </td>
-                                                    <td>
-                                                        <small class="text-primary fw-bold">
+                                                    <td><small class="text-primary fw-bold">
                                                             <%= task.assigneeNames || 'Chưa giao' %>
-                                                        </small>
-                                                    </td>
+                                                        </small></td>
                                                     <td>
                                                         <%= task.start_date ? new
                                                             Date(task.start_date).toLocaleDateString('vi-VN') : '-' %>
@@ -404,7 +404,7 @@
                                                 </tr>
                                                 <% }); %>
                                                     <% } else { %>
-                                                        <tr>
+                                                        <tr id="emptyRow">
                                                             <td colspan="9" class="text-center py-5 text-muted">
                                                                 <div class="mb-2"><i data-feather="inbox"
                                                                         style="width: 40px; height: 40px; opacity: 0.5;"></i>
@@ -416,6 +416,15 @@
                                     </tbody>
                                 </table>
                             </div>
+
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <div id="paginationInfo" class="text-muted small"></div>
+                                <nav aria-label="Page navigation">
+                                    <ul class="pagination pagination-sm justify-content-end mb-0"
+                                        id="paginationControls">
+                                    </ul>
+                                </nav>
+                            </div>
                         </div>
                     </div>
 
@@ -423,62 +432,58 @@
                         document.addEventListener("DOMContentLoaded", function () {
                             const table = document.getElementById("mainTable");
                             if (!table) return;
-                            const tbody = table.querySelector("tbody");
-                            const rows = Array.from(tbody.querySelectorAll("tr"));
+                            const tbody = document.getElementById("taskTableBody");
+                            const allRows = Array.from(tbody.querySelectorAll(".task-row"));
 
-                            // 1. HÀM TẠO CHECKLIST CHO DROPDOWN (ĐÃ SỬA LỖI DÍNH TAG)
+                            let currentPage = 1;
+                            let rowsPerPage = 10;
+                            let filteredRows = [...allRows];
+
+                            // 1. HÀM XÂY DỰNG DROPDOWN
                             function buildDropdowns() {
                                 const dropdowns = document.querySelectorAll('.filter-dropdown');
-
                                 dropdowns.forEach(dd => {
                                     const colIndex = parseInt(dd.dataset.col);
-                                    const isTagColumn = colIndex === 8; // Giả sử cột Tag là cột số 8 (như trong code cũ)
-                                    const isMultiValue = dd.dataset.multiValue === "true" || colIndex === 2; // Cột Người nhận hoặc Tag
+                                    const isTagColumn = colIndex === 8;
+                                    const isMultiValue = dd.dataset.multiValue === "true" || colIndex === 2;
                                     const container = dd.querySelector('.filter-options-container');
 
                                     let values = new Set();
-                                    rows.forEach(row => {
+                                    allRows.forEach(row => {
                                         const cell = row.cells[colIndex];
                                         if (cell) {
-                                            // [LOGIC MỚI CHO CỘT TAG]
-                                            if (isTagColumn) {
-                                                // Tìm tất cả các thẻ badge trong ô này
+                                            let text = cell.innerText.trim();
+
+                                            // Nếu ô trống hoặc chỉ chứa dấu gạch ngang
+                                            if (!text || text === '-' || text === '---') {
+                                                values.add('(Trống)');
+                                            }
+                                            else if (isTagColumn) {
                                                 const badges = cell.querySelectorAll('.badge');
                                                 if (badges.length > 0) {
-                                                    // Nếu có badge (VD: <span class="badge">A</span> <span class="badge">B</span>)
-                                                    // Lấy nội dung từng badge riêng biệt
                                                     badges.forEach(b => {
                                                         const tagText = b.innerText.trim();
                                                         if (tagText && tagText !== '-') values.add(tagText);
                                                     });
                                                 } else {
-                                                    // Fallback: Nếu không có badge (text thường), tách bằng dấu phẩy
-                                                    const text = cell.innerText.trim();
-                                                    if (text && text !== '---' && text !== '-') {
-                                                        text.split(',').forEach(t => values.add(t.trim()));
-                                                    }
+                                                    values.add('(Trống)');
                                                 }
                                             }
-                                            // [LOGIC CŨ CHO CÁC CỘT KHÁC (Người nhận...)]
                                             else {
-                                                let text = cell.innerText.trim();
-                                                if (text && text !== '---' && text !== '-' && text !== 'Chưa giao') {
-                                                    if (isMultiValue) {
-                                                        text.split(/[\n,]+/).forEach(val => {
-                                                            val = val.trim();
-                                                            if (val) values.add(val);
-                                                        });
-                                                    } else {
-                                                        values.add(text);
-                                                    }
+                                                if (isMultiValue) {
+                                                    text.split(/[\n,]+/).forEach(val => {
+                                                        val = val.trim();
+                                                        if (val === 'Chưa giao') values.add('Chưa giao');
+                                                        else if (val) values.add(val);
+                                                    });
+                                                } else {
+                                                    values.add(text);
                                                 }
                                             }
                                         }
                                     });
 
-                                    // Render HTML
                                     let html = `<div class="form-check"><input class="form-check-input select-all" type="checkbox" checked onchange="toggleAll(this)"><label class="form-check-label fst-italic fw-bold">Chọn tất cả</label></div><hr class="my-1">`;
-
                                     Array.from(values).sort().forEach(val => {
                                         html += `<div class="form-check filter-item"><input class="form-check-input filter-check" type="checkbox" checked value="${val}" onchange="applyFilters()"><label class="form-check-label text-wrap small">${val}</label></div>`;
                                     });
@@ -486,22 +491,28 @@
                                 });
                             }
 
+                            // 2. HÀM LỌC CHÍNH
                             window.applyFilters = function () {
                                 const textInputs = document.querySelectorAll('.filter-input');
                                 const dateFromInputs = document.querySelectorAll('.filter-date-from');
                                 const dateToInputs = document.querySelectorAll('.filter-date-to');
                                 const dropdowns = document.querySelectorAll('.filter-dropdown');
 
-                                rows.forEach(row => {
+                                filteredRows = [];
+
+                                allRows.forEach(row => {
                                     let show = true;
+
+                                    // A. Lọc theo chữ (Input text)
                                     textInputs.forEach(input => {
                                         const colIdx = input.dataset.col;
                                         if (input.value && !row.cells[colIdx].innerText.toLowerCase().includes(input.value.toLowerCase())) show = false;
                                     });
 
+                                    // B. Lọc theo ngày
                                     if (show) {
                                         const parseDate = (str) => {
-                                            if (!str || str.includes('-')) return null;
+                                            if (!str || str === '-' || str === '---') return null;
                                             const parts = str.trim().split(/[\s/:]+/);
                                             if (parts.length >= 3) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
                                             return null;
@@ -516,21 +527,90 @@
                                         });
                                     }
 
+                                    // C. Lọc theo Dropdown
                                     if (show) {
                                         dropdowns.forEach(dd => {
+                                            const selectAllCb = dd.querySelector('.select-all');
+
+                                            // [QUAN TRỌNG] Bỏ qua kiểm tra cột này nếu "Chọn tất cả" đang được tick
+                                            if (selectAllCb && selectAllCb.checked) return;
+
                                             const colIdx = dd.dataset.col;
-                                            const cellText = row.cells[colIdx].innerText;
+                                            let cellText = row.cells[colIdx].innerText.trim();
+                                            if (!cellText || cellText === '-' || cellText === '---') cellText = '(Trống)';
+
                                             const checkedBoxes = Array.from(dd.querySelectorAll('.filter-check:checked')).map(cb => cb.value);
-                                            if (checkedBoxes.length === 0) show = false;
-                                            else {
+                                            if (checkedBoxes.length === 0) {
+                                                show = false;
+                                            } else {
                                                 const hasMatch = checkedBoxes.some(val => cellText.includes(val));
                                                 if (!hasMatch) show = false;
                                             }
                                         });
                                     }
-                                    row.style.display = show ? '' : 'none';
+
+                                    if (show) filteredRows.push(row);
+                                    row.style.display = 'none'; // Ẩn toàn bộ để nhường cho hàm Render hiển thị
                                 });
+
+                                currentPage = 1;
+                                renderPagination();
                             };
+
+                            // 3. HÀM VẼ GIAO DIỆN PHÂN TRANG
+                            function renderPagination() {
+                                const totalRows = filteredRows.length;
+                                const pageSizeSelect = document.getElementById('pageSize').value;
+                                rowsPerPage = pageSizeSelect === 'all' ? totalRows : parseInt(pageSizeSelect);
+
+                                const totalPages = rowsPerPage === 0 ? 1 : Math.ceil(totalRows / rowsPerPage);
+                                if (currentPage > totalPages) currentPage = totalPages || 1;
+
+                                const start = rowsPerPage === totalRows ? 0 : (currentPage - 1) * rowsPerPage;
+                                const end = Math.min(start + rowsPerPage, totalRows);
+
+                                allRows.forEach(row => row.style.display = 'none');
+                                for (let i = start; i < end; i++) {
+                                    if (filteredRows[i]) {
+                                        filteredRows[i].style.display = '';
+                                        filteredRows[i].querySelector('.row-index').innerText = i + 1; // Update lại số thứ tự
+                                    }
+                                }
+
+                                let emptyRow = document.getElementById("emptyRow");
+                                if (totalRows === 0) {
+                                    if (!emptyRow) tbody.insertAdjacentHTML('beforeend', '<tr id="emptyRow"><td colspan="9" class="text-center py-5 text-muted">Không có dữ liệu phù hợp</td></tr>');
+                                } else if (emptyRow) emptyRow.remove();
+
+                                const infoEl = document.getElementById('paginationInfo');
+                                if (totalRows === 0) {
+                                    infoEl.innerHTML = "Không có dữ liệu";
+                                } else {
+                                    infoEl.innerHTML = `Đang hiện ${start + 1} đến ${end} của ${totalRows} dòng`;
+                                }
+
+                                const ul = document.getElementById('paginationControls');
+                                ul.innerHTML = '';
+                                if (totalPages > 1) {
+                                    ul.innerHTML += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}"><a class="page-link shadow-none text-dark" href="#" onclick="changePage(${currentPage - 1}); return false;">&laquo;</a></li>`;
+                                    for (let i = 1; i <= totalPages; i++) {
+                                        if (totalPages > 7) {
+                                            if (i !== 1 && i !== totalPages && Math.abs(i - currentPage) > 1) {
+                                                if (i === 2 || i === totalPages - 1) ul.innerHTML += `<li class="page-item disabled"><a class="page-link border-0 text-dark">...</a></li>`;
+                                                continue;
+                                            }
+                                        }
+                                        ul.innerHTML += `<li class="page-item ${i === currentPage ? 'active' : ''}"><a class="page-link shadow-none ${i === currentPage ? 'bg-secondary border-secondary text-white' : 'text-dark'}" href="#" onclick="changePage(${i}); return false;">${i}</a></li>`;
+                                    }
+                                    ul.innerHTML += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}"><a class="page-link shadow-none text-dark" href="#" onclick="changePage(${currentPage + 1}); return false;">&raquo;</a></li>`;
+                                }
+                            }
+
+                            // CÁC HÀM SỰ KIỆN BỔ TRỢ
+                            window.changePage = function (page) {
+                                currentPage = page;
+                                renderPagination();
+                            }
 
                             window.toggleAll = function (source) {
                                 const checkboxes = source.closest('.filter-options-container').querySelectorAll('.filter-check');
@@ -545,12 +625,19 @@
                                 });
                             };
 
+                            document.getElementById('pageSize')?.addEventListener('change', () => {
+                                currentPage = 1;
+                                renderPagination();
+                            });
+
+                            // Chạy lệnh khởi tạo lần đầu
                             buildDropdowns();
                             document.querySelectorAll('.filter-input, .filter-date-from, .filter-date-to').forEach(el => el.addEventListener('input', applyFilters));
                             document.querySelectorAll('.dropdown-menu').forEach(menu => menu.addEventListener('click', e => e.stopPropagation()));
+
+                            if (allRows.length > 0) applyFilters();
                         });
                     </script>
-
                     <% } %>
 
                         <%- include('../partials/modal-create-task') %>
