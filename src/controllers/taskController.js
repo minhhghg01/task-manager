@@ -235,6 +235,27 @@ module.exports = (io) => {
             }
         },
 
+        // --- API SỬA CÔNG VIỆC ---
+        apiEditTask: async (req, res) => {
+            try {
+                const taskId = req.params.id;
+                const user = req.session.user;
+
+                await TaskService.editTask(taskId, user.id, user.role, req.body, req.file);
+
+                return res.json({
+                    success: true,
+                    message: "Cập nhật công việc thành công!"
+                });
+            } catch (err) {
+                console.error("Lỗi sửa task:", err);
+                return res.status(400).json({
+                    success: false,
+                    message: err.message
+                });
+            }
+        },
+
         // 4. THỐNG KÊ NHÂN VIÊN
         listEmployeesStats: async (req, res) => {
             try {

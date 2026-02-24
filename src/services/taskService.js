@@ -220,6 +220,71 @@ class TaskService {
         return taskData;
     }
 
+    // ==========================================
+    // THÊM HÀM SỬA TASK
+    // ==========================================
+    static async editTask(taskId, userId, userRole, updateData, file) {
+        const { Task, ActivityLog } = require('../models');
+
+        // 1. Tìm task
+        const task = await Task.findByPk(taskId);
+        if (!task) throw new Error('Không tìm thấy công việc');
+
+        // 2. Kiểm tra quyền (Admin hoặc Người tạo mới được sửa)
+        const isAssigner = String(task.assigned_by) === String(userId);
+        const isAdmin = userRole === 'ADMIN';
+
+        if (!isAdmin && !isAssigner) {
+            throw new Error('Bạn không có quyền sửa công việc này!');
+        }
+
+        // 3. Xử lý ghi nhận thay đổi (để tạo Log)
+        let changes = [];
+        if (task.title !== updateData.title) changes.push(`Tiêu đề`);
+        if (task.description !== updateData.description) changes.push(`Mô tả`);
+        if (task.priority !== updateData.priority) changes.push(`Mức độ ưu tiên`);
+
+        // Xử lý ngày hạn chót
+        const oldDate = task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : '';
+        // Cắt bỏ phần giờ phút nếu updateData.due_date có chứa giờ (từ input datetime-local)
+        const newDate = updateData.due_date ? updateData.due_date.split('T')[0] : '';
+
+        if (oldDate !== newDate) changes.push(`Hạn chót`);
+
+        // Xử lý file đính kèm
+        let newAttachmentPath = task.attachment_path;
+        if (file) {
+            newAttachmentPath = '/uploads/' + file.filename;
+            changes.push(`File đính kèm`);
+        }
+
+        // Nếu không có gì thay đổi thì báo lỗi nhẹ
+        if (changes.length === 0) {
+            throw new Error('Không có thông tin nào được thay đổi.');
+        }
+
+        // 4. Cập nhật vào Database
+        await task.update({
+            title: updateData.title,
+            description: updateData.description,
+            priority: updateData.priority,
+            due_date: updateData.due_date || null,
+            attachment_path: newAttachmentPath
+        });
+
+        // 5. Ghi Log vào ActivityLog
+        await ActivityLog.create({
+            user_id: userId,
+            action: 'UPDATE_TASK',
+            entity_type: 'TASK', // Viết hoa chữ TASK cho đồng bộ với các log khác của bạn
+            entity_id: taskId,
+            details: `Đã chỉnh sửa nội dung công việc (${changes.join(', ')})`
+        });
+
+        return task;
+    }
+    // ==========================================
+
     // --- CÁC HÀM LOGIC MỚI ---
 
     // 1. THÊM NGƯỜI PHỐI HỢP

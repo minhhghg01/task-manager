@@ -171,6 +171,9 @@ module.exports = (io) => {
     // API Tạo công việc mới
     router.post('/api/tasks', requireAuth, upload.single('attachment'), taskController.apiCreateTask);
 
+    // API Sửa công việc
+    router.post('/api/tasks/:id/edit', requireAuth, upload.single('attachment'), taskController.apiEditTask);
+
     // --- ROUTES CHO NGƯỜI PHỐI HỢP & TODO LIST ---
     router.post('/tasks/:id/collaborators', taskController.apiAddCollaborator);
     router.post('/tasks/:id/collaborators/respond', taskController.apiRespondCollaborator);

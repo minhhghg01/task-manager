@@ -84,9 +84,18 @@
         </style>
 
         <div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
-            <a href="javascript:history.back()" class="btn btn-outline-secondary">&larr; Quay lại</a>
-            <h4>Chi tiết công việc #<%= task.id %>
-            </h4>
+            <div class="d-flex align-items-center gap-3">
+                <a href="javascript:history.back()" class="btn btn-outline-secondary">&larr; Quay lại</a>
+                <h4 class="mb-0">Chi tiết công việc #<%= task.id %>
+                </h4>
+            </div>
+
+            <% if (isAdmin || isAssigner) { %>
+                <button type="button" class="btn btn-outline-primary d-flex align-items-center gap-2"
+                    data-bs-toggle="modal" data-bs-target="#editTaskModal">
+                    <span data-feather="edit-2" style="width: 16px; height: 16px;"></span> Sửa công việc
+                </button>
+                <% } %>
         </div>
 
         <div class="row">
@@ -195,16 +204,16 @@
                                             <button class="btn btn-danger btn-sm">Lưu</button>
                                         </form>
                                         <div id="scoreResult" class="mt-2 text-end">
-                                            <% if(task.score !==null) { %><small class="text-success fw-bold">Đã chấm:
-                                                    <%= task.score %> điểm
-                                                </small>
+                                            <% if(task.score !==null) { %>
+                                                <small class="text-success fw-bold">Đã chấm: <%= task.score %>
+                                                        điểm</small>
                                                 <% } %>
                                         </div>
                                     </div>
                                     <% } else if (task.score !==null) { %>
-                                        <div class="alert alert-success mt-3 text-center p-2"><strong>Kết quả đánh giá:
-                                                <%= task.score %>/100 điểm
-                                            </strong></div>
+                                        <div class="alert alert-success mt-3 text-center p-2">
+                                            <strong>Kết quả đánh giá: <%= task.score %>/100 điểm</strong>
+                                        </div>
                                         <% } %>
                     </div>
                 </div>
@@ -229,11 +238,9 @@
                             style="max-height: 600px;">
 
                             <div class="tab-pane fade show active" id="collab" role="tabpanel">
-
                                 <% const canEditTodo=(typeof isAssignee !=='undefined' && isAssignee) || (typeof
                                     isAssigner !=='undefined' && isAssigner) || (typeof isAdmin !=='undefined' &&
                                     isAdmin); %>
-
                                     <div class="mb-4">
                                         <h6 class="fw-bold text-primary border-bottom pb-2">Checklist công việc</h6>
                                         <div class="list-group list-group-flush mb-2" id="todoList">
@@ -416,109 +423,212 @@
             </div>
         </div>
 
-        <script>
-            const taskId = '<%= task.id %>';
+        <% if (isAdmin || isAssigner) { %>
+            <div class="modal fade" id="editTaskModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content border-0 shadow">
+                        <div class="modal-header bg-light">
+                            <h5 class="modal-title fw-bold text-primary">Sửa thông tin công việc</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="editTaskForm" enctype="multipart/form-data">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small">Tiêu đề công việc <span
+                                            class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="title" id="editTitle"
+                                        value="<%= task.title %>" required>
+                                </div>
 
-            const rangeInput = document.getElementById('progressRange');
-            const visualBar = document.getElementById('progressVisual');
-            const valDisplay = document.getElementById('progVal');
-            if (rangeInput) {
-                rangeInput.addEventListener('input', function () { visualBar.style.width = this.value + '%'; valDisplay.innerText = this.value; });
-            }
-            const pForm = document.getElementById('progressForm');
-            if (pForm) {
-                pForm.addEventListener('submit', function (e) {
-                    e.preventDefault();
-                    const btn = document.getElementById('btnUpdateProgress');
-                    if (btn) {
-                        btn.textContent = '...'; btn.disabled = true;
-                        fetch(`/tasks/${taskId}/progress`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ progress: rangeInput.value }) })
-                            .then(r => r.json()).then(d => { if (d.success) location.reload(); else { alert('Lỗi: ' + d.message); btn.disabled = false; btn.textContent = 'Lưu'; } });
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small">Mô tả chi tiết</label>
+                                    <textarea class="form-control" name="description" id="editDescription"
+                                        rows="4"><%= task.description || '' %></textarea>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-bold small">Hạn chót (Tùy chọn)</label>
+                                        <% let formattedEditDate='' ; if (task.due_date) { let d=new
+                                            Date(task.due_date); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+                                            formattedEditDate=d.toISOString().slice(0, 16); } %>
+                                            <input type="datetime-local" class="form-control" name="due_date"
+                                                id="editDueDate" value="<%= formattedEditDate %>">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-bold small">Mức độ ưu tiên</label>
+                                        <select class="form-select" name="priority" id="editPriority">
+                                            <option value="Bình thường" <%=task.priority==='Bình thường' ? 'selected'
+                                                : '' %>>Bình thường</option>
+                                            <option value="Trung bình" <%=task.priority==='Trung bình' ? 'selected' : ''
+                                                %>>Trung bình</option>
+                                            <option value="Cao (Gấp)" <%=task.priority==='Cao (Gấp)' ? 'selected' : ''
+                                                %>>Cao (Gấp)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small">Cập nhật File đính kèm mới (Tùy
+                                        chọn)</label>
+                                    <% if(task.attachment_path) { %>
+                                        <div class="small text-muted mb-2">File hiện tại: <a
+                                                href="<%= task.attachment_path %>" target="_blank">Xem file</a> (Tải
+                                            file mới lên sẽ ghi đè file này)</div>
+                                        <% } %>
+                                            <input type="file" class="form-control" name="attachment"
+                                                id="editAttachment">
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer bg-light">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                            <button type="button" class="btn btn-primary" id="btnSubmitEditTask">Lưu thay đổi</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <% } %>
+
+                <script>
+                    const taskId = '<%= task.id %>';
+
+                    // Xử lý Progress Bar
+                    const rangeInput = document.getElementById('progressRange');
+                    const visualBar = document.getElementById('progressVisual');
+                    const valDisplay = document.getElementById('progVal');
+                    if (rangeInput) {
+                        rangeInput.addEventListener('input', function () { visualBar.style.width = this.value + '%'; valDisplay.innerText = this.value; });
                     }
-                });
-            }
-
-            const btnAddTodo = document.getElementById('btnAddTodo');
-            if (btnAddTodo) {
-                btnAddTodo.addEventListener('click', function () {
-                    const input = document.getElementById('newTodoInput');
-                    if (!input.value.trim()) return;
-                    fetch(`/tasks/${taskId}/todos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ADD', text: input.value.trim() }) })
-                        .then(r => r.json()).then(d => { if (d.success) location.reload(); else alert('Lỗi: ' + d.message || 'Không thể thêm'); });
-                });
-            }
-            document.querySelectorAll('.todo-check').forEach(chk => {
-                chk.addEventListener('change', function () {
-                    fetch(`/tasks/${taskId}/todos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'TOGGLE', todoId: this.value }) })
-                        .then(r => r.json()).then(d => {
-                            if (!d.success) {
-                                alert(d.message);
-                                this.checked = !this.checked;
-                            } else {
-                                const span = this.nextElementSibling;
-                                if (this.checked) span.classList.add('todo-done'); else span.classList.remove('todo-done');
+                    const pForm = document.getElementById('progressForm');
+                    if (pForm) {
+                        pForm.addEventListener('submit', function (e) {
+                            e.preventDefault();
+                            const btn = document.getElementById('btnUpdateProgress');
+                            if (btn) {
+                                btn.textContent = '...'; btn.disabled = true;
+                                fetch(`/tasks/${taskId}/progress`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ progress: rangeInput.value }) })
+                                    .then(r => r.json()).then(d => { if (d.success) location.reload(); else { alert('Lỗi: ' + d.message); btn.disabled = false; btn.textContent = 'Lưu'; } });
                             }
                         });
-                });
-            });
-
-            function inviteCollab(uid) {
-                if (!confirm('Mời nhân viên này?')) return;
-                fetch(`/tasks/${taskId}/collaborators`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetUserId: uid }) })
-                    .then(r => r.json()).then(d => { if (d.success) location.reload(); else alert(d.message); });
-            }
-            function respondCollab(action) {
-                let msg = action === 'ACCEPT' ? 'Xác nhận tham gia?' : (action === 'REMOVE' ? 'Rời khỏi công việc?' : 'Từ chối tham gia?');
-                if (!confirm(msg)) return;
-                fetch(`/tasks/${taskId}/collaborators/respond`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: action }) })
-                    .then(r => r.json()).then(d => { if (d.success) location.reload(); else alert(d.message); });
-            }
-            function filterUsers(input) {
-                const filter = input.value.toUpperCase();
-                const div = document.getElementById("userDropdown");
-                if (!div) return;
-                const li = div.getElementsByTagName("li");
-                for (let i = 0; i < li.length; i++) {
-                    const txt = li[i].textContent || li[i].innerText;
-                    if (txt.toUpperCase().indexOf(filter) > -1) li[i].style.display = ""; else li[i].style.display = "none";
-                }
-            }
-
-            const sForm = document.getElementById('scoreForm');
-            if (sForm) sForm.addEventListener('submit', e => {
-                e.preventDefault();
-                fetch(`/tasks/${taskId}/score`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ score: document.getElementById('scoreInput').value }) })
-                    .then(r => r.json()).then(d => { if (d.success) { alert('Đã chấm điểm!'); location.reload(); } });
-            });
-            const cForm = document.getElementById('commentForm');
-            if (cForm) cForm.addEventListener('submit', e => {
-                e.preventDefault();
-                const inp = document.getElementById('commentInput');
-                if (!inp.value.trim()) return;
-                fetch(`/tasks/${taskId}/comment`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: inp.value }) })
-                    .then(r => r.json()).then(d => { if (d.success) location.reload(); });
-            });
-
-            // [MỚI] SCRIPT GIỮ TRẠNG THÁI TAB SAU KHI RELOAD
-            document.addEventListener("DOMContentLoaded", function () {
-                // 1. Khôi phục tab
-                var activeTab = localStorage.getItem('activeTaskTab');
-                if (activeTab) {
-                    var tabTrigger = document.querySelector(`button[data-bs-target="${activeTab}"]`);
-                    if (tabTrigger) {
-                        var tab = new bootstrap.Tab(tabTrigger);
-                        tab.show();
                     }
-                }
 
-                // 2. Lưu tab khi click
-                var tabEl = document.querySelectorAll('button[data-bs-toggle="tab"]');
-                tabEl.forEach(function (el) {
-                    el.addEventListener('shown.bs.tab', function (event) {
-                        localStorage.setItem('activeTaskTab', event.target.getAttribute('data-bs-target'));
+                    // Xử lý Todos
+                    const btnAddTodo = document.getElementById('btnAddTodo');
+                    if (btnAddTodo) {
+                        btnAddTodo.addEventListener('click', function () {
+                            const input = document.getElementById('newTodoInput');
+                            if (!input.value.trim()) return;
+                            fetch(`/tasks/${taskId}/todos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ADD', text: input.value.trim() }) })
+                                .then(r => r.json()).then(d => { if (d.success) location.reload(); else alert('Lỗi: ' + d.message || 'Không thể thêm'); });
+                        });
+                    }
+                    document.querySelectorAll('.todo-check').forEach(chk => {
+                        chk.addEventListener('change', function () {
+                            fetch(`/tasks/${taskId}/todos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'TOGGLE', todoId: this.value }) })
+                                .then(r => r.json()).then(d => {
+                                    if (!d.success) {
+                                        alert(d.message);
+                                        this.checked = !this.checked;
+                                    } else {
+                                        const span = this.nextElementSibling;
+                                        if (this.checked) span.classList.add('todo-done'); else span.classList.remove('todo-done');
+                                    }
+                                });
+                        });
                     });
-                });
-            });
-        </script>
 
-        <%- include('../partials/footer') %>
+                    // Xử lý Collaborators
+                    function inviteCollab(uid) {
+                        if (!confirm('Mời nhân viên này?')) return;
+                        fetch(`/tasks/${taskId}/collaborators`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetUserId: uid }) })
+                            .then(r => r.json()).then(d => { if (d.success) location.reload(); else alert(d.message); });
+                    }
+                    function respondCollab(action) {
+                        let msg = action === 'ACCEPT' ? 'Xác nhận tham gia?' : (action === 'REMOVE' ? 'Rời khỏi công việc?' : 'Từ chối tham gia?');
+                        if (!confirm(msg)) return;
+                        fetch(`/tasks/${taskId}/collaborators/respond`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: action }) })
+                            .then(r => r.json()).then(d => { if (d.success) location.reload(); else alert(d.message); });
+                    }
+                    function filterUsers(input) {
+                        const filter = input.value.toUpperCase();
+                        const div = document.getElementById("userDropdown");
+                        if (!div) return;
+                        const li = div.getElementsByTagName("li");
+                        for (let i = 0; i < li.length; i++) {
+                            const txt = li[i].textContent || li[i].innerText;
+                            if (txt.toUpperCase().indexOf(filter) > -1) li[i].style.display = ""; else li[i].style.display = "none";
+                        }
+                    }
+
+                    // Xử lý Điểm và Comment
+                    const sForm = document.getElementById('scoreForm');
+                    if (sForm) sForm.addEventListener('submit', e => {
+                        e.preventDefault();
+                        fetch(`/tasks/${taskId}/score`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ score: document.getElementById('scoreInput').value }) })
+                            .then(r => r.json()).then(d => { if (d.success) { alert('Đã chấm điểm!'); location.reload(); } });
+                    });
+                    const cForm = document.getElementById('commentForm');
+                    if (cForm) cForm.addEventListener('submit', e => {
+                        e.preventDefault();
+                        const inp = document.getElementById('commentInput');
+                        if (!inp.value.trim()) return;
+                        fetch(`/tasks/${taskId}/comment`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: inp.value }) })
+                            .then(r => r.json()).then(d => { if (d.success) location.reload(); });
+                    });
+
+                    // Giữ trạng thái Tab
+                    document.addEventListener("DOMContentLoaded", function () {
+                        var activeTab = localStorage.getItem('activeTaskTab');
+                        if (activeTab) {
+                            var tabTrigger = document.querySelector(`button[data-bs-target="${activeTab}"]`);
+                            if (tabTrigger) {
+                                var tab = new bootstrap.Tab(tabTrigger);
+                                tab.show();
+                            }
+                        }
+                        var tabEl = document.querySelectorAll('button[data-bs-toggle="tab"]');
+                        tabEl.forEach(function (el) {
+                            el.addEventListener('shown.bs.tab', function (event) {
+                                localStorage.setItem('activeTaskTab', event.target.getAttribute('data-bs-target'));
+                            });
+                        });
+
+                        // [MỚI] Gọi API sửa task
+                        const btnSubmitEdit = document.getElementById('btnSubmitEditTask');
+                        if (btnSubmitEdit) {
+                            btnSubmitEdit.addEventListener('click', async function () {
+                                const form = document.getElementById('editTaskForm');
+                                if (!document.getElementById('editTitle').value.trim()) {
+                                    alert('Vui lòng nhập tiêu đề công việc!');
+                                    return;
+                                }
+                                const formData = new FormData(form);
+                                btnSubmitEdit.disabled = true;
+                                btnSubmitEdit.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Đang lưu...';
+                                try {
+                                    const response = await fetch(`/api/tasks/${taskId}/edit`, {
+                                        method: 'POST',
+                                        body: formData
+                                    });
+                                    const result = await response.json();
+                                    if (result.success) {
+                                        alert(result.message);
+                                        window.location.reload();
+                                    } else {
+                                        alert('Lỗi: ' + result.message);
+                                        btnSubmitEdit.disabled = false;
+                                        btnSubmitEdit.innerText = 'Lưu thay đổi';
+                                    }
+                                } catch (error) {
+                                    console.error('Error:', error);
+                                    alert('Lỗi kết nối máy chủ!');
+                                    btnSubmitEdit.disabled = false;
+                                    btnSubmitEdit.innerText = 'Lưu thay đổi';
+                                }
+                            });
+                        }
+                    });
+                </script>
+
+                <%- include('../partials/footer') %>
