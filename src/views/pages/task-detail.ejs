@@ -471,13 +471,28 @@
                                 <div class="mb-3">
                                     <label class="form-label fw-bold small">Cập nhật File đính kèm mới (Tùy
                                         chọn)</label>
+
                                     <% if(task.attachment_path) { %>
-                                        <div class="small text-muted mb-2">File hiện tại: <a
-                                                href="<%= task.attachment_path %>" target="_blank">Xem file</a> (Tải
-                                            file mới lên sẽ ghi đè file này)</div>
+                                        <div class="small text-muted mb-2 p-2 border rounded bg-light">
+                                            <div>File hiện tại: <a href="<%= task.attachment_path %>" target="_blank"
+                                                    class="fw-bold">Xem file</a></div>
+
+                                            <div class="form-check mt-2">
+                                                <input class="form-check-input border-danger" type="checkbox"
+                                                    name="remove_attachment" id="removeAttachment" value="true">
+                                                <label class="form-check-label text-danger fw-bold"
+                                                    for="removeAttachment">
+                                                    <i data-feather="trash-2" style="width: 14px; height: 14px;"></i> Gỡ
+                                                    bỏ file đính kèm này
+                                                </label>
+                                            </div>
+                                        </div>
                                         <% } %>
+
                                             <input type="file" class="form-control" name="attachment"
                                                 id="editAttachment">
+                                            <small class="text-muted fst-italic">Tải file mới lên sẽ tự động ghi đè file
+                                                cũ (bỏ qua nút gỡ).</small>
                                 </div>
                             </form>
                         </div>
@@ -577,8 +592,9 @@
                             .then(r => r.json()).then(d => { if (d.success) location.reload(); });
                     });
 
-                    // Giữ trạng thái Tab
+                    // Giữ trạng thái Tab & Gọi API Sửa Task
                     document.addEventListener("DOMContentLoaded", function () {
+                        // Giữ Tab
                         var activeTab = localStorage.getItem('activeTaskTab');
                         if (activeTab) {
                             var tabTrigger = document.querySelector(`button[data-bs-target="${activeTab}"]`);
@@ -594,7 +610,7 @@
                             });
                         });
 
-                        // [MỚI] Gọi API sửa task
+                        // Gọi API Sửa Task
                         const btnSubmitEdit = document.getElementById('btnSubmitEditTask');
                         if (btnSubmitEdit) {
                             btnSubmitEdit.addEventListener('click', async function () {

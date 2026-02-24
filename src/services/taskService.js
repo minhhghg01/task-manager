@@ -225,6 +225,8 @@ class TaskService {
     // ==========================================
     static async editTask(taskId, userId, userRole, updateData, file) {
         const { Task, ActivityLog } = require('../models');
+        const fs = require('fs');
+        const path = require('path');
 
         // 1. Tìm task
         const task = await Task.findByPk(taskId);
@@ -251,11 +253,29 @@ class TaskService {
 
         if (oldDate !== newDate) changes.push(`Hạn chót`);
 
-        // Xử lý file đính kèm
+        // --- [MỚI] XỬ LÝ FILE ĐÍNH KÈM & XÓA FILE ---
         let newAttachmentPath = task.attachment_path;
+
         if (file) {
             newAttachmentPath = '/uploads/' + file.filename;
-            changes.push(`File đính kèm`);
+            changes.push(`Cập nhật file đính kèm mới`);
+        } else if (updateData.remove_attachment === 'true') {
+            // Nếu người dùng tick chọn "Gỡ bỏ file"
+            newAttachmentPath = null;
+            changes.push(`Gỡ bỏ file đính kèm`);
+
+            // Xóa file vật lý trên server để giải phóng dung lượng
+            if (task.attachment_path) {
+                try {
+                    // Cấu trúc path này giả định thư mục uploads nằm ở thư mục public gốc: /public/uploads/
+                    const filePath = path.join(__dirname, '../../public', task.attachment_path);
+                    if (fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath);
+                    }
+                } catch (err) {
+                    console.error("Lỗi xóa file vật lý:", err);
+                }
+            }
         }
 
         // Nếu không có gì thay đổi thì báo lỗi nhẹ
@@ -276,7 +296,7 @@ class TaskService {
         await ActivityLog.create({
             user_id: userId,
             action: 'UPDATE_TASK',
-            entity_type: 'TASK', // Viết hoa chữ TASK cho đồng bộ với các log khác của bạn
+            entity_type: 'TASK', // Viết hoa chữ TASK cho đồng bộ với các log khác
             entity_id: taskId,
             details: `Đã chỉnh sửa nội dung công việc (${changes.join(', ')})`
         });
