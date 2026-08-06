@@ -27,13 +27,108 @@
         .navbar .nav-link:hover {
             color: #fff;
         }
+
+        /* --- COLLAPSED SIDEBAR FOR DESKTOP --- */
+        @media (min-width: 768px) {
+            .brand-container {
+                transition: all 0.3s ease;
+            }
+            .sidebar {
+                transition: all 0.3s ease;
+            }
+            main {
+                transition: all 0.3s ease;
+            }
+
+            body.sidebar-collapsed .brand-container {
+                width: 70px !important;
+                max-width: 70px !important;
+                flex: 0 0 70px !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                justify-content: center !important;
+            }
+            body.sidebar-collapsed .brand-container a.navbar-brand {
+                display: none !important;
+            }
+            body.sidebar-collapsed .brand-container #toggleSidebarBtn {
+                margin-left: 0 !important;
+            }
+
+            body.sidebar-collapsed #sidebarMenu {
+                width: 70px !important;
+                max-width: 70px !important;
+                flex: 0 0 70px !important;
+            }
+            body.sidebar-collapsed main {
+                width: calc(100% - 70px) !important;
+                max-width: calc(100% - 70px) !important;
+                flex: 0 0 calc(100% - 70px) !important;
+                margin-left: 0 !important;
+            }
+            body.sidebar-collapsed #sidebarMenu .sidebar-heading {
+                display: none !important;
+            }
+            body.sidebar-collapsed #sidebarMenu .nav-link {
+                text-align: center;
+                padding: 10px 0;
+                font-size: 0 !important;
+            }
+            body.sidebar-collapsed #sidebarMenu .nav-link span {
+                display: none !important;
+            }
+            body.sidebar-collapsed #sidebarMenu .nav-link span[data-feather] {
+                display: inline-block !important;
+                margin-right: 0 !important;
+                width: 20px;
+                height: 20px;
+            }
+        }
+
+        /* --- SCROLL SHOW/HIDE ANIMATION FOR HEADER & FOOTER --- */
+        header.navbar {
+            transition: transform 0.3s ease, background-color 0.3s ease !important;
+        }
+        .fixed-bottom-footer {
+            transition: transform 0.3s ease, background-color 0.3s ease !important;
+        }
+        body.scroll-down header.navbar {
+            transform: translateY(-100%);
+        }
+        body.scroll-down .fixed-bottom-footer {
+            transform: translateY(100%);
+        }
+
+        /* --- MOBILE GENERAL OPTIMIZATIONS --- */
+        @media (max-width: 767.98px) {
+            .table {
+                display: block;
+                width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .container-fluid {
+                padding-left: 8px !important;
+                padding-right: 8px !important;
+            }
+            main {
+                padding-left: 8px !important;
+                padding-right: 8px !important;
+                padding-top: 15px !important;
+            }
+        }
     </style>
 </head>
 
 <body data-userid="<%= (typeof user !== 'undefined' && user) ? user.id : '' %>">
 
     <header class="navbar navbar-dark sticky-top bg-primary flex-md-nowrap p-0 shadow">
-        <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3" href="/dashboard">Quản Lý Công Việc</a>
+        <div class="d-flex align-items-center col-md-3 col-lg-2 px-3 brand-container">
+            <a class="navbar-brand me-0" href="/dashboard">Quản Lý Công Việc</a>
+            <button class="btn btn-link text-white p-0 d-none d-md-inline-block ms-auto" id="toggleSidebarBtn" style="box-shadow: none;">
+                <i data-feather="menu" style="width: 20px; height: 20px;"></i>
+            </button>
+        </div>
 
         <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-bs-toggle="collapse"
             data-bs-target="#sidebarMenu">
@@ -153,5 +248,33 @@
                                 sidebar.classList.add('bg-light');
                             }
                         });
+
+                        // 3. Xử lý Thu gọn Sidebar
+                        const toggleBtn = document.getElementById('toggleSidebarBtn');
+                        if (toggleBtn) {
+                            toggleBtn.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                document.body.classList.toggle('sidebar-collapsed');
+                                const isCollapsed = document.body.classList.contains('sidebar-collapsed');
+                                localStorage.setItem('sidebarCollapsed', isCollapsed ? 'true' : 'false');
+                            });
+                            
+                            // Khôi phục trạng thái thu gọn khi load trang
+                            if (localStorage.getItem('sidebarCollapsed') === 'true') {
+                                document.body.classList.add('sidebar-collapsed');
+                            }
+                        }
+
+                        // 4. Xử lý Tạm ẩn Header & Footer khi cuộn chuột (Scroll Down Hide, Scroll Up Show)
+                        let lastScrollTop = 0;
+                        window.addEventListener('scroll', () => {
+                            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                            if (scrollTop > lastScrollTop && scrollTop > 100) {
+                                document.body.classList.add('scroll-down');
+                            } else if (scrollTop < lastScrollTop) {
+                                document.body.classList.remove('scroll-down');
+                            }
+                            lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
+                        }, { passive: true });
                     });
                 </script>

@@ -213,7 +213,7 @@ module.exports = (io) => {
     // ============================================================
     // 8. CONTACT PAGE
     // ============================================================
-    router.get('/contact', requireAuth, (req, res) => {
+    router.get('/contact', (req, res) => {
         res.render('pages/contact');
     });
 
