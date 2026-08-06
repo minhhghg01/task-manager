@@ -5,6 +5,7 @@ const Task = require('./Task');
 const TaskAttachment = require('./TaskAttachment');
 const TaskComment = require('./TaskComment');
 const ActivityLog = require('./ActivityLog');
+const TaskTemplate = require('./TaskTemplate');
 
 // --- DEFINING ASSOCIATIONS ---
 
@@ -32,6 +33,10 @@ TaskComment.belongsTo(User, { foreignKey: 'user_id' });
 User.hasMany(ActivityLog, { foreignKey: 'user_id' });
 ActivityLog.belongsTo(User, { foreignKey: 'user_id' });
 
+// 7. User & TaskTemplate (Who created the template)
+User.hasMany(TaskTemplate, { foreignKey: 'created_by', as: 'CreatedTemplates' });
+TaskTemplate.belongsTo(User, { foreignKey: 'created_by', as: 'Creator' });
+
 // Export all models
 module.exports = {
     sequelize,
@@ -40,5 +45,6 @@ module.exports = {
     Task,
     TaskAttachment,
     TaskComment,
-    ActivityLog
+    ActivityLog,
+    TaskTemplate
 };

@@ -12,6 +12,30 @@
                 </div>
 
                 <div class="modal-body">
+                    <!-- Khu vực chọn mẫu nhanh -->
+                    <div class="mb-3 p-3 bg-light border rounded">
+                        <label class="form-label fw-bold text-primary d-flex align-items-center gap-1">
+                            <span data-feather="file-text" style="width: 18px; height: 18px;"></span> Chọn mẫu công việc nhanh
+                        </label>
+                        <div class="row g-2 align-items-center">
+                            <div class="col-md-6 d-flex gap-2">
+                                <select id="templateSelect" class="form-select">
+                                    <option value="">-- Chọn mẫu công việc nhanh (Hoặc tự nhập) --</option>
+                                </select>
+                                <button type="button" id="btnDeleteTemplate" class="btn btn-outline-danger btn-sm" title="Xóa mẫu đang chọn" style="display: none;">
+                                    <span data-feather="trash-2" style="width: 16px; height: 16px;"></span>
+                                </button>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <input type="text" id="templateNameInput" class="form-control form-control-sm" placeholder="Nhập tên mẫu mới...">
+                                    <button type="button" id="btnSaveAsTemplate" class="btn btn-outline-primary btn-sm">
+                                        <span data-feather="save" style="width: 16px; height: 16px;"></span> Lưu mẫu mới
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="row">
                         <div class="col-md-8 mb-3">
@@ -137,12 +161,159 @@
 
         let preSelectUserId = null;
 
+        // --- XỬ LÝ MẪU CÔNG VIỆC CHUNG (TEMPLATE) ---
+        const templateSelect = document.getElementById('templateSelect');
+        const btnDeleteTemplate = document.getElementById('btnDeleteTemplate');
+        const btnSaveAsTemplate = document.getElementById('btnSaveAsTemplate');
+
+        let loadedTemplates = [];
+
+        function loadTemplates(selectedId = null) {
+            if (!templateSelect) return;
+            fetch('/api/templates')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        loadedTemplates = data.templates || [];
+                        templateSelect.innerHTML = '<option value="">-- Chọn mẫu công việc nhanh (Hoặc tự nhập) --</option>';
+                        loadedTemplates.forEach(t => {
+                            const option = document.createElement('option');
+                            option.value = t.id;
+                            option.textContent = t.name;
+                            templateSelect.appendChild(option);
+                        });
+                        
+                        if (selectedId) {
+                            templateSelect.value = selectedId;
+                            templateSelect.dispatchEvent(new Event('change'));
+                        } else {
+                            if (btnDeleteTemplate) btnDeleteTemplate.style.display = 'none';
+                        }
+                        if (typeof feather !== 'undefined') feather.replace();
+                    }
+                })
+                .catch(err => console.error("Lỗi tải mẫu:", err));
+        }
+
+        if (templateSelect) {
+            templateSelect.addEventListener('change', function () {
+                const val = this.value;
+                if (!val) {
+                    if (btnDeleteTemplate) btnDeleteTemplate.style.display = 'none';
+                    return;
+                }
+
+                const selected = loadedTemplates.find(t => String(t.id) === String(val));
+                if (selected) {
+                    const titleInput = form.querySelector('input[name="title"]');
+                    const descInput = form.querySelector('textarea[name="description"]');
+                    const priorityInput = form.querySelector('select[name="priority"]');
+                    const tagsInput = form.querySelector('input[name="tags"]');
+
+                    if (titleInput) titleInput.value = selected.title || '';
+                    if (descInput) descInput.value = selected.description || '';
+                    if (priorityInput) priorityInput.value = selected.priority || 'Trung bình';
+                    if (tagsInput) tagsInput.value = selected.tags || '';
+
+                    // Kiểm tra xem user hiện tại là người tạo hoặc admin để hiện nút xóa
+                    const currentUserId = '<%= user.id %>';
+                    const currentUserRole = '<%= user.role %>';
+                    if (currentUserRole === 'ADMIN' || String(selected.created_by) === String(currentUserId)) {
+                        if (btnDeleteTemplate) btnDeleteTemplate.style.display = 'block';
+                    } else {
+                        if (btnDeleteTemplate) btnDeleteTemplate.style.display = 'none';
+                    }
+                }
+            });
+        }
+
+        if (btnSaveAsTemplate) {
+            btnSaveAsTemplate.addEventListener('click', function () {
+                const titleInput = form.querySelector('input[name="title"]');
+                const descInput = form.querySelector('textarea[name="description"]');
+                const priorityInput = form.querySelector('select[name="priority"]');
+                const tagsInput = form.querySelector('input[name="tags"]');
+                const templateNameInput = document.getElementById('templateNameInput');
+
+                const titleVal = titleInput ? titleInput.value.trim() : '';
+                if (!titleVal) {
+                    alert('Vui lòng nhập Tiêu đề công việc trước khi lưu thành Mẫu!');
+                    if (titleInput) titleInput.focus();
+                    return;
+                }
+
+                const templateName = templateNameInput ? templateNameInput.value.trim() : '';
+                if (!templateName) {
+                    alert('Vui lòng nhập tên gợi nhớ cho Mẫu công việc trước khi lưu!');
+                    if (templateNameInput) templateNameInput.focus();
+                    return;
+                }
+
+                const bodyData = {
+                    name: templateName,
+                    title: titleVal,
+                    description: descInput ? descInput.value.trim() : '',
+                    priority: priorityInput ? priorityInput.value : 'Trung bình',
+                    tags: tagsInput ? tagsInput.value.trim() : ''
+                };
+
+                fetch('/api/templates', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bodyData)
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        if (templateNameInput) templateNameInput.value = '';
+                        loadTemplates(data.template.id);
+                    } else {
+                        alert('Lỗi: ' + data.message);
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Lỗi kết nối máy chủ!');
+                });
+            });
+        }
+
+        if (btnDeleteTemplate) {
+            btnDeleteTemplate.addEventListener('click', function () {
+                const val = templateSelect.value;
+                if (!val) return;
+
+                if (!confirm('Bạn có chắc chắn muốn xóa mẫu công việc này?')) return;
+
+                fetch(`/api/templates/${val}`, { method: 'DELETE' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        loadTemplates();
+                    } else {
+                        alert('Lỗi: ' + data.message);
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Lỗi kết nối máy chủ!');
+                });
+            });
+        }
+
         // 1. KHI MỞ MODAL
         modal.addEventListener('show.bs.modal', function (event) {
             const button = event.relatedTarget;
-            preSelectUserId = button ? button.getAttribute('data-preselect') : null;
 
-            // [MỚI] Kiểm tra xem có phải bấm từ nút "Tự tạo việc" không?
+            // Xóa dữ liệu copy nếu mở từ nút bình thường
+            if (event && event.relatedTarget) {
+                window.copyTaskData = null;
+                window.copyTaskAssignedTo = null;
+            }
+
+            preSelectUserId = button ? button.getAttribute('data-preselect') : null;
             const isAutoSelf = button ? button.getAttribute('data-auto-self') === 'true' : false;
 
             // Reset trạng thái ban đầu
@@ -156,26 +327,71 @@
             listContainer.style.opacity = '1';
             listContainer.style.pointerEvents = 'auto';
 
+            // Tải danh sách mẫu
+            loadTemplates();
+
             // --- LOGIC TỰ ĐỘNG TICK "TÔI TỰ LÀM" ---
             if (isAutoSelf && selfAssignCheck) {
                 selfAssignCheck.checked = true;
-                // Kích hoạt sự kiện change để chạy logic khóa danh sách (bên dưới)
                 selfAssignCheck.dispatchEvent(new Event('change'));
             }
-            // ---------------------------------------
 
             // --- LOGIC THỜI GIAN ---
             const now = new Date();
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
             const currentDateTime = now.toISOString().slice(0, 16);
 
+            // Tự nhập deadline là 23:59:59 today()
+            const todayEnd = new Date();
+            todayEnd.setHours(23, 59, 59, 999);
+            const y = todayEnd.getFullYear();
+            const m = String(todayEnd.getMonth() + 1).padStart(2, '0');
+            const d = String(todayEnd.getDate()).padStart(2, '0');
+            const h = String(todayEnd.getHours()).padStart(2, '0');
+            const min = String(todayEnd.getMinutes()).padStart(2, '0');
+            const defaultDueDate = `${y}-${m}-${d}T${h}:${min}`;
+
             if (startDateInput) {
                 startDateInput.value = currentDateTime;
                 startDateInput.min = currentDateTime;
             }
             if (dueDateInput) {
-                dueDateInput.value = "";
+                dueDateInput.value = defaultDueDate;
                 dueDateInput.min = currentDateTime;
+            }
+
+            // --- XỬ LÝ ĐIỀN THÔNG TIN SAO CHÉP (COPY) ---
+            const titleInput = form.querySelector('input[name="title"]');
+            const descInput = form.querySelector('textarea[name="description"]');
+            const priorityInput = form.querySelector('select[name="priority"]');
+            const tagsInput = form.querySelector('input[name="tags"]');
+
+            if (window.copyTaskData) {
+                const data = window.copyTaskData;
+                if (titleInput) titleInput.value = data.title || '';
+                if (descInput) descInput.value = data.description || '';
+                if (priorityInput) priorityInput.value = data.priority || 'Trung bình';
+                if (tagsInput) tagsInput.value = data.tags || '';
+
+                const currentUserId = '<%= user.id %>';
+                const assigneeIds = data.assignedTo || [];
+                const isSelf = assigneeIds.map(String).includes(String(currentUserId));
+
+                if (isSelf && selfAssignCheck) {
+                    selfAssignCheck.checked = true;
+                    selfAssignCheck.dispatchEvent(new Event('change'));
+                } else if (selfAssignCheck) {
+                    selfAssignCheck.checked = false;
+                    selfAssignCheck.dispatchEvent(new Event('change'));
+                }
+
+                window.copyTaskAssignedTo = assigneeIds;
+            } else {
+                if (titleInput && !isAutoSelf) titleInput.value = '';
+                if (descInput && !isAutoSelf) descInput.value = '';
+                if (priorityInput && !isAutoSelf) priorityInput.value = 'Trung bình';
+                if (tagsInput && !isAutoSelf) tagsInput.value = '';
+                window.copyTaskAssignedTo = null;
             }
 
             loadUsers();
@@ -194,10 +410,10 @@
                 const checkboxes = listContainer.querySelectorAll('.user-checkbox');
                 checkboxes.forEach(cb => {
                     cb.disabled = isSelf;
-                    if (isSelf) cb.checked = false; // Bỏ chọn mọi người khác
+                    if (isSelf) cb.checked = false;
                 });
 
-                // Hiệu ứng mờ đi để biết là đang bị khóa
+                // Hiệu ứng mờ đi
                 if (isSelf) {
                     listContainer.style.opacity = '0.5';
                     listContainer.style.pointerEvents = 'none';
@@ -219,11 +435,18 @@
 
                     if (data.users && data.users.length > 0) {
                         data.users.forEach(u => {
-                            // Nếu đang chọn "Tự làm" thì các checkbox sinh ra phải bị disabled ngay
                             const isSelfMode = selfAssignCheck ? selfAssignCheck.checked : false;
                             const disabledAttr = isSelfMode ? 'disabled' : '';
 
-                            const isChecked = (preSelectUserId && String(preSelectUserId) === String(u.id)) ? 'checked' : '';
+                            // Check nếu thuộc danh sách được chọn (bao gồm trường hợp copy hoặc pre-select)
+                            let isChecked = false;
+                            if (preSelectUserId && String(preSelectUserId) === String(u.id)) {
+                                isChecked = true;
+                            } else if (window.copyTaskAssignedTo && window.copyTaskAssignedTo.map(String).includes(String(u.id))) {
+                                isChecked = true;
+                            }
+
+                            const checkedAttr = isChecked ? 'checked' : '';
                             const bgClass = isChecked ? 'bg-warning bg-opacity-10' : 'bg-white';
 
                             const div = document.createElement('div');
@@ -232,7 +455,7 @@
                             div.innerHTML = `
                                 <div class="me-2">
                                     <input class="form-check-input user-checkbox" type="checkbox" 
-                                           name="assigned_to" value="${u.id}" id="user_${u.id}" ${isChecked} ${disabledAttr}
+                                           name="assigned_to" value="${u.id}" id="user_${u.id}" ${checkedAttr} ${disabledAttr}
                                            style="width: 1.2em; height: 1.2em; cursor: pointer;">
                                 </div>
                                 <label class="flex-grow-1 mb-0" style="cursor:pointer; user-select: none;" for="user_${u.id}">
@@ -244,7 +467,6 @@
                         });
                         if (typeof feather !== 'undefined') feather.replace();
                     } else {
-                        // Nếu không có nhân viên cấp dưới (VD: là STAFF), vẫn hiện thông báo nhưng không lỗi
                         listContainer.innerHTML = '<p class="text-muted text-center mb-0 small">Bạn chưa có nhân viên cấp dưới.</p>';
                     }
                 })
@@ -262,15 +484,14 @@
             });
         }
 
-        // 5. XỬ LÝ SUBMIT BẰNG AJAX (ĐÃ SỬA)
+        // 5. XỬ LÝ SUBMIT BẰNG AJAX
         if (form) {
             form.addEventListener('submit', async function (e) {
-                e.preventDefault(); // CHẶN RELOAD TRANG
+                e.preventDefault();
 
                 const btnSubmit = form.querySelector('button[type="submit"]');
                 const originalBtnText = btnSubmit.innerHTML;
 
-                // 1. Validate sơ bộ
                 const isSelf = selfAssignCheck ? selfAssignCheck.checked : false;
                 const checked = document.querySelectorAll('.user-checkbox:checked');
 
@@ -285,7 +506,6 @@
                     return;
                 }
 
-                // 2. Gửi dữ liệu bằng AJAX
                 try {
                     btnSubmit.disabled = true;
                     btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang xử lý...';
@@ -300,10 +520,8 @@
                     const result = await response.json();
 
                     if (result.success) {
-                        // Thành công -> Mới reload trang
                         window.location.reload();
                     } else {
-                        // Thất bại -> Hiện Alert báo lỗi và GIỮ NGUYÊN FORM
                         alert(result.message || 'Có lỗi xảy ra!');
                     }
 
@@ -311,7 +529,6 @@
                     console.error(err);
                     alert('Lỗi kết nối đến máy chủ!');
                 } finally {
-                    // Khôi phục nút bấm
                     btnSubmit.disabled = false;
                     btnSubmit.innerHTML = originalBtnText;
                 }

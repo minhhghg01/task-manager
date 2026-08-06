@@ -90,12 +90,18 @@
                 </h4>
             </div>
 
-            <% if (isAdmin || isAssigner) { %>
-                <button type="button" class="btn btn-outline-primary d-flex align-items-center gap-2"
-                    data-bs-toggle="modal" data-bs-target="#editTaskModal">
-                    <span data-feather="edit-2" style="width: 16px; height: 16px;"></span> Sửa công việc
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-success d-flex align-items-center gap-2"
+                    id="btnCopyTask">
+                    <span data-feather="copy" style="width: 16px; height: 16px;"></span> Sao chép việc
                 </button>
-                <% } %>
+                <% if (isAdmin || isAssigner) { %>
+                    <button type="button" class="btn btn-outline-primary d-flex align-items-center gap-2"
+                        data-bs-toggle="modal" data-bs-target="#editTaskModal">
+                        <span data-feather="edit-2" style="width: 16px; height: 16px;"></span> Sửa công việc
+                    </button>
+                    <% } %>
+            </div>
         </div>
 
         <div class="row">
@@ -644,7 +650,27 @@
                                 }
                             });
                         }
+
+                        // Xử lý nút Sao chép việc
+                        const btnCopyTask = document.getElementById('btnCopyTask');
+                        if (btnCopyTask) {
+                            btnCopyTask.addEventListener('click', function () {
+                                const taskData = {
+                                    title: `<%= task.title.replace(/\\/g, '\\\\').replace(/'/g, "\\'") %>`,
+                                    description: `<%- (task.description || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r') %>`,
+                                    priority: `<%= task.priority %>`,
+                                    tags: `<%= task.tags || '' %>`,
+                                    assignedTo: <%- task.assigned_to || '[]' %>
+                                };
+                                
+                                window.copyTaskData = taskData;
+                                
+                                const createModal = new bootstrap.Modal(document.getElementById('createTaskModal'));
+                                createModal.show();
+                            });
+                        }
                     });
                 </script>
 
+                <%- include('../partials/modal-create-task') %>
                 <%- include('../partials/footer') %>

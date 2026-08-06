@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
+const { TaskTemplate } = require('../models');
 
 // Import Controller Factory
 const taskControllerFactory = require('../controllers/taskController');
@@ -35,6 +36,68 @@ module.exports = (io) => {
         } catch (error) {
             console.error(error);
             res.status(500).json({ error: error.message });
+        }
+    });
+
+    // --- API QUẢN LÝ MẪU CÔNG VIỆC CHUNG ---
+    
+    // Lấy danh sách mẫu
+    router.get('/templates', async (req, res) => {
+        try {
+            if (!req.session.user) return res.status(401).json({ success: false, message: 'Chưa đăng nhập' });
+            
+            const templates = await TaskTemplate.findAll({
+                order: [['created_at', 'DESC']]
+            });
+            res.json({ success: true, templates });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ success: false, message: error.message });
+        }
+    });
+
+    // Tạo mẫu mới
+    router.post('/templates', async (req, res) => {
+        try {
+            if (!req.session.user) return res.status(401).json({ success: false, message: 'Chưa đăng nhập' });
+            
+            const { name, title, description, priority, tags } = req.body;
+            if (!name) return res.status(400).json({ success: false, message: 'Vui lòng cung cấp tên mẫu!' });
+
+            const template = await TaskTemplate.create({
+                name: name,
+                title: title || '',
+                description: description || '',
+                priority: priority || 'Trung bình',
+                tags: tags || '',
+                created_by: req.session.user.id
+            });
+
+            res.json({ success: true, message: 'Lưu mẫu công việc thành công!', template });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ success: false, message: error.message });
+        }
+    });
+
+    // Xóa mẫu
+    router.delete('/templates/:id', async (req, res) => {
+        try {
+            if (!req.session.user) return res.status(401).json({ success: false, message: 'Chưa đăng nhập' });
+            
+            const template = await TaskTemplate.findByPk(req.params.id);
+            if (!template) return res.status(404).json({ success: false, message: 'Không tìm thấy mẫu!' });
+
+            // Chỉ ADMIN hoặc Người tạo mới được xóa mẫu
+            if (req.session.user.role !== 'ADMIN' && template.created_by !== req.session.user.id) {
+                return res.status(403).json({ success: false, message: 'Bạn không có quyền xóa mẫu này!' });
+            }
+
+            await template.destroy();
+            res.json({ success: true, message: 'Đã xóa mẫu công việc thành công!' });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ success: false, message: error.message });
         }
     });
 
