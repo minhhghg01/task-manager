@@ -210,5 +210,12 @@ module.exports = (io) => {
     // ============================================================
     router.get('/admin/logs', requireAuth, requireAdmin, AdminController.listLogs);
 
+    // ============================================================
+    // 8. CONTACT PAGE
+    // ============================================================
+    router.get('/contact', requireAuth, (req, res) => {
+        res.render('pages/contact');
+    });
+
     return router;
 };

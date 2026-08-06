@@ -45,6 +45,11 @@ const apiRoutes = require('./src/routes/api')(io);
 app.use('/', webRoutes);
 app.use('/api', apiRoutes);
 
+// Catch-all 404 handler
+app.use((req, res, next) => {
+    res.status(404).render('pages/404');
+});
+
 // 3. Socket.io Logic
 io.on('connection', (socket) => {
     // Khi client join room theo User ID của họ
@@ -57,7 +62,7 @@ io.on('connection', (socket) => {
 });
 
 // 4. Khởi động Server & Seed Data (Tạo Admin mặc định)
-sequelize.sync({ alter: true }).then(async () => {
+sequelize.sync().then(async () => {
     console.log('--- Database đã đồng bộ ---');
 
     // Gọi hàm tạo dữ liệu mẫu
