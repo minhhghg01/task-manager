@@ -8,7 +8,8 @@ const TaskTemplate = sequelize.define('TaskTemplate', {
     description: { type: DataTypes.TEXT }, // Mô tả công việc định nghĩa sẵn
     priority: { type: DataTypes.ENUM('Thấp', 'Trung bình', 'Cao (Gấp)'), defaultValue: 'Trung bình' },
     tags: { type: DataTypes.STRING }, // Các nhãn gán sẵn dạng chuỗi
-    created_by: { type: DataTypes.INTEGER, allowNull: false } // ID người tạo mẫu
+    created_by: { type: DataTypes.INTEGER, allowNull: false }, // ID người tạo mẫu
+    share_level: { type: DataTypes.ENUM('PRIVATE', 'DEPARTMENT', 'GLOBAL'), defaultValue: 'PRIVATE', allowNull: false } // Mức độ chia sẻ
 }, {
     timestamps: true,
     underscored: true

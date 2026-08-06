@@ -457,9 +457,9 @@
                                         <label class="form-label fw-bold small">Hạn chót (Tùy chọn)</label>
                                         <% let formattedEditDate='' ; if (task.due_date) { let d=new
                                             Date(task.due_date); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-                                            formattedEditDate=d.toISOString().slice(0, 16); } %>
+                                            formattedEditDate=d.toISOString().slice(0, 19); } %>
                                             <input type="datetime-local" class="form-control" name="due_date"
-                                                id="editDueDate" value="<%= formattedEditDate %>">
+                                                id="editDueDate" value="<%= formattedEditDate %>" step="1">
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label fw-bold small">Mức độ ưu tiên</label>

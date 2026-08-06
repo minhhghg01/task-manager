@@ -46,7 +46,28 @@ module.exports = (io) => {
         try {
             if (!req.session.user) return res.status(401).json({ success: false, message: 'Chưa đăng nhập' });
             
+            const { Op } = require('sequelize');
+            const { User } = require('../models');
+            const currentUser = req.session.user;
+
             const templates = await TaskTemplate.findAll({
+                include: [{
+                    model: User,
+                    as: 'Creator',
+                    attributes: ['id', 'fullname', 'departments_id']
+                }],
+                where: {
+                    [Op.or]: [
+                        { created_by: currentUser.id },
+                        { share_level: 'GLOBAL' },
+                        {
+                            [Op.and]: [
+                                { share_level: 'DEPARTMENT' },
+                                { '$Creator.departments_id$': currentUser.departments_id || 0 }
+                            ]
+                        }
+                    ]
+                },
                 order: [['created_at', 'DESC']]
             });
             res.json({ success: true, templates });
@@ -61,8 +82,13 @@ module.exports = (io) => {
         try {
             if (!req.session.user) return res.status(401).json({ success: false, message: 'Chưa đăng nhập' });
             
-            const { name, title, description, priority, tags } = req.body;
+            const { name, title, description, priority, tags, share_level } = req.body;
             if (!name) return res.status(400).json({ success: false, message: 'Vui lòng cung cấp tên mẫu!' });
+
+            const allowedLevels = ['PRIVATE', 'DEPARTMENT', 'GLOBAL'];
+            const level = (share_level && allowedLevels.includes(share_level.toUpperCase()))
+                ? share_level.toUpperCase()
+                : 'PRIVATE';
 
             const template = await TaskTemplate.create({
                 name: name,
@@ -70,6 +96,7 @@ module.exports = (io) => {
                 description: description || '',
                 priority: priority || 'Trung bình',
                 tags: tags || '',
+                share_level: level,
                 created_by: req.session.user.id
             });
 

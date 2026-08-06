@@ -5,7 +5,8 @@ const seedData = async () => {
     try {
         // 1. Kiểm tra xem đã có dữ liệu chưa
         const deptCount = await Department.count();
-        if (deptCount > 0) {
+        const userCount = await User.count();
+        if (deptCount > 0 && userCount > 0) {
             console.log('--- Dữ liệu đã tồn tại, bỏ qua bước Seed Data ---');
             return;
         }
@@ -16,8 +17,7 @@ const seedData = async () => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash('123456', salt);
 
-        // 3. Tạo 10 Khoa/Phòng
-        // Lưu ý: ID 1 sẽ là Ban Giám Đốc, ID 2 là CNTT
+        // 3. Tạo hoặc lấy Khoa/Phòng
         const departmentsData = [
             { name: 'Ban Giám Đốc', code: 'BOD' },      // ID: 1
             { name: 'Khoa Công Nghệ Thông Tin', code: 'IT' }, // ID: 2
@@ -31,13 +31,20 @@ const seedData = async () => {
             { name: 'Khoa Chẩn Đoán Hình Ảnh', code: 'CDHA' }
         ];
 
-        const createdDepts = await Department.bulkCreate(departmentsData);
-        const bodDept = createdDepts.find(d => d.code === 'BOD'); // Lấy ID Ban Giám Đốc
-        const itDept = createdDepts.find(d => d.code === 'IT');   // Lấy ID IT
+        let createdDepts = [];
+        if (deptCount === 0) {
+            createdDepts = await Department.bulkCreate(departmentsData);
+        } else {
+            createdDepts = await Department.findAll();
+        }
 
-        const users = [];
+        if (userCount === 0) {
+            const bodDept = createdDepts.find(d => d.code === 'BOD'); // Lấy ID Ban Giám Đốc
+            const itDept = createdDepts.find(d => d.code === 'IT');   // Lấy ID IT
 
-        // 4. Tạo 1 Admin (Thuộc khoa CNTT)
+            const users = [];
+
+            // 4. Tạo 1 Admin (Thuộc khoa CNTT)
         users.push({
             fullname: 'System Administrator',
             username: 'admin',
@@ -121,6 +128,7 @@ const seedData = async () => {
         await User.bulkCreate(users);
         console.log(`>>> Đã tạo xong: ${users.length} tài khoản thành công!`);
         console.log('>>> Mật khẩu mặc định: 123456');
+        }
 
     } catch (error) {
         console.error('Lỗi Seed Data:', error);

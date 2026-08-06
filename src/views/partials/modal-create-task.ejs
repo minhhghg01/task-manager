@@ -17,7 +17,7 @@
                         <label class="form-label fw-bold text-primary d-flex align-items-center gap-1">
                             <span data-feather="file-text" style="width: 18px; height: 18px;"></span> Chọn mẫu công việc nhanh
                         </label>
-                        <div class="row g-2 align-items-center">
+                        <div class="row g-3 align-items-center mb-2">
                             <div class="col-md-6 d-flex gap-2">
                                 <select id="templateSelect" class="form-select">
                                     <option value="">-- Chọn mẫu công việc nhanh (Hoặc tự nhập) --</option>
@@ -27,12 +27,29 @@
                                 </button>
                             </div>
                             <div class="col-md-6">
-                                <div class="input-group">
-                                    <input type="text" id="templateNameInput" class="form-control form-control-sm" placeholder="Nhập tên mẫu mới...">
-                                    <button type="button" id="btnSaveAsTemplate" class="btn btn-outline-primary btn-sm">
-                                        <span data-feather="save" style="width: 16px; height: 16px;"></span> Lưu mẫu mới
-                                    </button>
+                                <input type="text" id="templateNameInput" class="form-control form-control-sm" placeholder="Nhập tên mẫu mới để lưu...">
+                            </div>
+                        </div>
+                        <div class="row g-2 align-items-center">
+                            <div class="col-md-8 d-flex align-items-center gap-3">
+                                <span class="small fw-bold text-muted">Chia sẻ mẫu:</span>
+                                <div class="form-check form-check-inline mb-0">
+                                    <input class="form-check-input" type="radio" name="shareLevel" id="sharePrivate" value="PRIVATE" checked>
+                                    <label class="form-check-label small" for="sharePrivate">Riêng tôi</label>
                                 </div>
+                                <div class="form-check form-check-inline mb-0">
+                                    <input class="form-check-input" type="radio" name="shareLevel" id="shareDept" value="DEPARTMENT">
+                                    <label class="form-check-label small" for="shareDept">Khoa phòng</label>
+                                </div>
+                                <div class="form-check form-check-inline mb-0">
+                                    <input class="form-check-input" type="radio" name="shareLevel" id="shareGlobal" value="GLOBAL">
+                                    <label class="form-check-label small" for="shareGlobal">Toàn bộ</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <button type="button" id="btnSaveAsTemplate" class="btn btn-primary btn-sm w-100">
+                                    <span data-feather="save" style="width: 16px; height: 16px;"></span> Lưu mẫu công việc
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -81,12 +98,12 @@
                     <div class="row bg-light p-2 rounded mb-3 border mx-0">
                         <div class="col-md-6 mb-2">
                             <label class="form-label fw-bold text-primary">Ngày bắt đầu</label>
-                            <input type="datetime-local" name="start_date" id="startDateInput" class="form-control">
+                            <input type="datetime-local" name="start_date" id="startDateInput" class="form-control" step="1">
                             <div class="form-text small">Mặc định là thời điểm hiện tại.</div>
                         </div>
                         <div class="col-md-6 mb-2">
                             <label class="form-label fw-bold text-danger">Hạn chót (Deadline)</label>
-                            <input type="datetime-local" name="due_date" id="dueDateInput" class="form-control">
+                            <input type="datetime-local" name="due_date" id="dueDateInput" class="form-control" step="1">
                             <div class="form-text small">Bỏ trống nếu không giới hạn thời gian.</div>
                         </div>
                     </div>
@@ -179,7 +196,10 @@
                         loadedTemplates.forEach(t => {
                             const option = document.createElement('option');
                             option.value = t.id;
-                            option.textContent = t.name;
+                            let scopeLabel = 'Cá nhân';
+                            if (t.share_level === 'DEPARTMENT') scopeLabel = 'Khoa';
+                            else if (t.share_level === 'GLOBAL') scopeLabel = 'Hệ thống';
+                            option.textContent = `${t.name} [${scopeLabel}]`;
                             templateSelect.appendChild(option);
                         });
                         
@@ -249,12 +269,16 @@
                     return;
                 }
 
+                const shareLevelInput = document.querySelector('input[name="shareLevel"]:checked');
+                const shareLevel = shareLevelInput ? shareLevelInput.value : 'PRIVATE';
+
                 const bodyData = {
                     name: templateName,
                     title: titleVal,
                     description: descInput ? descInput.value.trim() : '',
                     priority: priorityInput ? priorityInput.value : 'Trung bình',
-                    tags: tagsInput ? tagsInput.value.trim() : ''
+                    tags: tagsInput ? tagsInput.value.trim() : '',
+                    share_level: shareLevel
                 };
 
                 fetch('/api/templates', {
@@ -339,7 +363,7 @@
             // --- LOGIC THỜI GIAN ---
             const now = new Date();
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-            const currentDateTime = now.toISOString().slice(0, 16);
+            const currentDateTime = now.toISOString().slice(0, 19); // YYYY-MM-DDTHH:mm:ss
 
             // Tự nhập deadline là 23:59:59 today()
             const todayEnd = new Date();
@@ -349,7 +373,7 @@
             const d = String(todayEnd.getDate()).padStart(2, '0');
             const h = String(todayEnd.getHours()).padStart(2, '0');
             const min = String(todayEnd.getMinutes()).padStart(2, '0');
-            const defaultDueDate = `${y}-${m}-${d}T${h}:${min}`;
+            const defaultDueDate = `${y}-${m}-${d}T${h}:${min}:59`; // YYYY-MM-DDTHH:mm:ss
 
             if (startDateInput) {
                 startDateInput.value = currentDateTime;

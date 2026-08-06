@@ -352,7 +352,7 @@
                                                         </small></td>
                                                     <td>
                                                         <%= task.start_date ? new
-                                                            Date(task.start_date).toLocaleDateString('vi-VN') : '-' %>
+                                                            Date(task.start_date).toLocaleString('vi-VN') : '-' %>
                                                     </td>
                                                     <td>
                                                         <% var dueDate=task.due_date ? new Date(task.due_date) : null;
@@ -360,7 +360,7 @@
                                                             && task.status !=='Hoàn thành' ; %>
                                                             <span class="<%= isOverdue ? 'text-danger fw-bold' : '' %>">
                                                                 <%= task.formattedDueDate || (dueDate ?
-                                                                    dueDate.toLocaleDateString('vi-VN') : '-' ) %>
+                                                                    dueDate.toLocaleString('vi-VN') : '-' ) %>
                                                             </span>
                                                             <% if(isOverdue) { %> <i data-feather="alert-circle"
                                                                     class="text-danger" style="width:14px"></i>

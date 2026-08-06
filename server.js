@@ -57,7 +57,7 @@ io.on('connection', (socket) => {
 });
 
 // 4. Khởi động Server & Seed Data (Tạo Admin mặc định)
-sequelize.sync().then(async () => {
+sequelize.sync({ alter: true }).then(async () => {
     console.log('--- Database đã đồng bộ ---');
 
     // Gọi hàm tạo dữ liệu mẫu
