@@ -85,22 +85,26 @@
 
         <div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
             <div class="d-flex align-items-center gap-3">
-                <a href="javascript:history.back()" class="btn btn-outline-secondary">&larr; Quay lại</a>
-                <h4 class="mb-0">Chi tiết công việc #<%= task.id %>
-                </h4>
+                <a href="javascript:history.back()" class="btn btn-outline-secondary d-flex align-items-center gap-1" title="Quay lại">
+                    <span data-feather="arrow-left" style="width: 16px; height: 16px;"></span>
+                    <span class="d-none d-md-inline">Quay lại</span>
+                </a>
+                <h4 class="mb-0">Chi tiết công việc #<%= task.id %></h4>
             </div>
 
             <div class="d-flex gap-2">
                 <button type="button" class="btn btn-outline-success d-flex align-items-center gap-2"
-                    id="btnCopyTask">
-                    <span data-feather="copy" style="width: 16px; height: 16px;"></span> Sao chép việc
+                    id="btnCopyTask" title="Sao chép việc">
+                    <span data-feather="copy" style="width: 16px; height: 16px;"></span>
+                    <span class="d-none d-md-inline">Sao chép việc</span>
                 </button>
                 <% if (isAdmin || isAssigner) { %>
                     <button type="button" class="btn btn-outline-primary d-flex align-items-center gap-2"
-                        data-bs-toggle="modal" data-bs-target="#editTaskModal">
-                        <span data-feather="edit-2" style="width: 16px; height: 16px;"></span> Sửa công việc
+                        data-bs-toggle="modal" data-bs-target="#editTaskModal" title="Sửa công việc">
+                        <span data-feather="edit-2" style="width: 16px; height: 16px;"></span>
+                        <span class="d-none d-md-inline">Sửa công việc</span>
                     </button>
-                    <% } %>
+                <% } %>
             </div>
         </div>
 

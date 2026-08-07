@@ -33,9 +33,11 @@
             .brand-container {
                 transition: all 0.3s ease;
             }
+
             .sidebar {
                 transition: all 0.3s ease;
             }
+
             main {
                 transition: all 0.3s ease;
             }
@@ -48,9 +50,11 @@
                 padding-right: 0 !important;
                 justify-content: center !important;
             }
+
             body.sidebar-collapsed .brand-container a.navbar-brand {
                 display: none !important;
             }
+
             body.sidebar-collapsed .brand-container #toggleSidebarBtn {
                 margin-left: 0 !important;
             }
@@ -60,23 +64,28 @@
                 max-width: 70px !important;
                 flex: 0 0 70px !important;
             }
+
             body.sidebar-collapsed main {
                 width: calc(100% - 70px) !important;
                 max-width: calc(100% - 70px) !important;
                 flex: 0 0 calc(100% - 70px) !important;
                 margin-left: 0 !important;
             }
+
             body.sidebar-collapsed #sidebarMenu .sidebar-heading {
                 display: none !important;
             }
+
             body.sidebar-collapsed #sidebarMenu .nav-link {
                 text-align: center;
                 padding: 10px 0;
                 font-size: 0 !important;
             }
+
             body.sidebar-collapsed #sidebarMenu .nav-link span {
                 display: none !important;
             }
+
             body.sidebar-collapsed #sidebarMenu .nav-link span[data-feather] {
                 display: inline-block !important;
                 margin-right: 0 !important;
@@ -89,24 +98,95 @@
         header.navbar {
             transition: transform 0.3s ease, background-color 0.3s ease !important;
         }
+
         .fixed-bottom-footer {
             transition: transform 0.3s ease, background-color 0.3s ease !important;
         }
+
         body.scroll-down header.navbar {
             transform: translateY(-100%);
         }
+
         body.scroll-down .fixed-bottom-footer {
             transform: translateY(100%);
         }
 
-        /* --- MOBILE GENERAL OPTIMIZATIONS --- */
+        /* --- MOBILE GENERAL & UI/UX OPTIMIZATIONS --- */
         @media (max-width: 767.98px) {
+            /* 1. Header Layout on Mobile */
+            header.navbar {
+                display: flex !important;
+                flex-flow: row nowrap !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                height: 56px !important;
+                padding: 0 10px !important;
+            }
+            header.navbar .brand-container {
+                width: auto !important;
+                flex: 1 1 auto !important;
+                padding-left: 45px !important;
+                padding-right: 0 !important;
+            }
+            header.navbar .brand-container a.navbar-brand {
+                font-size: 1rem !important;
+            }
+            header.navbar .navbar-toggler {
+                position: absolute !important;
+                left: 10px !important;
+                top: 14px !important;
+                border: none !important;
+                padding: 4px !important;
+                margin: 0 !important;
+                box-shadow: none !important;
+            }
+            header.navbar .navbar-nav {
+                flex-direction: row !important;
+                align-items: center !important;
+                gap: 10px !important;
+                margin-left: auto !important;
+                padding: 0 !important;
+            }
+            header.navbar .navbar-nav .nav-link {
+                padding: 6px !important;
+            }
+            header.navbar .navbar-nav #profileDropdown.dropdown-toggle::after {
+                display: none !important;
+            }
+
+            /* 2. Slide Drawer Sidebar for Mobile */
+            #sidebarMenu {
+                position: fixed !important;
+                top: 56px !important;
+                left: 0 !important;
+                width: 260px !important;
+                height: calc(100vh - 56px) !important;
+                z-index: 1040 !important;
+                box-shadow: 4px 0 15px rgba(0, 0, 0, 0.15) !important;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease !important;
+                background-color: #ffffff !important;
+            }
+            #sidebarMenu.show {
+                transform: translateX(0) !important;
+            }
+
+            /* 3. Table & Filters Responsiveness */
             .table {
                 display: block;
                 width: 100%;
                 overflow-x: auto;
                 -webkit-overflow-scrolling: touch;
             }
+            table input, 
+            table select {
+                min-width: 130px !important;
+            }
+            table th {
+                white-space: nowrap !important;
+            }
+
+            /* 4. Page Paddings & Layout */
             .container-fluid {
                 padding-left: 8px !important;
                 padding-right: 8px !important;
@@ -116,6 +196,67 @@
                 padding-right: 8px !important;
                 padding-top: 15px !important;
             }
+
+            /* 5. Typography Adjustment */
+            h2, h3, .h2, .h3 {
+                font-size: 1.25rem !important;
+            }
+            h4, .h4 {
+                font-size: 1.1rem !important;
+            }
+            .card-body {
+                padding: 12px !important;
+            }
+        }
+
+        @media (max-width: 575.98px) {
+            /* 6. Page Headers & Action Buttons Wrapping */
+            .d-flex.justify-content-between.align-items-center.pt-3.pb-2.mb-3,
+            .d-flex.justify-content-between.flex-wrap.flex-md-nowrap.align-items-center {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 12px !important;
+                text-align: left !important;
+            }
+            .d-flex.justify-content-between.align-items-center.pt-3.pb-2.mb-3 h1,
+            .d-flex.justify-content-between.align-items-center.pt-3.pb-2.mb-3 h2,
+            .d-flex.justify-content-between.align-items-center.pt-3.pb-2.mb-3 h4,
+            .d-flex.justify-content-between.flex-wrap.flex-md-nowrap.align-items-center h1,
+            .d-flex.justify-content-between.flex-wrap.flex-md-nowrap.align-items-center h2,
+            .d-flex.justify-content-between.flex-wrap.flex-md-nowrap.align-items-center h4 {
+                font-size: 1.2rem !important;
+                margin-bottom: 0 !important;
+            }
+            .btn-toolbar, 
+            .d-flex.align-items-center.gap-2, 
+            .d-flex.gap-2 {
+                display: flex !important;
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+                justify-content: flex-start !important;
+                gap: 8px !important;
+                width: auto !important;
+            }
+            .btn-toolbar .btn, 
+            .d-flex.align-items-center.gap-2 .btn, 
+            .d-flex.gap-2 .btn {
+                width: auto !important;
+                margin: 0 !important;
+                padding: 6px 10px !important;
+            }
+            .pt-3.pb-2.mb-3 .d-flex.align-items-center.gap-3 {
+                width: 100% !important;
+                justify-content: space-between !important;
+            }
+        }
+
+        /* 7. General Checklist / Form elements alignments */
+        .form-check.bg-white {
+            padding-left: 2.5rem !important;
+        }
+        .form-check.bg-white .form-check-input {
+            margin-left: -1.75rem !important;
+            margin-top: 0.35rem !important;
         }
     </style>
 </head>
@@ -125,7 +266,8 @@
     <header class="navbar navbar-dark sticky-top bg-primary flex-md-nowrap p-0 shadow">
         <div class="d-flex align-items-center col-md-3 col-lg-2 px-3 brand-container">
             <a class="navbar-brand me-0" href="/dashboard">Quản Lý Công Việc</a>
-            <button class="btn btn-link text-white p-0 d-none d-md-inline-block ms-auto" id="toggleSidebarBtn" style="box-shadow: none;">
+            <button class="btn btn-link text-white p-0 d-none d-md-inline-block ms-auto" id="toggleSidebarBtn"
+                style="box-shadow: none;">
                 <i data-feather="menu" style="width: 20px; height: 20px;"></i>
             </button>
         </div>
@@ -143,10 +285,10 @@
                 </a>
             </div>
             <div class="nav-item text-nowrap dropdown">
-                <a class="nav-link dropdown-toggle fw-bold" href="#" id="profileDropdown" role="button"
+                <a class="nav-link dropdown-toggle fw-bold d-flex align-items-center gap-1" href="#" id="profileDropdown" role="button"
                     data-bs-toggle="dropdown">
                     <span data-feather="user"></span>
-                    <%= (typeof user !=='undefined' && user) ? user.fullname : 'Hồ sơ' %>
+                    <span class="d-none d-md-inline"><%= (typeof user !=='undefined' && user) ? user.fullname : 'Hồ sơ' %></span>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end shadow" style="min-width: 250px;">
                     <li>
@@ -258,7 +400,7 @@
                                 const isCollapsed = document.body.classList.contains('sidebar-collapsed');
                                 localStorage.setItem('sidebarCollapsed', isCollapsed ? 'true' : 'false');
                             });
-                            
+
                             // Khôi phục trạng thái thu gọn khi load trang
                             if (localStorage.getItem('sidebarCollapsed') === 'true') {
                                 document.body.classList.add('sidebar-collapsed');
@@ -267,12 +409,25 @@
 
                         // 4. Xử lý Tạm ẩn Header & Footer khi cuộn chuột (Scroll Down Hide, Scroll Up Show)
                         let lastScrollTop = 0;
+                        let scrollAccumulator = 0;
                         window.addEventListener('scroll', () => {
                             const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-                            if (scrollTop > lastScrollTop && scrollTop > 100) {
-                                document.body.classList.add('scroll-down');
-                            } else if (scrollTop < lastScrollTop) {
-                                document.body.classList.remove('scroll-down');
+                            const delta = scrollTop - lastScrollTop;
+                            
+                            if (delta > 0) {
+                                // Scroll down
+                                scrollAccumulator = Math.max(0, scrollAccumulator + delta);
+                                if (scrollAccumulator > 15) {
+                                    document.body.classList.add('scroll-down');
+                                    scrollAccumulator = 0;
+                                }
+                            } else if (delta < 0) {
+                                // Scroll up
+                                scrollAccumulator = Math.min(0, scrollAccumulator + delta);
+                                if (scrollAccumulator < -10) {
+                                    document.body.classList.remove('scroll-down');
+                                    scrollAccumulator = 0;
+                                }
                             }
                             lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
                         }, { passive: true });

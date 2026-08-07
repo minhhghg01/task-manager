@@ -28,7 +28,7 @@ app.use(session({
     secret: 'benhvien_secret_key_2026',
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 24 * 60 * 60 * 1000 } // 1 ngày
+    cookie: { maxAge: 1 * 60 * 60 * 1000 } // 1 giờ
 }));
 
 // Middleware toàn cục: Truyền user vào mọi view EJS

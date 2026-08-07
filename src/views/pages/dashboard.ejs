@@ -16,8 +16,10 @@
 
         <div class="btn-toolbar mb-2 mb-md-0 gap-2">
             <a href="/tasks/invited"
-                class="btn btn-sm btn-outline-warning d-flex align-items-center gap-2 shadow-sm position-relative btn-no-hover">
-                <span data-feather="mail"></span> Lời mời hợp tác
+                class="btn btn-sm btn-outline-warning d-flex align-items-center gap-2 shadow-sm position-relative btn-no-hover"
+                title="Lời mời hợp tác">
+                <span data-feather="mail"></span>
+                <span class="d-none d-md-inline">Lời mời hợp tác</span>
 
                 <% if (typeof invitationCount !=='undefined' && invitationCount> 0) { %>
                     <span
@@ -30,16 +32,18 @@
 
             <% if (user.role !=='ADMIN' && user.role !=='STAFF' ) { %>
                 <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-2 shadow-sm"
-                    data-bs-toggle="modal" data-bs-target="#createTaskModal">
-                    <span data-feather="plus"></span> Giao việc mới
+                    data-bs-toggle="modal" data-bs-target="#createTaskModal" title="Giao việc mới">
+                    <span data-feather="plus"></span>
+                    <span class="d-none d-md-inline">Giao việc mới</span>
                 </button>
                 <% } %>
 
                     <% if (user.role==='STAFF' || (typeof filterType !=='undefined' && filterType==='mine' )) { %>
                         <button type="button"
                             class="btn btn-sm btn-outline-success d-flex align-items-center gap-2 shadow-sm"
-                            data-bs-toggle="modal" data-bs-target="#createTaskModal" data-auto-self="true">
-                            <span data-feather="user-check"></span> Tự tạo việc
+                            data-bs-toggle="modal" data-bs-target="#createTaskModal" data-auto-self="true" title="Tự tạo việc">
+                            <span data-feather="user-check"></span>
+                            <span class="d-none d-md-inline">Tự tạo việc</span>
                         </button>
                         <% } %>
         </div>
