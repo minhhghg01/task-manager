@@ -38,9 +38,14 @@
                                     <% } %>
                         </td>
                         <td>
-                            <% let badgeClass='secondary' ; if (log.action==='CREATE' ) badgeClass='success' ; if
-                                (log.action==='UPDATE' ) badgeClass='warning text-dark' ; if (log.action==='DELETE' )
-                                badgeClass='danger' ; %>
+                            <% 
+                               let badgeClass = 'secondary'; 
+                               if (log.action === 'CREATE') badgeClass = 'success'; 
+                               else if (log.action === 'UPDATE') badgeClass = 'warning text-dark'; 
+                               else if (log.action === 'DELETE') badgeClass = 'danger'; 
+                               else if (log.action === 'LOGIN') badgeClass = 'primary'; 
+                               else if (log.action === 'LOGOUT') badgeClass = 'dark'; 
+                            %>
                                 <span class="badge bg-<%= badgeClass %>">
                                     <%= log.action %>
                                 </span>

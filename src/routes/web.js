@@ -175,9 +175,9 @@ module.exports = (io) => {
     router.post('/api/tasks/:id/edit', requireAuth, upload.single('attachment'), taskController.apiEditTask);
 
     // --- ROUTES CHO NGƯỜI PHỐI HỢP & TODO LIST ---
-    router.post('/tasks/:id/collaborators', taskController.apiAddCollaborator);
-    router.post('/tasks/:id/collaborators/respond', taskController.apiRespondCollaborator);
-    router.post('/tasks/:id/todos', taskController.apiUpdateTodo);
+    router.post('/tasks/:id/collaborators', requireAuth, taskController.apiAddCollaborator);
+    router.post('/tasks/:id/collaborators/respond', requireAuth, taskController.apiRespondCollaborator);
+    router.post('/tasks/:id/todos', requireAuth, taskController.apiUpdateTodo);
 
     // ============================================================
     // 4. QUẢN LÝ NHÂN VIÊN

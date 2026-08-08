@@ -205,9 +205,29 @@ module.exports = (io) => {
         // 3. API TẠO TASK
         apiCreateTask: async (req, res) => {
             try {
-                if (req.body.is_self_assign === 'true') {
-                    req.body.assigned_to = [req.session.user.id];
+                let assignees = [];
+                const raw = req.body.assigned_to;
+                if (raw) {
+                    if (Array.isArray(raw)) assignees = raw;
+                    else if (typeof raw === 'string') {
+                        if (raw.trim().startsWith('[')) {
+                            try { assignees = JSON.parse(raw); } catch (e) {}
+                        } else {
+                            assignees = [raw];
+                        }
+                    } else {
+                        assignees = [raw];
+                    }
                 }
+
+                if (req.body.is_self_assign === 'true') {
+                    const myIdStr = String(req.session.user.id);
+                    if (!assignees.map(String).includes(myIdStr)) {
+                        assignees.push(req.session.user.id);
+                    }
+                }
+
+                req.body.assigned_to = assignees;
 
                 const newTask = await TaskService.createTask(req.session.user, req.body, req.file);
 
@@ -439,19 +459,15 @@ module.exports = (io) => {
                 }
 
                 let availableUsers = [];
-                if (isAdmin || user.role === 'DIRECTOR') {
+                if (isAdmin || ['DIRECTOR', 'DEPUTY_DIRECTOR'].includes(user.role)) {
                     availableUsers = await User.findAll({ attributes: ['id', 'fullname'] });
-                } else if (user.role === 'DEPUTY_DIRECTOR') {
+                } else if (['HEAD', 'DEPUTY'].includes(user.role)) {
                     availableUsers = await User.findAll({
                         where: {
-                            [Op.or]: [{ departments_id: user.departments_id }, { role: 'HEAD' }]
-                        },
-                        attributes: ['id', 'fullname']
-                    });
-                } else if (user.role === 'HEAD') {
-                    availableUsers = await User.findAll({
-                        where: {
-                            [Op.or]: [{ departments_id: user.departments_id }, { role: 'HEAD' }]
+                            [Op.or]: [
+                                { departments_id: user.departments_id },
+                                { role: { [Op.in]: ['HEAD', 'DEPUTY'] } }
+                            ]
                         },
                         attributes: ['id', 'fullname']
                     });
@@ -520,7 +536,7 @@ module.exports = (io) => {
                 const myRank = ROLE_HIERARCHY[currentUser.role] || 99;
 
                 let whereCondition = {};
-                if (['ADMIN', 'DIRECTOR'].includes(currentUser.role)) {
+                if (['ADMIN', 'DIRECTOR', 'DEPUTY_DIRECTOR'].includes(currentUser.role)) {
                     whereCondition = {};
                 } else {
                     whereCondition = { departments_id: currentUser.departments_id };
@@ -546,10 +562,15 @@ module.exports = (io) => {
 
         apiAddCollaborator: async (req, res) => {
             try {
+                console.log("apiAddCollaborator called, taskId:", req.params.id, "targetUserId:", req.body.targetUserId, "currentUser:", req.session.user.id);
                 const { targetUserId } = req.body;
                 await TaskService.addCollaborator(req.params.id, targetUserId, req.session.user.id);
+                console.log("apiAddCollaborator successfully processed!");
                 res.json({ success: true });
-            } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+            } catch (e) {
+                console.error("apiAddCollaborator failed with error:", e);
+                res.status(500).json({ success: false, message: e.message });
+            }
         },
 
         apiRespondCollaborator: async (req, res) => {

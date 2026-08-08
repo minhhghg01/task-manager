@@ -1,4 +1,4 @@
-const { User, Department } = require('../models');
+const { User, Department, ActivityLog } = require('../models');
 const bcrypt = require('bcryptjs');
 
 const AuthController = {
@@ -40,6 +40,16 @@ const AuthController = {
                 department_name: user.Department ? user.Department.name : 'Unknown'
             };
 
+            // GHI LOG LOGIN
+            const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'Unknown';
+            await ActivityLog.create({
+                user_id: user.id,
+                action: 'LOGIN',
+                entity_type: 'AUTH',
+                entity_id: user.id,
+                details: `Đăng nhập thành công từ IP: ${ip}`
+            });
+
             // Lưu session xong thì chuyển hướng
             req.session.save(() => {
                 res.redirect('/dashboard');
@@ -52,7 +62,22 @@ const AuthController = {
     },
 
     // 3. Đăng xuất
-    logout: (req, res) => {
+    logout: async (req, res) => {
+        try {
+            if (req.session && req.session.user) {
+                const user = req.session.user;
+                const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'Unknown';
+                await ActivityLog.create({
+                    user_id: user.id,
+                    action: 'LOGOUT',
+                    entity_type: 'AUTH',
+                    entity_id: user.id,
+                    details: `Đăng xuất khỏi hệ thống từ IP: ${ip}`
+                });
+            }
+        } catch (e) {
+            console.error("Lỗi ghi log logout:", e);
+        }
         req.session.destroy(() => {
             res.redirect('/login');
         });

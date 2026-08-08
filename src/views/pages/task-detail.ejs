@@ -293,27 +293,25 @@
                                                 <div class="dropdown">
                                                     <button class="btn btn-sm btn-outline-success py-0" type="button"
                                                         data-bs-toggle="dropdown">+ Mời thêm</button>
-                                                    <ul class="dropdown-menu p-2"
+                                                    <ul class="dropdown-menu p-2" id="userDropdown"
                                                         style="width: 250px; max-height: 200px; overflow-y: auto;">
                                                         <input type="text" class="form-control form-control-sm mb-2"
                                                             placeholder="Tìm tên..." onkeyup="filterUsers(this)">
-                                                        <div id="userDropdown">
-                                                            <% if (typeof allUsers !=='undefined' && allUsers.length> 0)
-                                                                { %>
-                                                                <% allUsers.forEach(u=> {
-                                                                    let exist = (u.id == task.assigned_by) ||
-                                                                    (task.assigneeList && task.assigneeList.some(a =>
-                                                                    a.id == u.id)) ||
-                                                                    (task.collaboratorList &&
-                                                                    task.collaboratorList.some(c => c.id == u.id));
-                                                                    if (!exist) { %>
-                                                                    <li><button class="dropdown-item"
-                                                                            onclick="inviteCollab(<%= u.id %>)">
-                                                                            <%= u.fullname %>
-                                                                        </button></li>
-                                                                    <% } }) %>
-                                                                        <% } %>
-                                                        </div>
+                                                        <% if (typeof allUsers !=='undefined' && allUsers.length> 0)
+                                                            { %>
+                                                            <% allUsers.forEach(u=> {
+                                                                let exist = (u.id == task.assigned_by) ||
+                                                                (task.assigneeList && task.assigneeList.some(a =>
+                                                                a.id == u.id)) ||
+                                                                (task.collaboratorList &&
+                                                                task.collaboratorList.some(c => c.id == u.id));
+                                                                if (!exist) { %>
+                                                                <li><a class="dropdown-item" href="#"
+                                                                        onclick="inviteCollab(<%= u.id %>); return false;">
+                                                                        <%= u.fullname %>
+                                                                    </a></li>
+                                                                <% } }) %>
+                                                                    <% } %>
                                                     </ul>
                                                 </div>
                                                 <% } %>
@@ -565,9 +563,30 @@
 
                     // Xử lý Collaborators
                     function inviteCollab(uid) {
-                        if (!confirm('Mời nhân viên này?')) return;
-                        fetch(`/tasks/${taskId}/collaborators`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetUserId: uid }) })
-                            .then(r => r.json()).then(d => { if (d.success) location.reload(); else alert(d.message); });
+                        console.log("inviteCollab called for uid:", uid);
+                        if (!confirm('Mời nhân viên này?')) {
+                            console.log("inviteCollab confirm cancelled");
+                            return;
+                        }
+                        console.log("Sending fetch to:", `/tasks/${taskId}/collaborators`);
+                        fetch(`/tasks/${taskId}/collaborators`, { 
+                            method: 'POST', 
+                            headers: { 'Content-Type': 'application/json' }, 
+                            body: JSON.stringify({ targetUserId: uid }) 
+                        })
+                        .then(r => {
+                            console.log("Fetch response status:", r.status);
+                            return r.json();
+                        })
+                        .then(d => {
+                            console.log("Fetch response data:", d);
+                            if (d.success) location.reload(); 
+                            else alert(d.message); 
+                        })
+                        .catch(err => {
+                            console.error("Fetch error:", err);
+                            alert("Lỗi kết nối: " + err.message);
+                        });
                     }
                     function respondCollab(action) {
                         let msg = action === 'ACCEPT' ? 'Xác nhận tham gia?' : (action === 'REMOVE' ? 'Rời khỏi công việc?' : 'Từ chối tham gia?');

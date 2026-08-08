@@ -424,27 +424,7 @@
         // 2. XỬ LÝ KHI CHỌN "TÔI TỰ LÀM"
         if (selfAssignCheck) {
             selfAssignCheck.addEventListener('change', function () {
-                const isSelf = this.checked;
-
-                // Khóa/Mở nút chọn tất cả
-                if (selectAllCheckbox) selectAllCheckbox.disabled = isSelf;
-                if (isSelf && selectAllCheckbox) selectAllCheckbox.checked = false;
-
-                // Khóa/Mở danh sách user
-                const checkboxes = listContainer.querySelectorAll('.user-checkbox');
-                checkboxes.forEach(cb => {
-                    cb.disabled = isSelf;
-                    if (isSelf) cb.checked = false;
-                });
-
-                // Hiệu ứng mờ đi
-                if (isSelf) {
-                    listContainer.style.opacity = '0.5';
-                    listContainer.style.pointerEvents = 'none';
-                } else {
-                    listContainer.style.opacity = '1';
-                    listContainer.style.pointerEvents = 'auto';
-                }
+                // Giữ nguyên danh sách người nhận việc mở để cho phép chọn thêm cấp dưới
             });
         }
 
@@ -459,8 +439,7 @@
 
                     if (data.users && data.users.length > 0) {
                         data.users.forEach(u => {
-                            const isSelfMode = selfAssignCheck ? selfAssignCheck.checked : false;
-                            const disabledAttr = isSelfMode ? 'disabled' : '';
+                            const disabledAttr = '';
 
                             // Check nếu thuộc danh sách được chọn (bao gồm trường hợp copy hoặc pre-select)
                             let isChecked = false;
@@ -474,7 +453,8 @@
                             const bgClass = isChecked ? 'bg-warning bg-opacity-10' : 'bg-white';
 
                             const div = document.createElement('div');
-                            div.className = `d-flex align-items-center mb-1 p-2 border rounded ${bgClass}`;
+                            div.className = `d-flex align-items-center mb-1 p-2 border rounded user-row-item ${bgClass}`;
+                            div.style.cursor = 'pointer';
 
                             div.innerHTML = `
                                 <div class="me-2">
@@ -487,6 +467,28 @@
                                     <span class="badge bg-secondary ms-1" style="font-size: 0.7em">${u.role}</span>
                                 </label>
                             `;
+
+                            // Toggle checkbox when clicking anywhere on the row (excluding elements that already handle click natively)
+                            div.addEventListener('click', function(e) {
+                                if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'LABEL') {
+                                    const cb = div.querySelector('.user-checkbox');
+                                    cb.checked = !cb.checked;
+                                    cb.dispatchEvent(new Event('change'));
+                                }
+                            });
+
+                            // Dynamic highlight background when checked/unchecked
+                            const cb = div.querySelector('.user-checkbox');
+                            cb.addEventListener('change', function() {
+                                if (this.checked) {
+                                    div.classList.add('bg-warning', 'bg-opacity-10');
+                                    div.classList.remove('bg-white');
+                                } else {
+                                    div.classList.remove('bg-warning', 'bg-opacity-10');
+                                    div.classList.add('bg-white');
+                                }
+                            });
+
                             listContainer.appendChild(div);
                         });
                         if (typeof feather !== 'undefined') feather.replace();

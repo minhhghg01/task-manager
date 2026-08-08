@@ -324,36 +324,24 @@ class TaskService {
             throw new Error("Không thể mời Admin tham gia công việc.");
         }
 
-        // --- RULE 2: PHÂN QUYỀN MỜI (LOGIC MỚI) ---
+        // --- RULE 2: PHÂN QUYỀN MỜI (LOGIC MỚI TỐI ƯU) ---
         let canInvite = false;
 
-        // A. ADMIN: Full quyền (để xử lý sự cố)
-        if (currentUser.role === 'ADMIN') {
+        // A. ADMIN / BAN GIÁM ĐỐC: Có quyền mời mọi người
+        if (['ADMIN', 'DIRECTOR', 'DEPUTY_DIRECTOR'].includes(currentUser.role)) {
             canInvite = true;
         }
-        // B. BAN GIÁM ĐỐC (GĐ & PGĐ)
-        else if (['DIRECTOR', 'DEPUTY_DIRECTOR'].includes(currentUser.role)) {
-            // Mời người cùng Ban GĐ HOẶC Trưởng khoa khác
-            const isSameDept = currentUser.departments_id === targetUser.departments_id;
-            const isTargetHead = targetUser.role === 'HEAD';
-
-            if (isSameDept || isTargetHead) {
-                canInvite = true;
-            }
+        // B. Cùng khoa/phòng: Được phép mời nhau
+        else if (currentUser.departments_id === targetUser.departments_id) {
+            canInvite = true;
         }
-        // C. TRƯỞNG PHÒNG: Mời cùng phòng HOẶC Trưởng phòng khác
-        else if (currentUser.role === 'HEAD') {
-            const isSameDept = currentUser.departments_id === targetUser.departments_id;
-            const isTargetHead = targetUser.role === 'HEAD';
-            if (isSameDept || isTargetHead) canInvite = true;
-        }
-        // D. CÒN LẠI: Chỉ cùng phòng
-        else {
-            if (currentUser.departments_id === targetUser.departments_id) canInvite = true;
+        // C. Khác khoa/phòng: Trưởng/Phó khoa có thể mời Trưởng/Phó khoa khác
+        else if (['HEAD', 'DEPUTY'].includes(currentUser.role) && ['HEAD', 'DEPUTY'].includes(targetUser.role)) {
+            canInvite = true;
         }
 
         if (!canInvite) {
-            throw new Error("Bạn không có quyền mời nhân viên này (Chỉ được mời cấp dưới trực tiếp hoặc người cùng phòng).");
+            throw new Error("Bạn không có quyền mời nhân viên này (Chỉ được mời người cùng khoa/phòng hoặc Trưởng/Phó khoa khác).");
         }
 
         // --- RULE 3: TRẠNG THÁI (MỜI vs CHỈ ĐỊNH) ---
@@ -369,8 +357,11 @@ class TaskService {
             logAction = 'Chỉ định phối hợp';
 
             let assignees = JSON.parse(task.assigned_to || '[]');
-            if (!assignees.includes(targetUserId) && !assignees.includes(String(targetUserId))) {
-                assignees.push(targetUserId);
+            const targetIdStr = String(targetUserId);
+            if (!assignees.map(String).includes(targetIdStr)) {
+                // Đảm bảo lưu đúng định dạng ban đầu (thường là number hoặc string theo data hiện tại)
+                const toPush = typeof targetUserId === 'number' ? targetUserId : parseInt(targetUserId, 10) || targetUserId;
+                assignees.push(toPush);
                 await task.update({ assigned_to: JSON.stringify(assignees) });
             }
         }
