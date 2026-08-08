@@ -1,49 +1,74 @@
 <%- include('../../partials/header') %>
-    <div class="container mt-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h3>Chi tiết Khoa/Phòng</h3>
+    <div class="container mt-2 max-width-container">
+        <!-- Breadcrumb / Header Actions -->
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 border-bottom pb-3">
+            <div>
+                <h3 class="fw-bold text-primary mb-1">Chi tiết Khoa/Phòng</h3>
+                <p class="text-muted small mb-0">Cấu hình tên gọi, mã định danh và trạng thái hoạt động của khoa phòng.</p>
+            </div>
 
             <button type="button"
                 onclick="confirmDelete('/admin/departments/delete/<%= dept.id %>', 'Xóa khoa <%= dept.name %>?')"
-                class="btn btn-danger">
-                <span data-feather="trash-2"></span> Xóa khoa này
+                class="btn btn-danger btn-sm d-flex align-items-center gap-1 shadow-none">
+                <i data-feather="trash-2" style="width: 16px; height: 16px;"></i> Xóa khoa này
             </button>
         </div>
 
-        <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white">
-                Thông tin: <%= dept.name %>
+        <!-- Form Card Container -->
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-transparent py-3 border-bottom d-flex align-items-center gap-2">
+                <div class="rounded bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center fw-bold" style="width: 36px; height: 36px;">
+                    <i data-feather="layers" style="width: 18px; height: 18px;"></i>
+                </div>
+                <div>
+                    <h5 class="mb-0 fw-bold text-dark"><%= dept.name %></h5>
+                    <small class="text-muted">Mã khoa: <%= dept.code %> | ID: #<%= dept.id %></small>
+                </div>
             </div>
-            <div class="card-body">
+            
+            <div class="card-body p-4">
                 <form action="/admin/departments/update/<%= dept.id %>" method="POST">
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Tên Khoa</label>
-                        <input type="text" name="name" class="form-control" value="<%= dept.name %>" required>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold small text-muted">Tên Khoa/Phòng</label>
+                            <input type="text" name="name" class="form-control" value="<%= dept.name %>"
+                                placeholder="Nhập tên khoa phòng..." required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold small text-muted">Mã Khoa (Code)</label>
+                            <input type="text" name="code" class="form-control" value="<%= dept.code %>"
+                                placeholder="Nhập mã viết tắt..." required>
+                        </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Mã Khoa (Code)</label>
-                        <input type="text" name="code" class="form-control" value="<%= dept.code %>" required>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold small text-muted">Trạng thái hoạt động</label>
+                            <select name="status" class="form-select">
+                                <option value="active" <%=dept.status==='active' ? 'selected' : '' %>>Hoạt động (Active)</option>
+                                <option value="inactive" <%=dept.status==='inactive' ? 'selected' : '' %>>Ngừng hoạt động (Inactive)</option>
+                            </select>
+                        </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Trạng thái</label>
-                        <select name="status" class="form-select">
-                            <option value="active" <%=dept.status==='active' ? 'selected' : '' %>>Hoạt động</option>
-                            <option value="inactive" <%=dept.status==='inactive' ? 'selected' : '' %>>Ngừng hoạt động
-                            </option>
-                        </select>
+                    <!-- Actions Form Buttons -->
+                    <div class="d-flex justify-content-end align-items-center gap-2 mt-4 pt-3 border-top">
+                        <a href="/admin/departments" class="btn btn-secondary border-0 bg-transparent text-muted px-4 py-2">Quay lại danh sách</a>
+                        <button type="submit" class="btn btn-success d-flex align-items-center gap-1 px-4 py-2">
+                            <i data-feather="save" style="width: 16px; height: 16px;"></i> Lưu thay đổi
+                        </button>
                     </div>
-
-                    <div class="d-flex justify-content-end mt-3 border-top pt-3">
-                        <a href="/admin/departments" class="btn btn-secondary me-2">Quay lại danh sách</a>
-                        <button type="submit" class="btn btn-success"><span data-feather="save"></span> Lưu thay
-                            đổi</button>
-                    </div>
-
                 </form>
             </div>
         </div>
     </div>
+
+    <!-- Giới hạn chiều rộng container chính để hiển thị cân đối trên màn hình lớn -->
+    <style>
+        .max-width-container {
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
     <%- include('../../partials/footer') %>

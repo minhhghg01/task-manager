@@ -65,7 +65,7 @@ const AdminController = {
 
             if (!user) return res.status(404).send("User not found");
 
-            res.render('pages/admin/user-detail', { user, departments });
+            res.render('pages/admin/user-detail', { targetUser: user, departments });
         } catch (e) { res.status(500).send(e.message); }
     },
 

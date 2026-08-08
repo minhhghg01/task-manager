@@ -1,135 +1,178 @@
 <%- include('../../partials/header') %>
-    <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
-        <h2>Quản lý Nhân sự</h2>
+
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 border-bottom pb-3">
+        <div>
+            <h2 class="fw-bold text-primary mb-0">Quản lý Nhân sự</h2>
+            <p class="text-muted small mb-0">Danh sách toàn bộ nhân viên và cấu hình phân quyền trong hệ thống.</p>
+        </div>
         <div class="d-flex gap-2">
-            <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#importExcelModal">
-                <span data-feather="file-text"></span> Nhập từ Excel
+            <button class="btn btn-secondary btn-sm d-flex align-items-center gap-1 shadow-sm px-3" data-bs-toggle="modal" data-bs-target="#importExcelModal">
+                <i data-feather="file-text" style="width: 16px; height: 16px;"></i> Nhập từ Excel
             </button>
-            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addUserModal">+ Thêm Nhân viên</button>
+            <button class="btn btn-success btn-sm d-flex align-items-center gap-1 shadow-sm px-3" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                <i data-feather="plus" style="width: 16px; height: 16px;"></i> Thêm Nhân viên
+            </button>
         </div>
     </div>
 
-    <div class="table-responsive">
-        <table class="table table-sm table-striped table-hover datatable-init">
-            <thead class="table-dark">
+    <!-- Table Container -->
+    <div class="table-responsive shadow-sm">
+        <table class="table table-hover align-middle datatable-init">
+            <thead>
                 <tr>
-                    <th>STT</th>
-                    <th>ID</th>
+                    <th class="text-center" style="width: 50px;">STT</th>
+                    <th style="width: 80px;">ID</th>
                     <th>Họ tên</th>
                     <th>Tài khoản</th>
                     <th>Khoa/Phòng</th>
                     <th>Chức vụ</th>
-                    <th>Trạng thái</th>
+                    <th style="width: 130px;">Trạng thái</th>
                 </tr>
             </thead>
             <tbody>
                 <% users.forEach((u, index)=> { %>
                     <tr style="cursor: pointer;" onclick="window.location.href='/admin/users/detail/<%= u.id %>'">
-                        <td>
+                        <td class="text-center text-muted fw-bold">
                             <%= index + 1 %>
                         </td>
-                        <td>
-                            <%= u.id %>
+                        <td class="text-muted">
+                            #<%= u.id %>
                         </td>
-                        <td><strong>
-                                <%= u.fullname %>
-                            </strong></td>
                         <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center fw-bold" style="width: 32px; height: 32px; font-size: 0.85rem;">
+                                    <%= u.fullname.split(' ').pop().charAt(0).toUpperCase() %>
+                                </div>
+                                <span class="fw-semibold"><%= u.fullname %></span>
+                            </div>
+                        </td>
+                        <td class="text-secondary font-monospace">
                             <%= u.username %>
                         </td>
-                        <td><span class="badge bg-info text-dark">
-                                <%= u.Department ? u.Department.name : 'Chưa phân' %>
-                            </span></td>
                         <td>
-                            <%= u.role %>
+                            <span class="badge bg-primary bg-opacity-10 text-primary fw-medium border border-primary-subtle">
+                                <%= u.Department ? u.Department.name : 'Chưa phân' %>
+                            </span>
                         </td>
                         <td>
-                            <% if(u.status==='active' ) { %>
-                                <span class="text-success">Hoạt động</span>
-                                <% } else { %>
-                                    <span class="text-secondary">Khóa</span>
-                                    <% } %>
+                            <span class="badge bg-dark bg-opacity-10 text-dark fw-medium border border-dark-subtle dark-role-badge">
+                                <%= u.role %>
+                            </span>
+                        </td>
+                        <td>
+                            <% if(u.status === 'active') { %>
+                                <span class="badge-success badge small">Hoạt động</span>
+                            <% } else { %>
+                                <span class="badge-danger badge small">Khóa</span>
+                            <% } %>
                         </td>
                     </tr>
-                    <% }) %>
+                <% }) %>
             </tbody>
         </table>
     </div>
 
-    <div class="modal fade" id="addUserModal" tabindex="-1">
-        <div class="modal-dialog">
-            <form action="/admin/users/create" method="POST">
-                <div class="modal-content">
+    <!-- Modal Thêm Nhân Viên -->
+    <div class="modal fade" id="addUserModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form action="/admin/users/create" method="POST" class="w-100">
+                <div class="modal-content border-0 shadow-lg">
                     <div class="modal-header">
-                        <h5 class="modal-title">Thêm Nhân viên</h5><button type="button" class="btn-close"
-                            data-bs-dismiss="modal"></button>
+                        <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                            <i data-feather="user-plus" class="text-primary"></i> Thêm Nhân viên Mới
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="modal-body">
-                        <div class="mb-2"><label>Họ tên</label><input type="text" name="fullname" class="form-control"
-                                required></div>
-                        <div class="mb-2"><label>Username</label><input type="text" name="username" class="form-control"
-                                required></div>
-                        <div class="mb-2"><label>Password</label><input type="password" name="password"
-                                class="form-control" required></div>
-                        <div class="mb-2">
-                            <label>Khoa/Phòng</label>
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small text-muted">Họ và tên</label>
+                            <input type="text" name="fullname" class="form-control" placeholder="Nhập họ và tên..." required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold small text-muted">Username (Tài khoản)</label>
+                                <input type="text" name="username" class="form-control" placeholder="Nhập tên đăng nhập..." required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-semibold small text-muted">Password (Mật khẩu)</label>
+                                <input type="password" name="password" class="form-control" placeholder="Tạo mật khẩu..." required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small text-muted">Khoa/Phòng</label>
                             <select name="departments_id" class="form-select">
                                 <% departments.forEach(d=> { %>
                                     <option value="<%= d.id %>">
                                         <%= d.name %>
                                     </option>
-                                    <% }) %>
+                                <% }) %>
                             </select>
                         </div>
                         <div class="mb-2">
-                            <label>Chức vụ</label>
+                            <label class="form-label fw-semibold small text-muted">Chức vụ</label>
                             <select name="role" class="form-select">
-                                <option value="STAFF">Nhân viên</option>
-                                <option value="LEADER">Tổ trưởng</option>
-                                <option value="DEPUTY">Phó khoa</option>
-                                <option value="HEAD">Trưởng khoa</option>
-                                <option value="DEPUTY_DIRECTOR">Phó Giám Đốc</option>
-                                <option value="DIRECTOR">Giám Đốc</option>
+                                <option value="STAFF">Nhân viên (STAFF)</option>
+                                <option value="LEADER">Tổ trưởng (LEADER)</option>
+                                <option value="DEPUTY">Phó khoa (DEPUTY)</option>
+                                <option value="HEAD">Trưởng khoa (HEAD)</option>
+                                <option value="DEPUTY_DIRECTOR">Phó Giám Đốc (DEPUTY_DIRECTOR)</option>
+                                <option value="DIRECTOR">Giám Đốc (DIRECTOR)</option>
                             </select>
                         </div>
                     </div>
-                    <div class="modal-footer"><button type="submit" class="btn btn-primary">Tạo mới</button></div>
+                    <div class="modal-footer bg-light bg-opacity-50">
+                        <button type="button" class="btn btn-secondary px-4 py-2 border-0 bg-transparent text-muted" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary px-4 py-2">Tạo mới</button>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Modal Import Excel -->
-    <div class="modal fade" id="importExcelModal" tabindex="-1">
-        <div class="modal-dialog">
-            <form action="/admin/import/excel" method="POST" enctype="multipart/form-data">
-                <div class="modal-content">
+    <div class="modal fade" id="importExcelModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form action="/admin/import/excel" method="POST" enctype="multipart/form-data" class="w-100">
+                <div class="modal-content border-0 shadow-lg">
                     <div class="modal-header">
-                        <h5 class="modal-title">Nhập Dữ Liệu từ Excel</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                            <i data-feather="upload-cloud" class="text-primary"></i> Nhập Dữ Liệu từ Excel
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="modal-body">
-                        <div class="alert alert-info py-2 small">
-                            Tải file Excel mẫu có đầy đủ 2 Sheet <strong>KhoaPhong</strong> và <strong>NhanVien</strong> bên dưới để điền thông tin đúng định dạng trước khi import.
+                    <div class="modal-body p-4">
+                        <div class="alert alert-info py-2.5 small border-0 bg-primary bg-opacity-10 text-primary mb-3">
+                            <i data-feather="info" class="me-1" style="width: 16px; height: 16px; vertical-align: text-bottom;"></i>
+                            Vui lòng tải file mẫu Excel gồm 2 sheet <strong>KhoaPhong</strong> và <strong>NhanVien</strong> để điền đúng định dạng.
                         </div>
-                        <div class="mb-3">
-                            <a href="/admin/import/template" class="btn btn-sm btn-link p-0 fw-bold text-decoration-none">
-                                <span data-feather="download"></span> Tải file mẫu Excel (.xlsx)
+                        <div class="mb-4 text-center">
+                            <a href="/admin/import/template" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1 shadow-none">
+                                <i data-feather="download" style="width: 16px; height: 16px;"></i> Tải file mẫu Excel (.xlsx)
                             </a>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Chọn File Excel</label>
+                        <div class="mb-2">
+                            <label class="form-label fw-semibold small text-muted">Chọn File Excel</label>
                             <input type="file" name="importFile" class="form-control" accept=".xlsx, .xls" required>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                        <button type="submit" class="btn btn-primary">Nhập Dữ Liệu</button>
+                    <div class="modal-footer bg-light bg-opacity-50">
+                        <button type="button" class="btn btn-secondary px-4 py-2 border-0 bg-transparent text-muted" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary px-4 py-2">Nhập Dữ Liệu</button>
                     </div>
                 </div>
             </form>
         </div>
     </div>
+
+    <!-- CSS bổ sung để đảm bảo hiển thị badge chức vụ tốt trong Dark Mode -->
+    <style>
+        [data-bs-theme="dark"] .dark-role-badge {
+            background-color: rgba(255, 255, 255, 0.1) !important;
+            color: rgba(255, 255, 255, 0.8) !important;
+            border-color: rgba(255, 255, 255, 0.15) !important;
+        }
+    </style>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -137,8 +180,18 @@
             if (urlParams.get('importSuccess') === 'true') {
                 const depts = urlParams.get('depts') || 0;
                 const users = urlParams.get('users') || 0;
-                alert(`Nhập dữ liệu từ Excel thành công!\n- Khoa/Phòng đã tạo/cập nhật: ${depts}\n- Nhân viên đã tạo/cập nhật: ${users}`);
-                // Xóa query string trên URL để không bị alert lại khi F5
+                Swal.fire({
+                    title: 'Nhập dữ liệu thành công!',
+                    html: `<div class="text-start">
+                             <p class="mb-1"><i data-feather="check" class="text-success me-1"></i> Khoa/Phòng đã tạo/cập nhật: <strong>${depts}</strong></p>
+                             <p class="mb-0"><i data-feather="check" class="text-success me-1"></i> Nhân viên đã tạo/cập nhật: <strong>${users}</strong></p>
+                           </div>`,
+                    icon: 'success',
+                    confirmButtonText: 'Đồng ý',
+                    confirmButtonColor: 'var(--accent-indigo)'
+                }).then(() => {
+                    feather.replace();
+                });
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
         });
