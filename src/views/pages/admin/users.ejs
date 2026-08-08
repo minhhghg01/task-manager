@@ -1,7 +1,12 @@
 <%- include('../../partials/header') %>
     <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
         <h2>Quản lý Nhân sự</h2>
-        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addUserModal">+ Thêm Nhân viên</button>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#importExcelModal">
+                <span data-feather="file-text"></span> Nhập từ Excel
+            </button>
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addUserModal">+ Thêm Nhân viên</button>
+        </div>
     </div>
 
     <div class="table-responsive">
@@ -94,4 +99,49 @@
         </div>
     </div>
 
+    <!-- Modal Import Excel -->
+    <div class="modal fade" id="importExcelModal" tabindex="-1">
+        <div class="modal-dialog">
+            <form action="/admin/import/excel" method="POST" enctype="multipart/form-data">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Nhập Dữ Liệu từ Excel</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-info py-2 small">
+                            Tải file Excel mẫu có đầy đủ 2 Sheet <strong>KhoaPhong</strong> và <strong>NhanVien</strong> bên dưới để điền thông tin đúng định dạng trước khi import.
+                        </div>
+                        <div class="mb-3">
+                            <a href="/admin/import/template" class="btn btn-sm btn-link p-0 fw-bold text-decoration-none">
+                                <span data-feather="download"></span> Tải file mẫu Excel (.xlsx)
+                            </a>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Chọn File Excel</label>
+                            <input type="file" name="importFile" class="form-control" accept=".xlsx, .xls" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn btn-primary">Nhập Dữ Liệu</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('importSuccess') === 'true') {
+                const depts = urlParams.get('depts') || 0;
+                const users = urlParams.get('users') || 0;
+                alert(`Nhập dữ liệu từ Excel thành công!\n- Khoa/Phòng đã tạo/cập nhật: ${depts}\n- Nhân viên đã tạo/cập nhật: ${users}`);
+                // Xóa query string trên URL để không bị alert lại khi F5
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        });
+    </script>
+ 
     <%- include('../../partials/footer') %>

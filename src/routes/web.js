@@ -80,6 +80,7 @@ const upload = multer({
 const AuthController = require('../controllers/authController');
 const AdminController = require('../controllers/adminController');
 const taskControllerFactory = require('../controllers/taskController');
+const ReportController = require('../controllers/reportController');
 
 // --- MIDDLEWARES ---
 const requireAuth = async (req, res, next) => {
@@ -188,6 +189,13 @@ module.exports = (io) => {
     router.get('/api/users/subordinates', requireAuth, taskController.apiGetSubordinates);
 
     // ============================================================
+    // 4.5 BÁO CÁO & THỐNG KÊ CÔNG VIỆC
+    // ============================================================
+    router.get('/reports', requireAuth, ReportController.renderReportPage);
+    router.get('/reports/preview', requireAuth, ReportController.previewReport);
+    router.get('/reports/export', requireAuth, ReportController.exportTasksReport);
+
+    // ============================================================
     // 5. ADMIN: QUẢN LÝ USER
     // ============================================================
     router.get('/admin/users', requireAuth, requireAdmin, AdminController.listUsers);
@@ -195,6 +203,8 @@ module.exports = (io) => {
     router.get('/admin/users/detail/:id', requireAuth, requireAdmin, AdminController.detailUserPage);
     router.post('/admin/users/update/:id', requireAuth, requireAdmin, AdminController.updateUser);
     router.get('/admin/users/delete/:id', requireAuth, requireAdmin, AdminController.deleteUser);
+    router.get('/admin/import/template', requireAuth, requireAdmin, AdminController.downloadTemplate);
+    router.post('/admin/import/excel', requireAuth, requireAdmin, upload.single('importFile'), AdminController.importExcel);
 
     // ============================================================
     // 6. ADMIN: QUẢN LÝ KHOA/PHÒNG

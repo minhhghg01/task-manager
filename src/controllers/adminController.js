@@ -1,5 +1,7 @@
 const { User, Department, ActivityLog } = require('../models');
 const bcrypt = require('bcryptjs');
+const XLSX = require('xlsx');
+const fs = require('fs');
 
 // --- HÀM HELPER GHI LOG ---
 const logAction = async (userId, action, entityType, entityId, details) => {
@@ -196,6 +198,179 @@ const AdminController = {
             res.render('pages/admin/logs', { logs, pageTitle: 'Lịch sử tác động' });
         } catch (e) {
             res.status(500).send(e.message);
+        }
+    },
+
+    // 12. TẢI FILE BIỂU MẪU IMPORT (GET /admin/import/template)
+    downloadTemplate: (req, res) => {
+        try {
+            const wb = XLSX.utils.book_new();
+
+            // Sheet KhoaPhong
+            const deptsData = [
+                {
+                    'Mã khoa phòng': 'IT',
+                    'Tên khoa phòng': 'Khoa Công nghệ thông tin',
+                    'Trạng thái (active/inactive)': 'active'
+                },
+                {
+                    'Mã khoa phòng': 'XQ',
+                    'Tên khoa phòng': 'Khoa X-Quang',
+                    'Trạng thái (active/inactive)': 'active'
+                }
+            ];
+            const wsDepts = XLSX.utils.json_to_sheet(deptsData);
+            XLSX.utils.book_append_sheet(wb, wsDepts, 'KhoaPhong');
+
+            // Sheet NhanVien
+            const usersData = [
+                {
+                    'Tài khoản': 'nhanvien_it_new',
+                    'Mật khẩu': '123456',
+                    'Họ tên': 'Nguyễn Văn A',
+                    'Chức vụ': 'STAFF',
+                    'Mã khoa phòng': 'IT',
+                    'Trạng thái (active/inactive)': 'active'
+                },
+                {
+                    'Tài khoản': 'truongkhoa_xq_new',
+                    'Mật khẩu': '123456',
+                    'Họ tên': 'Trần Văn B',
+                    'Chức vụ': 'HEAD',
+                    'Mã khoa phòng': 'XQ',
+                    'Trạng thái (active/inactive)': 'active'
+                }
+            ];
+            const wsUsers = XLSX.utils.json_to_sheet(usersData);
+            XLSX.utils.book_append_sheet(wb, wsUsers, 'NhanVien');
+
+            const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+            res.setHeader('Content-Disposition', 'attachment; filename="BieuMau_Import.xlsx"');
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.send(buffer);
+        } catch (err) {
+            console.error(err);
+            res.status(500).send("Lỗi tải biểu mẫu: " + err.message);
+        }
+    },
+
+    // 13. IMPORT DỮ LIỆU TỪ EXCEL (POST /admin/import/excel)
+    importExcel: async (req, res) => {
+        try {
+            if (!req.file) {
+                return res.status(400).send("Không tìm thấy file tải lên.");
+            }
+
+            const workbook = XLSX.readFile(req.file.path);
+            let importedDepts = 0;
+            let importedUsers = 0;
+
+            // 1. Xử lý sheet KhoaPhong
+            if (workbook.SheetNames.includes('KhoaPhong')) {
+                const sheetDepts = workbook.Sheets['KhoaPhong'];
+                const deptsJson = XLSX.utils.sheet_to_json(sheetDepts);
+
+                for (const row of deptsJson) {
+                    const code = String(row['Mã khoa phòng'] || '').trim();
+                    const name = String(row['Tên khoa phòng'] || '').trim();
+                    let status = String(row['Trạng thái (active/inactive)'] || row['Trạng thái'] || 'active').trim().toLowerCase();
+                    if (status !== 'inactive') status = 'active';
+
+                    if (code && name) {
+                        const [dept, created] = await Department.findOrCreate({
+                            where: { code },
+                            defaults: { name, status }
+                        });
+
+                        if (!created) {
+                            await dept.update({ name, status });
+                        }
+                        importedDepts++;
+                    }
+                }
+            }
+
+            // 2. Xử lý sheet NhanVien
+            if (workbook.SheetNames.includes('NhanVien')) {
+                const sheetUsers = workbook.Sheets['NhanVien'];
+                const usersJson = XLSX.utils.sheet_to_json(sheetUsers);
+
+                const validRoles = ['ADMIN', 'DIRECTOR', 'DEPUTY_DIRECTOR', 'HEAD', 'DEPUTY', 'LEADER', 'STAFF'];
+
+                for (const row of usersJson) {
+                    const username = String(row['Tài khoản'] || '').trim();
+                    const password = String(row['Mật khẩu'] || '').trim();
+                    const fullname = String(row['Họ tên'] || '').trim();
+                    let role = String(row['Chức vụ'] || 'STAFF').trim().toUpperCase();
+                    const deptCode = String(row['Mã khoa phòng'] || '').trim();
+                    let status = String(row['Trạng thái (active/inactive)'] || row['Trạng thái'] || 'active').trim().toLowerCase();
+                    if (status !== 'inactive') status = 'active';
+
+                    if (!validRoles.includes(role)) {
+                        role = 'STAFF';
+                    }
+
+                    if (username && fullname && deptCode) {
+                        // Tìm hoặc tự động tạo Department theo deptCode
+                        let dept = await Department.findOne({ where: { code: deptCode } });
+                        if (!dept) {
+                            dept = await Department.create({
+                                name: `Khoa ${deptCode}`,
+                                code: deptCode,
+                                status: 'active'
+                            });
+                        }
+
+                        const userExist = await User.findOne({ where: { username } });
+                        if (userExist) {
+                            const updateData = { fullname, role, departments_id: dept.id, status };
+                            if (password) {
+                                const salt = await bcrypt.genSalt(10);
+                                updateData.password = await bcrypt.hash(password, salt);
+                            }
+                            await userExist.update(updateData);
+                        } else {
+                            const salt = await bcrypt.genSalt(10);
+                            const hashedPassword = await bcrypt.hash(password || '123456', salt);
+                            await User.create({
+                                username,
+                                password: hashedPassword,
+                                fullname,
+                                role,
+                                departments_id: dept.id,
+                                status
+                            });
+                        }
+                        importedUsers++;
+                    }
+                }
+            }
+
+            // Ghi Log lịch sử
+            if (req.session.user) {
+                await logAction(
+                    req.session.user.id,
+                    'CREATE',
+                    'USER',
+                    null,
+                    `Nhập dữ liệu Excel thành công: ${importedDepts} khoa phòng, ${importedUsers} nhân viên`
+                );
+            }
+
+            // Xóa file tạm
+            if (fs.existsSync(req.file.path)) {
+                fs.unlinkSync(req.file.path);
+            }
+
+            res.redirect(`/admin/users?importSuccess=true&depts=${importedDepts}&users=${importedUsers}`);
+        } catch (err) {
+            console.error("Lỗi Import Excel:", err);
+            // Đảm bảo xóa file tạm nếu lỗi
+            if (req.file && fs.existsSync(req.file.path)) {
+                fs.unlinkSync(req.file.path);
+            }
+            res.status(500).send("Lỗi xử lý file Excel: " + err.message);
         }
     }
 };

@@ -1,0 +1,365 @@
+<%- include('../partials/header') %>
+
+<div class="container-fluid px-4 py-3">
+    <!-- TIÊU ĐỀ TRANG -->
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <h2 class="fw-bold text-dark mb-1">Báo Cáo & Thống Kê Công Việc</h2>
+            <p class="text-muted mb-0 small">Xuất báo cáo tiến độ công việc chung theo khoa phòng, nhân viên và thời gian</p>
+        </div>
+    </div>
+
+    <!-- KHU VỰC BỘ LỌC -->
+    <div class="card shadow-sm border-0 mb-4 bg-light">
+        <div class="card-body">
+            <form id="reportForm" action="/reports/export" method="GET">
+                <div class="row g-3 align-items-end">
+                    <!-- Chọn Khoa Phòng -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold text-muted small">Khoa / Phòng</label>
+                        <select class="form-select border-0 shadow-sm" id="departmentFilter" name="departmentId" onchange="updateUsersList()">
+                            <% if (['ADMIN', 'DIRECTOR'].includes(user.role)) { %>
+                                <option value="all">-- Tất cả khoa phòng --</option>
+                            <% } %>
+                            <% departments.forEach(dept => { %>
+                                <option value="<%= dept.id %>" <%= String(dept.id) === String(defaultDeptId) ? 'selected' : '' %>>
+                                    <%= dept.name %>
+                                </option>
+                            <% }) %>
+                        </select>
+                    </div>
+
+                    <!-- Chọn Nhân Viên -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold text-muted small">Nhân viên thực hiện</label>
+                        <select class="form-select border-0 shadow-sm" id="userFilter" name="userId" onchange="refreshPreview()">
+                            <option value="all">-- Tất cả nhân viên --</option>
+                            <% usersInDept.forEach(u => { %>
+                                <option value="<%= u.id %>">
+                                    <%= u.fullname %>
+                                </option>
+                            <% }) %>
+                        </select>
+                    </div>
+
+                    <!-- Từ Ngày -->
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold text-muted small">Từ ngày (Ngày tạo)</label>
+                        <input type="date" class="form-control border-0 shadow-sm" id="startDateFilter" name="startDate" onchange="refreshPreview()">
+                    </div>
+
+                    <!-- Đến Ngày -->
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold text-muted small">Đến ngày</label>
+                        <input type="date" class="form-control border-0 shadow-sm" id="endDateFilter" name="endDate" onchange="refreshPreview()">
+                    </div>
+
+                    <!-- Nút Hành Động -->
+                    <div class="col-md-2 d-flex gap-2">
+                        <button type="button" class="btn btn-outline-primary flex-grow-1 shadow-sm border-0 bg-white" onclick="refreshPreview()">
+                            <span data-feather="refresh-cw" class="me-1"></span> Lọc
+                        </button>
+                        <button type="submit" class="btn btn-success flex-grow-1 shadow-sm border-0">
+                            <span data-feather="file-text" class="me-1"></span> Xuất Excel
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- KHU VỰC THỐNG KÊ BIỂU ĐỒ -->
+    <div id="statsLoading" class="text-center py-5 text-muted d-none">
+        <div class="spinner-border text-primary mb-2" role="status"></div>
+        <p class="mb-0">Đang phân tích số liệu thống kê...</p>
+    </div>
+
+    <div id="statsDashboard">
+        <!-- KPI Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm bg-primary text-white h-100">
+                    <div class="card-body d-flex align-items-center justify-content-between p-4">
+                        <div>
+                            <h6 class="text-white-50 fw-bold small text-uppercase mb-1">Tổng công việc</h6>
+                            <h2 class="fw-bold mb-0" id="kpiTotal">0</h2>
+                        </div>
+                        <div class="rounded-circle bg-white bg-opacity-25 p-3">
+                            <span data-feather="briefcase" style="width: 24px; height: 24px;"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm bg-success text-white h-100">
+                    <div class="card-body d-flex align-items-center justify-content-between p-4">
+                        <div>
+                            <h6 class="text-white-50 fw-bold small text-uppercase mb-1">Đã hoàn thành</h6>
+                            <h2 class="fw-bold mb-0" id="kpiCompleted">0</h2>
+                        </div>
+                        <div class="rounded-circle bg-white bg-opacity-25 p-3">
+                            <span data-feather="check-circle" style="width: 24px; height: 24px;"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm bg-info text-white h-100">
+                    <div class="card-body d-flex align-items-center justify-content-between p-4">
+                        <div>
+                            <h6 class="text-white-50 fw-bold small text-uppercase mb-1">Đang thực hiện</h6>
+                            <h2 class="fw-bold mb-0" id="kpiInProgress">0</h2>
+                        </div>
+                        <div class="rounded-circle bg-white bg-opacity-25 p-3">
+                            <span data-feather="play-circle" style="width: 24px; height: 24px;"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm bg-danger text-white h-100">
+                    <div class="card-body d-flex align-items-center justify-content-between p-4">
+                        <div>
+                            <h6 class="text-white-50 fw-bold small text-uppercase mb-1">Quá hạn</h6>
+                            <h2 class="fw-bold mb-0" id="kpiOverdue">0</h2>
+                        </div>
+                        <div class="rounded-circle bg-white bg-opacity-25 p-3">
+                            <span data-feather="alert-triangle" style="width: 24px; height: 24px;"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <!-- Biểu đồ trạng thái công việc (Doughnut) -->
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-0 pt-4 px-4 pb-0">
+                        <h5 class="card-title fw-bold text-dark mb-1">Tỷ lệ Trạng thái Công việc</h5>
+                        <p class="text-muted small mb-0">Biểu đồ thể hiện phần trăm phân bổ trạng thái</p>
+                    </div>
+                    <div class="card-body d-flex flex-column align-items-center justify-content-center p-4" style="min-height: 360px;">
+                        <div id="statusChartContainer" style="position: relative; height:300px; width:100%">
+                            <canvas id="statusChart"></canvas>
+                        </div>
+                        <div id="noDataStatus" class="text-muted d-none">Không có dữ liệu công việc</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Biểu đồ phân bổ độ ưu tiên (Bar Chart) -->
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-0 pt-4 px-4 pb-0">
+                        <h5 class="card-title fw-bold text-dark mb-1">Số lượng theo Độ ưu tiên</h5>
+                        <p class="text-muted small mb-0">Thống kê số lượng công việc theo mức độ quan trọng</p>
+                    </div>
+                    <div class="card-body d-flex flex-column align-items-center justify-content-center p-4" style="min-height: 360px;">
+                        <div id="priorityChartContainer" style="position: relative; height:300px; width:100%">
+                            <canvas id="priorityChart"></canvas>
+                        </div>
+                        <div id="noDataPriority" class="text-muted d-none">Không có dữ liệu công việc</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- SCRIPTS HỖ TRỢ HIỆU ỨNG VÀ AJAX PREVIEW -->
+<script>
+    // Toàn bộ danh sách nhân viên để filter động trên client
+    const allUsers = <%- JSON.stringify(usersInDept) %>;
+
+    // Cập nhật danh sách nhân viên khi đổi khoa phòng
+    function updateUsersList() {
+        const deptId = document.getElementById('departmentFilter').value;
+        const userSelect = document.getElementById('userFilter');
+        
+        userSelect.innerHTML = '<option value="all">-- Tất cả nhân viên --</option>';
+        
+        const filtered = allUsers.filter(u => deptId === 'all' || String(u.departments_id) === String(deptId));
+        filtered.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.id;
+            opt.textContent = `${u.fullname}`;
+            userSelect.appendChild(opt);
+        });
+
+        refreshPreview();
+    }
+
+    // Refresh dữ liệu preview bảng
+    function refreshPreview() {
+        const deptId = document.getElementById('departmentFilter').value;
+        const userId = document.getElementById('userFilter').value;
+        const startDate = document.getElementById('startDateFilter').value;
+        const endDate = document.getElementById('endDateFilter').value;
+
+        const loader = document.getElementById('statsLoading');
+        const dashboard = document.getElementById('statsDashboard');
+
+        loader.classList.remove('d-none');
+        dashboard.style.opacity = '0.5'; // Làm mờ nhẹ dashboard cũ khi đang tải
+
+        const queryParams = new URLSearchParams({
+            departmentId: deptId,
+            userId: userId,
+            startDate: startDate,
+            endDate: endDate
+        });
+
+        fetch(`/reports/preview?${queryParams.toString()}`)
+            .then(res => res.json())
+            .then(data => {
+                loader.classList.add('d-none');
+                dashboard.style.opacity = '1';
+                if (data.success) {
+                    renderCharts(data.tasks);
+                } else {
+                    alert('Lỗi khi tải số liệu: ' + data.message);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                loader.classList.add('d-none');
+                dashboard.style.opacity = '1';
+                alert('Không thể kết nối đến máy chủ để tải số liệu thống kê.');
+            });
+    }
+
+    let statusChartInstance = null;
+    let priorityChartInstance = null;
+
+    function renderCharts(tasks) {
+        const total = tasks.length;
+        const completed = tasks.filter(t => t.status === 'Hoàn thành').length;
+        const inProgress = tasks.filter(t => t.status === 'Đang thực hiện').length;
+        const overdue = tasks.filter(t => t.status === 'Quá hạn').length;
+        const pending = tasks.filter(t => t.status === 'Đang chờ').length;
+        const newTasks = tasks.filter(t => t.status === 'Mới tạo').length;
+
+        const high = tasks.filter(t => t.priority === 'Cao (Gấp)' || t.priority === 'Cao').length;
+        const medium = tasks.filter(t => t.priority === 'Trung bình').length;
+        const low = tasks.filter(t => t.priority === 'Thấp').length;
+
+        // Cập nhật các thẻ KPI
+        document.getElementById('kpiTotal').textContent = total;
+        document.getElementById('kpiCompleted').textContent = completed;
+        document.getElementById('kpiInProgress').textContent = inProgress;
+        document.getElementById('kpiOverdue').textContent = overdue;
+
+        const statusCanvas = document.getElementById('statusChart');
+        const noDataStatus = document.getElementById('noDataStatus');
+        const priorityCanvas = document.getElementById('priorityChart');
+        const noDataPriority = document.getElementById('noDataPriority');
+
+        if (total === 0) {
+            statusCanvas.style.display = 'none';
+            noDataStatus.classList.remove('d-none');
+            priorityCanvas.style.display = 'none';
+            noDataPriority.classList.remove('d-none');
+            if (statusChartInstance) statusChartInstance.destroy();
+            if (priorityChartInstance) priorityChartInstance.destroy();
+            return;
+        } else {
+            statusCanvas.style.display = 'block';
+            noDataStatus.classList.add('d-none');
+            priorityCanvas.style.display = 'block';
+            noDataPriority.classList.add('d-none');
+        }
+
+        // Vẽ biểu đồ trạng thái (Doughnut Chart)
+        if (statusChartInstance) {
+            statusChartInstance.destroy();
+        }
+        const statusCtx = statusCanvas.getContext('2d');
+        statusChartInstance = new Chart(statusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Mới tạo', 'Đang thực hiện', 'Hoàn thành', 'Quá hạn', 'Đang chờ'],
+                datasets: [{
+                    data: [newTasks, inProgress, completed, overdue, pending],
+                    backgroundColor: [
+                        '#6c757d', // Mới tạo
+                        '#0d6efd', // Đang thực hiện
+                        '#198754', // Hoàn thành
+                        '#dc3545', // Quá hạn
+                        '#ffc107'  // Đang chờ
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            padding: 15,
+                            font: { family: 'system-ui, -apple-system, sans-serif', size: 12 }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Vẽ biểu đồ độ ưu tiên (Bar Chart)
+        if (priorityChartInstance) {
+            priorityChartInstance.destroy();
+        }
+        const priorityCtx = priorityCanvas.getContext('2d');
+        priorityChartInstance = new Chart(priorityCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Cao (Gấp)', 'Trung bình', 'Thấp'],
+                datasets: [{
+                    label: 'Số công việc',
+                    data: [high, medium, low],
+                    backgroundColor: [
+                        '#dc3545',
+                        '#ffc107',
+                        '#0dcaf0'
+                    ],
+                    borderRadius: 4,
+                    maxBarThickness: 35
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1, font: { family: 'system-ui' } },
+                        grid: { color: '#f1f1f1' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { family: 'system-ui' } }
+                    }
+                }
+            }
+        });
+
+        // Kích hoạt feather icons cho các thẻ KPI mới vẽ
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+    }
+
+    // Tự động load danh sách lúc mở trang
+    document.addEventListener("DOMContentLoaded", () => {
+        refreshPreview();
+    });
+</script>
+
+<%- include('../partials/footer') %>
