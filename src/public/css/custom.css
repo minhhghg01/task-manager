@@ -635,6 +635,29 @@ body.scroll-down .fixed-bottom-footer {
     background-color: rgba(124, 58, 237, 0.15) !important;
 }
 
+.sidebar .nav-link svg,
+.sidebar .nav-link [data-feather] {
+    color: var(--text-muted) !important;
+    width: 18px;
+    height: 18px;
+    transition: color 0.2s ease;
+}
+
+.sidebar .nav-link:hover svg,
+.sidebar .nav-link:hover [data-feather] {
+    color: var(--text-main) !important;
+}
+
+.sidebar .nav-link.active svg,
+.sidebar .nav-link.active [data-feather] {
+    color: var(--accent-indigo) !important;
+}
+
+[data-bs-theme="dark"] .sidebar .nav-link.active svg,
+[data-bs-theme="dark"] .sidebar .nav-link.active [data-feather] {
+    color: #a78bfa !important;
+}
+
 .sidebar-heading {
     font-size: 0.72rem;
     font-weight: 700;

@@ -81,7 +81,7 @@
                                     </div>
                                 </div>
                                 <div class="flex-grow-1 ms-3">
-                                    <h4 class="mb-0 fw-bold text-dark">Điểm trung bình</h4>
+                                    <h4 class="mb-0 fw-bold">Điểm trung bình</h4>
                                     <small class="text-muted">Đánh giá trên các công việc bạn đã hoàn thành.</small>
                                 </div>
                             </div>
@@ -131,7 +131,7 @@
                                     <div class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center"
                                         style="pointer-events: none; padding-bottom: 30px;">
                                         <% if (hasData) { %>
-                                            <h1 class="mb-0 fw-bold text-dark"
+                                            <h1 class="mb-0 fw-bold"
                                                 style="font-size: 2.5rem; line-height: 1;">
                                                 <%= stats.totalTasks %>
                                             </h1>
@@ -242,7 +242,7 @@
                                                     <button
                                                         class="btn btn-sm btn-white border border-secondary-subtle w-100 dropdown-toggle text-truncate shadow-none d-flex justify-content-between align-items-center px-2"
                                                         type="button" data-bs-toggle="dropdown"
-                                                        style="font-size: 0.8rem; background: #fff;">
+                                                        style="font-size: 0.8rem; background: var(--bg-card); color: var(--text-main); border: 1.5px solid var(--border-color) !important;">
                                                         <span>Tất cả</span>
                                                     </button>
                                                     <div class="dropdown-menu p-2 shadow border-0"
@@ -279,7 +279,7 @@
                                                     <button
                                                         class="btn btn-sm btn-white border border-secondary-subtle w-100 dropdown-toggle text-truncate shadow-none px-1"
                                                         type="button" data-bs-toggle="dropdown"
-                                                        style="font-size: 0.8rem; background: #fff;">All</button>
+                                                        style="font-size: 0.8rem; background: var(--bg-card); color: var(--text-main); border: 1.5px solid var(--border-color) !important;">All</button>
                                                     <div class="dropdown-menu p-2 shadow border-0"
                                                         style="max-height: 300px; overflow-y: auto;">
                                                         <div class="filter-options-container"></div>
@@ -291,7 +291,7 @@
                                                     <button
                                                         class="btn btn-sm btn-white border border-secondary-subtle w-100 dropdown-toggle text-truncate shadow-none px-1"
                                                         type="button" data-bs-toggle="dropdown"
-                                                        style="font-size: 0.8rem; background: #fff;">All</button>
+                                                        style="font-size: 0.8rem; background: var(--bg-card); color: var(--text-main); border: 1.5px solid var(--border-color) !important;">All</button>
                                                     <div class="dropdown-menu p-2 shadow border-0">
                                                         <div class="filter-options-container"></div>
                                                     </div>
@@ -302,7 +302,7 @@
                                                     <button
                                                         class="btn btn-sm btn-white border border-secondary-subtle w-100 dropdown-toggle text-truncate shadow-none px-1"
                                                         type="button" data-bs-toggle="dropdown"
-                                                        style="font-size: 0.8rem; background: #fff;">All</button>
+                                                        style="font-size: 0.8rem; background: var(--bg-card); color: var(--text-main); border: 1.5px solid var(--border-color) !important;">All</button>
                                                     <div class="dropdown-menu p-2 shadow border-0">
                                                         <div class="filter-options-container"></div>
                                                     </div>
@@ -314,7 +314,7 @@
                                                     <button
                                                         class="btn btn-sm btn-white border border-secondary-subtle w-100 dropdown-toggle text-truncate shadow-none px-1"
                                                         type="button" data-bs-toggle="dropdown"
-                                                        style="font-size: 0.8rem; background: #fff;">Tags</button>
+                                                        style="font-size: 0.8rem; background: var(--bg-card); color: var(--text-main); border: 1.5px solid var(--border-color) !important;">Tags</button>
                                                     <div class="dropdown-menu p-2 shadow border-0 dropdown-menu-end"
                                                         style="width: 200px;">
                                                         <div class="filter-options-container"></div>
@@ -332,7 +332,7 @@
                                                         <%= index + 1 %>
                                                     </td>
                                                     <td>
-                                                        <strong class="text-dark">
+                                                        <strong>
                                                             <%= task.title %>
                                                         </strong>
                                                         <% if(task.attachment_path) { %><i data-feather="paperclip"

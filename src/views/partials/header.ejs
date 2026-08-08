@@ -11,7 +11,7 @@
 
 <body data-userid="<%= (typeof user !== 'undefined' && user) ? user.id : '' %>">
 
-    <header class="navbar navbar-dark sticky-top bg-primary flex-md-nowrap p-0 shadow">
+    <header class="navbar navbar-expand navbar-dark sticky-top bg-primary flex-md-nowrap p-0 shadow">
         <div class="d-flex align-items-center col-md-3 col-lg-2 px-3 brand-container">
             <a class="navbar-brand me-0" href="/dashboard">Quản Lý Công Việc</a>
             <button class="btn btn-link text-white p-0 d-none d-md-inline-block ms-auto" id="toggleSidebarBtn"
@@ -179,5 +179,41 @@
                             }
                             lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
                         }, { passive: true });
+
+                        // 5. Cử chỉ vuốt mở/đóng Sidebar trên Mobile
+                        let touchStartX = 0;
+                        let touchStartY = 0;
+                        let touchEndX = 0;
+                        let touchEndY = 0;
+
+                        document.addEventListener('touchstart', (e) => {
+                            touchStartX = e.changedTouches[0].screenX;
+                            touchStartY = e.changedTouches[0].screenY;
+                        }, { passive: true });
+
+                        document.addEventListener('touchend', (e) => {
+                            touchEndX = e.changedTouches[0].screenX;
+                            touchEndY = e.changedTouches[0].screenY;
+                            handleSwipeGesture();
+                        }, { passive: true });
+
+                        function handleSwipeGesture() {
+                            const diffX = touchEndX - touchStartX;
+                            const diffY = touchEndY - touchStartY;
+
+                            if (Math.abs(diffX) > Math.abs(diffY) * 1.5 && Math.abs(diffX) > 80) {
+                                if (diffX > 0) {
+                                    if (touchStartX < 120 && !sidebar.classList.contains('show')) {
+                                        const bsCollapse = bootstrap.Collapse.getOrCreateInstance(sidebar, { toggle: false });
+                                        bsCollapse.show();
+                                    }
+                                } else {
+                                    if (sidebar.classList.contains('show')) {
+                                        const bsCollapse = bootstrap.Collapse.getOrCreateInstance(sidebar, { toggle: false });
+                                        bsCollapse.hide();
+                                    }
+                                }
+                            }
+                        }
                     });
                 </script>
