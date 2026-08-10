@@ -25,15 +25,16 @@
     </div>
 
     <div class="card shadow-sm border-0">
-        <div class="card-header bg-light">
-            <h6 class="mb-0">Danh sách công việc đang đảm nhận</h6>
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+            <h6 class="mb-0 fw-bold text-muted">Danh sách công việc đang đảm nhận</h6>
+            <input type="text" id="tableSearchInput" class="form-control form-control-sm px-3 shadow-none border-secondary-subtle rounded-pill" placeholder="Tìm kiếm công việc..." style="width: 220px; height: 31px; font-size: 0.85rem;">
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-striped table-hover align-middle mb-0 datatable-init">
-                    <thead class="table-light">
+                <table class="table table-hover align-middle mb-0" id="mainTable">
+                    <thead>
                         <tr>
-                            <th>STT</th>
+                            <th class="text-center" style="width: 60px;">STT</th>
                             <th>Tiêu đề công việc</th>
                             <th>Hạn chót</th>
                             <th>Độ ưu tiên</th>
@@ -45,7 +46,7 @@
                         <% if (tasks && tasks.length> 0) { %>
                             <% tasks.forEach((task, index)=> { %>
                                 <tr>
-                                    <td>
+                                    <td class="text-center text-muted fw-bold">
                                         <%= index + 1 %>
                                     </td>
                                     <td>
@@ -77,31 +78,270 @@
                                     </td>
                                 </tr>
                                 <% }) %>
-                                    <% } %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="6" class="text-center py-5 text-muted">Chưa giao việc cho nhân viên này</td>
+                                </tr>
+                            <% } %>
                     </tbody>
                 </table>
+            </div>
+            <!-- Premium Pagination -->
+            <div class="p-3 border-top">
+                <div class="premium-pagination-container d-flex justify-content-between align-items-center flex-wrap gap-3">
+                    <div class="premium-pagination-pill d-flex align-items-center bg-white shadow-sm border border-light-subtle rounded-pill px-3 py-2 gap-2">
+                        <!-- Left chevron -->
+                        <button class="btn btn-link p-0 text-secondary border-0 shadow-none d-flex align-items-center justify-content-center" id="btnPrev">
+                            <i data-feather="chevron-left" style="width: 16px; height: 16px;"></i>
+                        </button>
+
+                        <!-- Page numbers container -->
+                        <div class="d-flex align-items-center gap-1" id="pageNumbers">
+                        </div>
+
+                        <!-- Right chevron -->
+                        <button class="btn btn-link p-0 text-secondary border-0 shadow-none d-flex align-items-center justify-content-center" id="btnNext">
+                            <i data-feather="chevron-right" style="width: 16px; height: 16px;"></i>
+                        </button>
+
+                        <!-- Divider line -->
+                        <div class="vr mx-1 my-2 text-secondary-subtle" style="width: 1px; height: 20px; opacity: 0.4;"></div>
+
+                        <!-- Page size selector -->
+                        <div class="d-flex align-items-center pagination-select-group">
+                            <select id="pageSize" class="form-select form-select-sm border-0 bg-transparent px-2 py-0 shadow-none text-muted" style="width: auto; font-size: 0.85rem; cursor: pointer;">
+                                <option value="10" selected>10 dòng / trang</option>
+                                <option value="20">20 dòng / trang</option>
+                                <option value="50">50 dòng / trang</option>
+                                <option value="200">200 dòng / trang</option>
+                                <option value="500">500 dòng / trang</option>
+                                <option value="all">Tất cả dòng</option>
+                            </select>
+                        </div>
+
+                        <!-- Divider line -->
+                        <div class="vr mx-1 my-2 text-secondary-subtle" style="width: 1px; height: 20px; opacity: 0.4;"></div>
+
+                        <!-- Jump to page input -->
+                        <div class="d-flex align-items-center gap-1 text-muted small pagination-jump-group">
+                            <span>Đến trang</span>
+                            <input type="number" id="jumpPageInput" class="form-control form-control-sm text-center p-0 border border-secondary-subtle rounded-2 shadow-none" value="1" min="1" style="width: 40px; height: 26px; font-size: 0.85rem;">
+                        </div>
+                    </div>
+
+                    <!-- Total rows display -->
+                    <div id="paginationInfo" class="badge bg-light text-secondary border border-light-subtle rounded-pill px-3 py-2 fw-semibold fs-7">
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <%- include('../partials/modal-create-task') %>
 
-        <script>
-            function openAssignModalForUser(userId) {
-                const modalEl = document.getElementById('createTaskModal');
-                const modal = new bootstrap.Modal(modalEl);
-                modal.show();
+    <script>
+        function openAssignModalForUser(userId) {
+            const modalEl = document.getElementById('createTaskModal');
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
 
-                modalEl.addEventListener('shown.bs.modal', function () {
-                    const select = document.getElementById('userSelectBox');
-                    if (select) {
-                        Array.from(select.options).forEach(opt => opt.selected = false);
-                        Array.from(select.options).forEach(opt => {
-                            if (opt.value == userId) opt.selected = true;
-                        });
+            modalEl.addEventListener('shown.bs.modal', function () {
+                const select = document.getElementById('userSelectBox');
+                if (select) {
+                    Array.from(select.options).forEach(opt => opt.selected = false);
+                    Array.from(select.options).forEach(opt => {
+                        if (opt.value == userId) opt.selected = true;
+                    });
+                }
+            }, { once: true });
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const table = document.getElementById("mainTable");
+            if (!table) return;
+            const tbody = table.querySelector("tbody");
+            const allRows = Array.from(tbody.querySelectorAll("tr")).filter(row => !row.innerText.includes("Chưa giao việc"));
+            
+            let currentPage = 1;
+            let rowsPerPage = 10;
+            let filteredRows = [...allRows];
+            
+            function renderPagination() {
+                const totalRows = filteredRows.length;
+                const pageSizeSelect = document.getElementById('pageSize').value;
+                rowsPerPage = pageSizeSelect === 'all' ? totalRows : parseInt(pageSizeSelect);
+
+                const totalPages = rowsPerPage === 0 ? 1 : Math.ceil(totalRows / rowsPerPage);
+                if (currentPage > totalPages) currentPage = totalPages || 1;
+
+                const start = rowsPerPage === totalRows ? 0 : (currentPage - 1) * rowsPerPage;
+                const end = Math.min(start + rowsPerPage, totalRows);
+
+                allRows.forEach(row => row.style.display = 'none');
+                filteredRows.forEach(row => tbody.appendChild(row));
+                for (let i = start; i < end; i++) {
+                    if (filteredRows[i]) {
+                        filteredRows[i].style.display = '';
+                        const indexCell = filteredRows[i].cells[0];
+                        if (indexCell) {
+                            indexCell.innerText = i + 1;
+                        }
                     }
-                }, { once: true });
-            }
-        </script>
+                }
 
-        <%- include('../partials/footer') %>
+                let emptyRow = document.getElementById("emptyRow");
+                if (totalRows === 0) {
+                    if (!emptyRow) {
+                        const colCount = table.querySelectorAll("thead th").length;
+                        tbody.insertAdjacentHTML('beforeend', `<tr id="emptyRow"><td colspan="${colCount}" class="text-center py-5 text-muted">Không có dữ liệu phù hợp</td></tr>`);
+                    }
+                } else if (emptyRow) {
+                    emptyRow.remove();
+                }
+
+                const infoEl = document.getElementById('paginationInfo');
+                if (infoEl) {
+                    if (totalRows === 0) {
+                        infoEl.innerHTML = "0/0";
+                    } else {
+                        infoEl.innerHTML = `Hiển thị: ${end - start}/${totalRows}`;
+                    }
+                }
+
+                const btnPrev = document.getElementById('btnPrev');
+                const btnNext = document.getElementById('btnNext');
+                
+                if (btnPrev && btnNext) {
+                    if (currentPage === 1) {
+                        btnPrev.setAttribute('disabled', 'true');
+                        btnPrev.style.opacity = '0.4';
+                        btnPrev.onclick = null;
+                    } else {
+                        btnPrev.removeAttribute('disabled');
+                        btnPrev.style.opacity = '1';
+                        btnPrev.onclick = function() { changePage(currentPage - 1); return false; };
+                    }
+
+                    if (currentPage === totalPages) {
+                        btnNext.setAttribute('disabled', 'true');
+                        btnNext.style.opacity = '0.4';
+                        btnNext.onclick = null;
+                    } else {
+                        btnNext.removeAttribute('disabled');
+                        btnNext.style.opacity = '1';
+                        btnNext.onclick = function() { changePage(currentPage + 1); return false; };
+                    }
+                }
+
+                const pageNumbersContainer = document.getElementById('pageNumbers');
+                if (pageNumbersContainer) {
+                    pageNumbersContainer.innerHTML = '';
+                    for (let i = 1; i <= totalPages; i++) {
+                        if (totalPages > 6) {
+                            if (i !== 1 && i !== totalPages && Math.abs(i - currentPage) > 1) {
+                                if (i === 2 || i === totalPages - 1) {
+                                    pageNumbersContainer.innerHTML += `<span class="text-muted small px-1">...</span>`;
+                                }
+                                continue;
+                            }
+                        }
+                        pageNumbersContainer.innerHTML += `<a href="#" class="page-num ${i === currentPage ? 'active' : ''}" onclick="changePage(${i}); return false;">${i}</a>`;
+                    }
+                }
+                
+                const jumpInput = document.getElementById('jumpPageInput');
+                if (jumpInput) {
+                    jumpInput.value = currentPage;
+                    jumpInput.max = totalPages;
+                    jumpInput.onchange = function() {
+                        let val = parseInt(this.value);
+                        if (isNaN(val) || val < 1) val = 1;
+                        if (val > totalPages) val = totalPages;
+                        changePage(val);
+                    };
+                    jumpInput.onkeydown = function(e) {
+                        if (e.key === 'Enter') {
+                            let val = parseInt(this.value);
+                            if (isNaN(val) || val < 1) val = 1;
+                            if (val > totalPages) val = totalPages;
+                            changePage(val);
+                            e.preventDefault();
+                        }
+                    };
+                }
+            }
+
+            window.changePage = function (page) {
+                currentPage = page;
+                renderPagination();
+            };
+
+            const searchInput = document.getElementById('tableSearchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', function () {
+                    const query = this.value.toLowerCase().trim();
+                    filteredRows = allRows.filter(row => {
+                        if (row.id === 'emptyRow') return false;
+                        return row.innerText.toLowerCase().includes(query);
+                    });
+                    currentPage = 1;
+                    renderPagination();
+                });
+            }
+
+            let currentSortCol = -1;
+            let currentSortDir = 'asc';
+
+            window.sortTable = function(colIndex) {
+                if (colIndex === 0) return;
+                
+                if (currentSortCol === colIndex) {
+                    currentSortDir = currentSortDir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    currentSortCol = colIndex;
+                    currentSortDir = 'asc';
+                }
+
+                const headers = table.querySelectorAll('thead tr th');
+                headers.forEach((th, idx) => {
+                    if (idx === 0) return;
+                    let baseText = th.innerText.replace(/[▲▼⇅]/g, '').trim();
+                    if (idx === colIndex) {
+                        th.innerText = baseText + (currentSortDir === 'asc' ? ' ▲' : ' ▼');
+                    } else {
+                        th.innerText = baseText + ' ⇅';
+                    }
+                });
+
+                filteredRows.sort((rowA, rowB) => {
+                    let cellA = rowA.cells[colIndex] ? rowA.cells[colIndex].innerText.trim() : '';
+                    let cellB = rowB.cells[colIndex] ? rowB.cells[colIndex].innerText.trim() : '';
+
+                    return currentSortDir === 'asc' 
+                        ? cellA.localeCompare(cellB, 'vi', { sensitivity: 'base' })
+                        : cellB.localeCompare(cellA, 'vi', { sensitivity: 'base' });
+                });
+
+                currentPage = 1;
+                renderPagination();
+            };
+
+            const headers = table.querySelectorAll('thead tr th');
+            headers.forEach((th, idx) => {
+                if (idx > 0) {
+                    th.style.cursor = 'pointer';
+                    th.innerText = th.innerText + ' ⇅';
+                    th.addEventListener('click', () => sortTable(idx));
+                }
+            });
+
+            document.getElementById('pageSize')?.addEventListener('change', () => {
+                currentPage = 1;
+                renderPagination();
+            });
+
+            renderPagination();
+        });
+    </script>
+
+    <%- include('../partials/footer') %>

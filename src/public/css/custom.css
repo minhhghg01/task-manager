@@ -939,3 +939,63 @@ body.scroll-down .fixed-bottom-footer {
     border-color: var(--accent-indigo) !important;
     box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15) !important;
 }
+
+/* Custom class for KPI sub cards to replace bg-light in dark mode */
+.kpi-sub-card {
+    background-color: var(--bg-primary) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-main) !important;
+}
+
+[data-bs-theme="dark"] .kpi-sub-card {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+/* Ensure pagination info badge adapts to theme colors */
+.premium-pagination-container #paginationInfo {
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-muted) !important;
+}
+
+/* Responsive Premium Pagination */
+@media (max-width: 575.98px) {
+    .premium-pagination-container {
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 12px !important;
+    }
+    
+    .premium-pagination-pill {
+        height: auto !important;
+        min-height: 42px !important;
+        border-radius: var(--radius-md) !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        padding: 8px 12px !important;
+        gap: 8px !important;
+    }
+    
+    .premium-pagination-pill .vr {
+        display: none !important;
+    }
+    
+    .premium-pagination-pill .pagination-jump-group {
+        display: none !important;
+    }
+    
+    .premium-pagination-pill .pagination-select-group {
+        width: 100% !important;
+        display: flex !important;
+        justify-content: center !important;
+        border-top: 1px solid var(--border-color);
+        padding-top: 8px;
+        margin-top: 4px;
+    }
+    
+    .premium-pagination-pill select#pageSize {
+        margin: 0 auto !important;
+        padding-right: 20px !important;
+    }
+}
+

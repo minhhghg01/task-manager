@@ -272,6 +272,12 @@
             noDataPriority.classList.add('d-none');
         }
 
+        // Tải thiết lập màu theo theme hiện tại
+        const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+        const textColor = isDark ? '#94a3b8' : '#64748b';
+        const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#f1f1f1';
+        const borderColor = isDark ? '#1e293b' : '#ffffff';
+
         // Vẽ biểu đồ trạng thái (Doughnut Chart)
         if (statusChartInstance) {
             statusChartInstance.destroy();
@@ -290,7 +296,8 @@
                         '#dc3545', // Quá hạn
                         '#ffc107'  // Đang chờ
                     ],
-                    borderWidth: 1
+                    borderWidth: 2,
+                    borderColor: borderColor
                 }]
             },
             options: {
@@ -302,7 +309,8 @@
                         labels: {
                             boxWidth: 12,
                             padding: 15,
-                            font: { family: 'system-ui, -apple-system, sans-serif', size: 12 }
+                            font: { family: 'system-ui, -apple-system, sans-serif', size: 12 },
+                            color: textColor
                         }
                     }
                 }
@@ -339,12 +347,12 @@
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: { stepSize: 1, font: { family: 'system-ui' } },
-                        grid: { color: '#f1f1f1' }
+                        ticks: { stepSize: 1, font: { family: 'system-ui' }, color: textColor },
+                        grid: { color: gridColor }
                     },
                     x: {
                         grid: { display: false },
-                        ticks: { font: { family: 'system-ui' } }
+                        ticks: { font: { family: 'system-ui' }, color: textColor }
                     }
                 }
             }
@@ -355,6 +363,28 @@
             feather.replace();
         }
     }
+
+    // MutationObserver để cập nhật biểu đồ trực tiếp khi thay đổi giao diện sáng/tối
+    const themeObserver = new MutationObserver(() => {
+        const currentDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+        const currentText = currentDark ? '#94a3b8' : '#64748b';
+        const currentGrid = currentDark ? 'rgba(255, 255, 255, 0.08)' : '#f1f1f1';
+        const currentBorder = currentDark ? '#1e293b' : '#ffffff';
+        
+        if (statusChartInstance) {
+            statusChartInstance.options.plugins.legend.labels.color = currentText;
+            statusChartInstance.data.datasets[0].borderColor = currentBorder;
+            statusChartInstance.update();
+        }
+        
+        if (priorityChartInstance) {
+            priorityChartInstance.options.scales.x.ticks.color = currentText;
+            priorityChartInstance.options.scales.y.ticks.color = currentText;
+            priorityChartInstance.options.scales.y.grid.color = currentGrid;
+            priorityChartInstance.update();
+        }
+    });
+    themeObserver.observe(document.documentElement, { attributes: true });
 
     // Tự động load danh sách lúc mở trang
     document.addEventListener("DOMContentLoaded", () => {
