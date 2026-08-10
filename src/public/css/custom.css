@@ -958,22 +958,36 @@ body.scroll-down .fixed-bottom-footer {
     color: var(--text-muted) !important;
 }
 
+/* Theme-aware Premium Pagination Pill */
+.premium-pagination-pill {
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-main) !important;
+}
+
+[data-bs-theme="dark"] .premium-pagination-pill {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+}
+
 /* Responsive Premium Pagination */
 @media (max-width: 575.98px) {
     .premium-pagination-container {
         flex-direction: column !important;
         align-items: center !important;
+        width: 100% !important;
         gap: 12px !important;
     }
     
     .premium-pagination-pill {
+        width: 100% !important;
         height: auto !important;
         min-height: 42px !important;
-        border-radius: var(--radius-md) !important;
+        border-radius: 12px !important;
         flex-wrap: wrap !important;
         justify-content: center !important;
-        padding: 8px 12px !important;
-        gap: 8px !important;
+        padding: 10px 16px !important;
+        gap: 12px !important;
     }
     
     .premium-pagination-pill .vr {
@@ -988,14 +1002,35 @@ body.scroll-down .fixed-bottom-footer {
         width: 100% !important;
         display: flex !important;
         justify-content: center !important;
-        border-top: 1px solid var(--border-color);
-        padding-top: 8px;
-        margin-top: 4px;
+        border-top: 1px solid var(--border-color) !important;
+        padding-top: 10px !important;
+        margin-top: 6px !important;
     }
     
     .premium-pagination-pill select#pageSize {
         margin: 0 auto !important;
         padding-right: 20px !important;
+        text-align: center !important;
+        text-align-last: center !important;
     }
+}
+
+/* Navigation controls group horizontal layout override */
+.premium-pagination-nav-group {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    width: auto !important;
+    margin: 0 auto !important;
+}
+
+.premium-pagination-nav-group .btn {
+    flex: 0 0 auto !important;
+    width: 28px !important;
+    height: 28px !important;
+    padding: 0 !important;
 }
 

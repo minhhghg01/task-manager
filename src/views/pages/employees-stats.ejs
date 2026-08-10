@@ -6,7 +6,9 @@
             <p class="text-muted small mb-0">Theo dõi hiệu suất và vai trò của nhân viên trong khoa phòng.</p>
         </div>
         <div class="d-flex align-items-center gap-2">
-            <input type="text" id="tableSearchInput" class="form-control form-control-sm px-3 shadow-none border-secondary-subtle rounded-pill" placeholder="Tìm kiếm nhân viên..." style="width: 220px; height: 31px; font-size: 0.85rem;">
+            <input type="text" id="tableSearchInput"
+                class="form-control form-control-sm px-3 shadow-none border-secondary-subtle rounded-pill"
+                placeholder="Tìm kiếm nhân viên..." style="width: 220px; height: 31px; font-size: 0.85rem;">
         </div>
     </div>
 
@@ -44,9 +46,9 @@
                                         <strong>
                                             <%= u.fullname %>
                                         </strong><br>
-                                        <small class="text-muted">
+                                        <!-- <small class="text-muted">
                                             <%= u.Department ? u.Department.name : '' %>
-                                        </small>
+                                        </small> -->
                                     </div>
                                 </div>
                             </td>
@@ -94,16 +96,20 @@
                             </td>
 
                             <td onclick="event.stopPropagation()">
-                                <% if (typeof currentUserRole !=='undefined' && currentUserRole==='HEAD' ) { %>
+                                <% if (typeof currentUserRole !=='undefined' && (currentUserRole==='HEAD' ||
+                                    currentUserRole==='ADMIN' )) { %>
                                     <% if (u.role==='STAFF' ) { %>
                                         <button onclick="setLeaderRole('<%= u.id %>', 'promote')"
-                                            class="btn btn-sm btn-outline-warning text-dark">
-                                            <span data-feather="chevrons-up"></span> Lên Tổ trưởng
+                                            class="btn btn-sm btn-outline-warning d-inline-flex align-items-center gap-1 shadow-sm">
+                                            <span data-feather="star" style="width: 14px; height: 14px;"></span> Lên Tổ
+                                            trưởng
                                         </button>
                                         <% } else if (u.role==='LEADER' ) { %>
                                             <button onclick="setLeaderRole('<%= u.id %>', 'demote')"
-                                                class="btn btn-sm btn-outline-secondary">
-                                                <span data-feather="chevrons-down"></span> Xuống NV
+                                                class="btn btn-sm btn-warning text-dark d-inline-flex align-items-center gap-1 shadow-sm">
+                                                <span data-feather="star"
+                                                    style="width: 14px; height: 14px; fill: currentColor;"></span> Hạ Tổ
+                                                trưởng
                                             </button>
                                             <% } %>
                                                 <% } %>
@@ -122,27 +128,37 @@
 
     <!-- Premium Pagination -->
     <div class="premium-pagination-container d-flex justify-content-between align-items-center flex-wrap gap-3 mt-4">
-        <div class="premium-pagination-pill d-flex align-items-center bg-white shadow-sm border border-light-subtle rounded-pill px-3 py-2 gap-2">
-            <!-- Left chevron -->
-            <button class="btn btn-link p-0 text-secondary border-0 shadow-none d-flex align-items-center justify-content-center" id="btnPrev">
-                <i data-feather="chevron-left" style="width: 16px; height: 16px;"></i>
-            </button>
+        <div
+            class="premium-pagination-pill d-flex align-items-center bg-white shadow-sm border border-light-subtle rounded-pill px-3 py-2 gap-2">
+            <!-- Navigation controls group -->
+            <div class="premium-pagination-nav-group d-flex align-items-center">
+                <!-- Left chevron -->
+                <button
+                    class="btn btn-link p-0 text-secondary border-0 shadow-none d-flex align-items-center justify-content-center"
+                    id="btnPrev">
+                    <i data-feather="chevron-left" style="width: 16px; height: 16px;"></i>
+                </button>
 
-            <!-- Page numbers container -->
-            <div class="d-flex align-items-center gap-1" id="pageNumbers">
+                <!-- Page numbers container -->
+                <div class="d-flex align-items-center gap-1" id="pageNumbers">
+                </div>
+
+                <!-- Right chevron -->
+                <button
+                    class="btn btn-link p-0 text-secondary border-0 shadow-none d-flex align-items-center justify-content-center"
+                    id="btnNext">
+                    <i data-feather="chevron-right" style="width: 16px; height: 16px;"></i>
+                </button>
             </div>
-
-            <!-- Right chevron -->
-            <button class="btn btn-link p-0 text-secondary border-0 shadow-none d-flex align-items-center justify-content-center" id="btnNext">
-                <i data-feather="chevron-right" style="width: 16px; height: 16px;"></i>
-            </button>
 
             <!-- Divider line -->
             <div class="vr mx-1 my-2 text-secondary-subtle" style="width: 1px; height: 20px; opacity: 0.4;"></div>
 
             <!-- Page size selector -->
             <div class="d-flex align-items-center pagination-select-group">
-                <select id="pageSize" class="form-select form-select-sm border-0 bg-transparent px-2 py-0 shadow-none text-muted" style="width: auto; font-size: 0.85rem; cursor: pointer;">
+                <select id="pageSize"
+                    class="form-select form-select-sm border-0 bg-transparent px-2 py-0 shadow-none text-muted"
+                    style="width: auto; font-size: 0.85rem; cursor: pointer;">
                     <option value="10" selected>10 dòng / trang</option>
                     <option value="20">20 dòng / trang</option>
                     <option value="50">50 dòng / trang</option>
@@ -158,12 +174,15 @@
             <!-- Jump to page input -->
             <div class="d-flex align-items-center gap-1 text-muted small pagination-jump-group">
                 <span>Đến trang</span>
-                <input type="number" id="jumpPageInput" class="form-control form-control-sm text-center p-0 border border-secondary-subtle rounded-2 shadow-none" value="1" min="1" style="width: 40px; height: 26px; font-size: 0.85rem;">
+                <input type="number" id="jumpPageInput"
+                    class="form-control form-control-sm text-center p-0 border border-secondary-subtle rounded-2 shadow-none"
+                    value="1" min="1" style="width: 40px; height: 26px; font-size: 0.85rem;">
             </div>
         </div>
 
         <!-- Total rows display -->
-        <div id="paginationInfo" class="badge bg-light text-secondary border border-light-subtle rounded-pill px-3 py-2 fw-semibold fs-7">
+        <div id="paginationInfo"
+            class="badge bg-light text-secondary border border-light-subtle rounded-pill px-3 py-2 fw-semibold fs-7">
         </div>
     </div>
 
@@ -196,11 +215,11 @@
             if (!table) return;
             const tbody = table.querySelector("tbody");
             const allRows = Array.from(tbody.querySelectorAll("tr")).filter(row => !row.cells[0].innerText.includes("Không tìm thấy"));
-            
+
             let currentPage = 1;
             let rowsPerPage = 10;
             let filteredRows = [...allRows];
-            
+
             function renderPagination() {
                 const totalRows = filteredRows.length;
                 const pageSizeSelect = document.getElementById('pageSize').value;
@@ -245,7 +264,7 @@
 
                 const btnPrev = document.getElementById('btnPrev');
                 const btnNext = document.getElementById('btnNext');
-                
+
                 if (btnPrev && btnNext) {
                     if (currentPage === 1) {
                         btnPrev.setAttribute('disabled', 'true');
@@ -254,7 +273,7 @@
                     } else {
                         btnPrev.removeAttribute('disabled');
                         btnPrev.style.opacity = '1';
-                        btnPrev.onclick = function() { changePage(currentPage - 1); return false; };
+                        btnPrev.onclick = function () { changePage(currentPage - 1); return false; };
                     }
 
                     if (currentPage === totalPages) {
@@ -264,7 +283,7 @@
                     } else {
                         btnNext.removeAttribute('disabled');
                         btnNext.style.opacity = '1';
-                        btnNext.onclick = function() { changePage(currentPage + 1); return false; };
+                        btnNext.onclick = function () { changePage(currentPage + 1); return false; };
                     }
                 }
 
@@ -283,18 +302,18 @@
                         pageNumbersContainer.innerHTML += `<a href="#" class="page-num ${i === currentPage ? 'active' : ''}" onclick="changePage(${i}); return false;">${i}</a>`;
                     }
                 }
-                
+
                 const jumpInput = document.getElementById('jumpPageInput');
                 if (jumpInput) {
                     jumpInput.value = currentPage;
                     jumpInput.max = totalPages;
-                    jumpInput.onchange = function() {
+                    jumpInput.onchange = function () {
                         let val = parseInt(this.value);
                         if (isNaN(val) || val < 1) val = 1;
                         if (val > totalPages) val = totalPages;
                         changePage(val);
                     };
-                    jumpInput.onkeydown = function(e) {
+                    jumpInput.onkeydown = function (e) {
                         if (e.key === 'Enter') {
                             let val = parseInt(this.value);
                             if (isNaN(val) || val < 1) val = 1;
@@ -327,9 +346,9 @@
             let currentSortCol = -1;
             let currentSortDir = 'asc';
 
-            window.sortTable = function(colIndex) {
+            window.sortTable = function (colIndex) {
                 if (colIndex === 0 || colIndex === 8) return;
-                
+
                 if (currentSortCol === colIndex) {
                     currentSortDir = currentSortDir === 'asc' ? 'desc' : 'asc';
                 } else {
@@ -354,7 +373,7 @@
 
                     let numA = parseFloat(cellA.replace(/[^\d.-]/g, ''));
                     let numB = parseFloat(cellB.replace(/[^\d.-]/g, ''));
-                    
+
                     if (cellA === '---' || cellA === '') numA = -1;
                     if (cellB === '---' || cellB === '') numB = -1;
 
@@ -362,7 +381,7 @@
                         return currentSortDir === 'asc' ? numA - numB : numB - numA;
                     }
 
-                    return currentSortDir === 'asc' 
+                    return currentSortDir === 'asc'
                         ? cellA.localeCompare(cellB, 'vi', { sensitivity: 'base' })
                         : cellB.localeCompare(cellA, 'vi', { sensitivity: 'base' });
                 });
