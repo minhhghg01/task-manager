@@ -11,21 +11,21 @@
 
 <body data-userid="<%= (typeof user !== 'undefined' && user) ? user.id : '' %>">
 
-    <header class="navbar navbar-expand navbar-dark sticky-top bg-primary flex-md-nowrap p-0 shadow">
+    <header class="navbar navbar-dark sticky-top bg-primary flex-md-nowrap p-0 shadow">
         <div class="d-flex align-items-center col-md-3 col-lg-2 px-3 brand-container">
             <a class="navbar-brand me-0" href="/dashboard">Quản Lý Công Việc</a>
-            <button class="btn btn-link text-white p-0 d-none d-md-inline-block ms-auto" id="toggleSidebarBtn"
+            <button class="btn btn-link p-0 d-none d-md-inline-block ms-auto" id="toggleSidebarBtn"
                 style="box-shadow: none;">
                 <i data-feather="menu" style="width: 20px; height: 20px;"></i>
             </button>
         </div>
 
-        <button class="navbar-toggler position-absolute d-md-none collapsed border-0 p-0 text-white" type="button" data-bs-toggle="collapse"
+        <button class="navbar-toggler position-absolute d-md-none collapsed border-0 p-0" type="button" data-bs-toggle="collapse"
             data-bs-target="#sidebarMenu" style="box-shadow: none;">
             <i data-feather="menu" style="width: 24px; height: 24px;"></i>
         </button>
 
-        <div class="navbar-nav px-3 d-flex flex-row align-items-center gap-3">
+        <div class="navbar-nav px-3 d-flex flex-row align-items-center gap-3 ms-auto">
             <div class="nav-item text-nowrap">
                 <a class="nav-link d-flex align-items-center gap-1 py-1" href="/contact" title="Liên hệ hỗ trợ">
                     <span data-feather="phone" style="width: 16px; height: 16px;"></span>

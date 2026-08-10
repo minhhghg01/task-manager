@@ -1,648 +1,3002 @@
-<%- include('../partials/header') %>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <div
-        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-3 mb-4 border-bottom">
-        <div>
-            <h1 class="h2 fw-bold text-primary">
-                <%= (locals.pageTitle) ? pageTitle : 'Tổng quan công việc' %>
-            </h1>
-            <% if (locals.isDashboard) { %>
-                <small class="text-muted">Xin chào, <strong>
-                        <%= user.fullname %>
-                    </strong>! Dưới đây là báo cáo hiệu suất của bạn.</small>
-                <% } %>
-        </div>
-
-        <div class="btn-toolbar mb-2 mb-md-0 gap-2">
-            <a href="/tasks/invited"
-                class="btn btn-sm btn-outline-warning d-flex align-items-center gap-2 shadow-sm position-relative btn-no-hover"
-                title="Lời mời hợp tác">
-                <span data-feather="mail"></span>
-                <span class="d-none d-md-inline">Lời mời hợp tác</span>
-
-                <% if (typeof invitationCount !=='undefined' && invitationCount> 0) { %>
-                    <span
-                        class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light">
-                        <%= invitationCount %>
-                            <span class="visually-hidden">lời mời mới</span>
-                    </span>
-                    <% } %>
-            </a>
-
-            <% if (user.role !=='ADMIN' && user.role !=='STAFF' ) { %>
-                <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-2 shadow-sm"
-                    data-bs-toggle="modal" data-bs-target="#createTaskModal" title="Giao việc mới">
-                    <span data-feather="plus"></span>
-                    <span class="d-none d-md-inline">Giao việc mới</span>
-                </button>
-                <% } %>
-
-                    <% if (user.role==='STAFF' || (typeof filterType !=='undefined' && filterType==='mine' )) { %>
-                        <button type="button"
-                            class="btn btn-sm btn-outline-success d-flex align-items-center gap-2 shadow-sm"
-                            data-bs-toggle="modal" data-bs-target="#createTaskModal" data-auto-self="true" title="Tự tạo việc">
-                            <span data-feather="user-check"></span>
-                            <span class="d-none d-md-inline">Tự tạo việc</span>
-                        </button>
-                        <% } %>
-        </div>
-
-        <style>
-            .btn-no-hover {
-                color: #000000 !important;
-                border-color: #ffc107 !important;
-                background-color: #ffc107 !important;
-            }
-
-            .btn-no-hover:hover {
-                transform: scale(1.03);
-                transition: all 0.3s ease;
-                cursor: pointer;
-            }
-        </style>
-    </div>
-
-    <% /* --- TRƯỜNG HỢP 1: TRANG DASHBOARD (HIỆN BIỂU ĐỒ) --- */ %>
-        <% if (locals.isDashboard) { %>
-            <div class="row mb-4">
-                <div class="col-md-5 mb-3 mb-md-0">
-                    <div class="card shadow border-0 h-100 rounded-3">
-                        <div class="card-body">
-                            <h6 class="card-title text-uppercase text-muted fw-bold mb-3 small">Hiệu suất cá nhân</h6>
-
-                            <div class="d-flex align-items-center mb-4">
-                                <div class="flex-shrink-0 position-relative">
-                                    <div class="rounded-circle d-flex align-items-center justify-content-center bg-gradient bg-primary text-white shadow"
-                                        style="width: 80px; height: 80px;">
-                                        <span class="fs-2 fw-bold">
-                                            <%= (locals.myAvgScore) ? myAvgScore : '--' %>
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="flex-grow-1 ms-3">
-                                    <h4 class="mb-0 fw-bold">Điểm trung bình</h4>
-                                    <small class="text-muted">Đánh giá trên các công việc bạn đã hoàn thành.</small>
-                                </div>
-                            </div>
-
-                            <div class="row text-center g-2">
-                                <div class="col-4">
-                                    <div class="p-2 border rounded bg-light h-100">
-                                        <h5 class="text-success mb-0 fw-bold">
-                                            <%= (locals.stats) ? stats.completed : 0 %>
-                                        </h5>
-                                        <small class="text-muted" style="font-size: 0.75rem;">Hoàn thành</small>
-                                    </div>
-                                </div>
-                                <div class="col-4">
-                                    <div class="p-2 border rounded bg-light h-100">
-                                        <h5 class="text-primary mb-0 fw-bold">
-                                            <%= (locals.stats) ? stats.inProgress : 0 %>
-                                        </h5>
-                                        <small class="text-muted" style="font-size: 0.75rem;">Đang làm</small>
-                                    </div>
-                                </div>
-                                <div class="col-4">
-                                    <div class="p-2 border rounded bg-light h-100">
-                                        <h5 class="text-danger mb-0 fw-bold">
-                                            <%= (locals.stats) ? stats.overdue : 0 %>
-                                        </h5>
-                                        <small class="text-muted" style="font-size: 0.75rem;">Quá hạn</small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-7">
-                    <div class="card shadow border-0 h-100 rounded-3">
-                        <div class="card-body">
-                            <h6 class="card-title text-uppercase text-muted fw-bold mb-3 small">Tỷ lệ trạng thái công
-                                việc</h6>
-
-                            <div style="height: 260px; width: 100%; position: relative;">
-                                <canvas id="taskStatusChart"></canvas>
-
-                                <% const hasData=(typeof stats !=='undefined' ) && (stats.completed + stats.inProgress +
-                                    stats.overdue> 0); %>
-
-                                    <div class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center"
-                                        style="pointer-events: none; padding-bottom: 30px;">
-                                        <% if (hasData) { %>
-                                            <h1 class="mb-0 fw-bold"
-                                                style="font-size: 2.5rem; line-height: 1;">
-                                                <%= stats.totalTasks %>
-                                            </h1>
-                                            <span class="text-muted fw-bold text-uppercase"
-                                                style="font-size: 0.7rem; letter-spacing: 1px;">
-                                                Công việc
-                                            </span>
-                                            <% } else { %>
-                                                <span class="text-muted small bg-white px-2">Chưa có dữ liệu</span>
-                                                <% } %>
-                                    </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <script>
-                document.addEventListener("DOMContentLoaded", function () {
-                    const ctx = document.getElementById('taskStatusChart');
-                    if (ctx) {
-                        const completed = <%= (locals.stats) ? stats.completed : 0 %>;
-                        const inProgress = <%= (locals.stats) ? stats.inProgress : 0 %>;
-                        const overdue = <%= (locals.stats) ? stats.overdue : 0 %>;
-                        const total = completed + inProgress + overdue;
-
-                        const data = total === 0 ? [1] : [completed, inProgress, overdue];
-                        const colors = total === 0 ? ['#f8f9fa'] : ['#198754', '#0d6efd', '#dc3545'];
-                        const labels = total === 0 ? ['Chưa có dữ liệu'] : ['Hoàn thành', 'Đang thực hiện', 'Quá hạn'];
-
-                        new Chart(ctx, {
-                            type: 'doughnut',
-                            data: {
-                                labels: labels,
-                                datasets: [{
-                                    data: data,
-                                    backgroundColor: colors,
-                                    borderWidth: 2,
-                                    borderColor: '#ffffff',
-                                    hoverOffset: 4
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                cutout: '75%',
-                                plugins: {
-                                    legend: {
-                                        position: 'bottom',
-                                        labels: { usePointStyle: true, padding: 20, font: { size: 11 } }
-                                    },
-                                    tooltip: { enabled: total !== 0 }
-                                }
-                            }
-                        });
-                    }
-                });
-            </script>
-
-            <% /* --- TRƯỜNG HỢP 2: CÁC TRANG DANH SÁCH KHÁC (HIỆN BẢNG CÓ PHÂN TRANG) --- */ %>
-                <% } else { %>
-
-                    <div class="card shadow-sm border-0 rounded-3">
-                        <div class="card-body p-3">
-
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <div class="d-flex align-items-center">
-                                    <select id="pageSize"
-                                        class="form-select form-select-sm w-auto me-2 shadow-none border-secondary-subtle">
-                                        <option value="10" selected>10</option>
-                                        <option value="20">20</option>
-                                        <option value="50">50</option>
-                                        <option value="200">200</option>
-                                        <option value="500">500</option>
-                                        <option value="1000">1000</option>
-                                        <option value="all">Tất cả</option>
-                                    </select>
-                                    <span class="text-muted small">dòng / trang</span>
-                                </div>
-                            </div>
-
-                            <div class="table-responsive"
-                                style="min-height: 400px; border-radius: 0.5rem; padding-bottom: 20px;">
-                                <table class="table table-hover align-middle mb-0" id="mainTable">
-                                    <thead class="sticky-top bg-white"
-                                        style="z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-                                        <tr class="table-dark text-white">
-                                            <th class="text-center text-nowrap py-3" style="width: 5%">STT</th>
-                                            <th class="text-nowrap py-3" style="width: 20%">Tiêu đề</th>
-                                            <th class="text-nowrap py-3" style="width: 15%">Người nhận</th>
-                                            <th class="text-nowrap py-3" style="width: 10%">Bắt đầu</th>
-                                            <th class="text-nowrap py-3" style="width: 10%">Hạn chót</th>
-                                            <th class="text-nowrap py-3" style="width: 10%">Người tạo</th>
-                                            <th class="text-nowrap py-3" style="width: 10%">Ưu tiên</th>
-                                            <th class="text-nowrap py-3" style="width: 10%">Trạng thái</th>
-                                            <th class="text-nowrap py-3" style="width: 10%">Nhãn</th>
-                                        </tr>
-
-                                        <tr class="bg-light border-bottom align-middle filter-row">
-                                            <td class="p-1"></td>
-                                            <td class="p-1">
-                                                <input type="text"
-                                                    class="form-control form-control-sm filter-input shadow-none border-secondary-subtle"
-                                                    data-col="1" placeholder="Tìm kiếm..." style="font-size: 0.85rem;">
-                                            </td>
-                                            <td class="p-1 position-relative">
-                                                <div class="dropdown filter-dropdown" data-col="2">
-                                                    <button
-                                                        class="btn btn-sm btn-white border border-secondary-subtle w-100 dropdown-toggle text-truncate shadow-none d-flex justify-content-between align-items-center px-2"
-                                                        type="button" data-bs-toggle="dropdown"
-                                                        style="font-size: 0.8rem; background: var(--bg-card); color: var(--text-main); border: 1.5px solid var(--border-color) !important;">
-                                                        <span>Tất cả</span>
-                                                    </button>
-                                                    <div class="dropdown-menu p-2 shadow border-0"
-                                                        style="max-height: 300px; overflow-y: auto; width: 220px;">
-                                                        <input type="text" class="form-control form-control-sm mb-2"
-                                                            placeholder="Tìm người..."
-                                                            onkeyup="filterDropdownItems(this)">
-                                                        <div class="filter-options-container"></div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td class="p-1">
-                                                <div class="d-flex flex-column gap-1">
-                                                    <input type="date"
-                                                        class="form-control form-control-sm filter-date-from shadow-none px-1 border-secondary-subtle"
-                                                        data-col="3" style="font-size: 0.75rem; height: 24px;">
-                                                    <input type="date"
-                                                        class="form-control form-control-sm filter-date-to shadow-none px-1 border-secondary-subtle"
-                                                        data-col="3" style="font-size: 0.75rem; height: 24px;">
-                                                </div>
-                                            </td>
-                                            <td class="p-1">
-                                                <div class="d-flex flex-column gap-1">
-                                                    <input type="date"
-                                                        class="form-control form-control-sm filter-date-from shadow-none px-1 border-secondary-subtle"
-                                                        data-col="4" style="font-size: 0.75rem; height: 24px;">
-                                                    <input type="date"
-                                                        class="form-control form-control-sm filter-date-to shadow-none px-1 border-secondary-subtle"
-                                                        data-col="4" style="font-size: 0.75rem; height: 24px;">
-                                                </div>
-                                            </td>
-                                            <td class="p-1 position-relative">
-                                                <div class="dropdown filter-dropdown" data-col="5">
-                                                    <button
-                                                        class="btn btn-sm btn-white border border-secondary-subtle w-100 dropdown-toggle text-truncate shadow-none px-1"
-                                                        type="button" data-bs-toggle="dropdown"
-                                                        style="font-size: 0.8rem; background: var(--bg-card); color: var(--text-main); border: 1.5px solid var(--border-color) !important;">All</button>
-                                                    <div class="dropdown-menu p-2 shadow border-0"
-                                                        style="max-height: 300px; overflow-y: auto;">
-                                                        <div class="filter-options-container"></div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td class="p-1 position-relative">
-                                                <div class="dropdown filter-dropdown" data-col="6">
-                                                    <button
-                                                        class="btn btn-sm btn-white border border-secondary-subtle w-100 dropdown-toggle text-truncate shadow-none px-1"
-                                                        type="button" data-bs-toggle="dropdown"
-                                                        style="font-size: 0.8rem; background: var(--bg-card); color: var(--text-main); border: 1.5px solid var(--border-color) !important;">All</button>
-                                                    <div class="dropdown-menu p-2 shadow border-0">
-                                                        <div class="filter-options-container"></div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td class="p-1 position-relative">
-                                                <div class="dropdown filter-dropdown" data-col="7">
-                                                    <button
-                                                        class="btn btn-sm btn-white border border-secondary-subtle w-100 dropdown-toggle text-truncate shadow-none px-1"
-                                                        type="button" data-bs-toggle="dropdown"
-                                                        style="font-size: 0.8rem; background: var(--bg-card); color: var(--text-main); border: 1.5px solid var(--border-color) !important;">All</button>
-                                                    <div class="dropdown-menu p-2 shadow border-0">
-                                                        <div class="filter-options-container"></div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td class="p-1 position-relative">
-                                                <div class="dropdown filter-dropdown" data-col="8"
-                                                    data-multi-value="true">
-                                                    <button
-                                                        class="btn btn-sm btn-white border border-secondary-subtle w-100 dropdown-toggle text-truncate shadow-none px-1"
-                                                        type="button" data-bs-toggle="dropdown"
-                                                        style="font-size: 0.8rem; background: var(--bg-card); color: var(--text-main); border: 1.5px solid var(--border-color) !important;">Tags</button>
-                                                    <div class="dropdown-menu p-2 shadow border-0 dropdown-menu-end"
-                                                        style="width: 200px;">
-                                                        <div class="filter-options-container"></div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="taskTableBody">
-                                        <% if (tasks && tasks.length> 0) { %>
-                                            <% tasks.forEach((task, index)=> { %>
-                                                <tr class="task-row" style="cursor: pointer;"
-                                                    onclick="window.location.href='/tasks/<%= task.id %>'">
-                                                    <td class="text-center row-index">
-                                                        <%= index + 1 %>
-                                                    </td>
-                                                    <td>
-                                                        <strong>
-                                                            <%= task.title %>
-                                                        </strong>
-                                                        <% if(task.attachment_path) { %><i data-feather="paperclip"
-                                                                class="text-muted ms-1" style="width:12px"></i>
-                                                            <% } %>
-                                                                <div class="text-muted text-truncate small mt-1"
-                                                                    style="max-width: 250px;">
-                                                                    <%= task.description %>
-                                                                </div>
-                                                                <% if(task.progress> 0 && task.progress < 100) { %>
-                                                                        <div class="progress mt-1 bg-secondary-subtle"
-                                                                            style="height: 4px; width: 60%;">
-                                                                            <div class="progress-bar bg-primary"
-                                                                                style="width: <%= task.progress %>%;">
-                                                                            </div>
-                                                                        </div>
-                                                                        <% } %>
-                                                    </td>
-                                                    <td><small class="text-primary fw-bold">
-                                                            <%= task.assigneeNames || 'Chưa giao' %>
-                                                        </small></td>
-                                                    <td>
-                                                        <%= task.start_date ? new
-                                                            Date(task.start_date).toLocaleString('vi-VN') : '-' %>
-                                                    </td>
-                                                    <td>
-                                                        <% var dueDate=task.due_date ? new Date(task.due_date) : null;
-                                                            var now=new Date(); var isOverdue=dueDate && dueDate < now
-                                                            && task.status !=='Hoàn thành' ; %>
-                                                            <span class="<%= isOverdue ? 'text-danger fw-bold' : '' %>">
-                                                                <%= task.formattedDueDate || (dueDate ?
-                                                                    dueDate.toLocaleString('vi-VN') : '-' ) %>
-                                                            </span>
-                                                            <% if(isOverdue) { %> <i data-feather="alert-circle"
-                                                                    class="text-danger" style="width:14px"></i>
-                                                                <% } %>
-                                                    </td>
-                                                    <td><small>
-                                                            <%= task.Creator ? task.Creator.fullname : 'N/A' %>
-                                                        </small></td>
-                                                    <td>
-                                                        <% var pColor='secondary' ; if(task.priority=='Cao (Gấp)' )
-                                                            pColor='danger' ; else if(task.priority=='Trung bình' )
-                                                            pColor='warning text-dark' ; else if(task.priority=='Thấp' )
-                                                            pColor='info text-dark' ; %>
-                                                            <span class="badge bg-<%= pColor %> fw-normal">
-                                                                <%= task.priority %>
-                                                            </span>
-                                                    </td>
-                                                    <td>
-                                                        <% var sColor='secondary' ; if(task.status=='Mới tạo' )
-                                                            sColor='info text-dark' ; else
-                                                            if(task.status=='Đang thực hiện' ) sColor='primary' ; else
-                                                            if(task.status=='Hoàn thành' ) sColor='success' ; else
-                                                            if(task.status=='Quá hạn' ) sColor='danger' ; else
-                                                            if(task.status=='Đang chờ' ) sColor='warning text-dark' ; %>
-                                                            <span class="badge bg-<%= sColor %> fw-normal">
-                                                                <%= task.status %>
-                                                            </span>
-                                                    </td>
-                                                    <td>
-                                                        <% if (task.tags) { %>
-                                                            <% task.tags.split(',').forEach(tag=> { %>
-                                                                <span
-                                                                    class="badge bg-light text-dark border border-secondary-subtle fw-normal mb-1">
-                                                                    <%= tag.trim() %>
-                                                                </span>
-                                                                <% }) %>
-                                                                    <% } else { %><span
-                                                                            class="text-muted small">-</span>
-                                                                        <% } %>
-                                                    </td>
-                                                </tr>
-                                                <% }); %>
-                                                    <% } else { %>
-                                                        <tr id="emptyRow">
-                                                            <td colspan="9" class="text-center py-5 text-muted">
-                                                                <div class="mb-2"><i data-feather="inbox"
-                                                                        style="width: 40px; height: 40px; opacity: 0.5;"></i>
-                                                                </div>
-                                                                Không có dữ liệu công việc
-                                                            </td>
-                                                        </tr>
-                                                        <% } %>
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <div class="d-flex justify-content-between align-items-center mt-3">
-                                <div id="paginationInfo" class="text-muted small"></div>
-                                <nav aria-label="Page navigation">
-                                    <ul class="pagination pagination-sm justify-content-end mb-0"
-                                        id="paginationControls">
-                                    </ul>
-                                </nav>
-                            </div>
-                        </div>
-                    </div>
-
-                    <script>
-                        document.addEventListener("DOMContentLoaded", function () {
-                            const table = document.getElementById("mainTable");
-                            if (!table) return;
-                            const tbody = document.getElementById("taskTableBody");
-                            const allRows = Array.from(tbody.querySelectorAll(".task-row"));
-
-                            let currentPage = 1;
-                            let rowsPerPage = 10;
-                            let filteredRows = [...allRows];
-
-                            // 1. HÀM XÂY DỰNG DROPDOWN
-                            function buildDropdowns() {
-                                const dropdowns = document.querySelectorAll('.filter-dropdown');
-                                dropdowns.forEach(dd => {
-                                    const colIndex = parseInt(dd.dataset.col);
-                                    const isTagColumn = colIndex === 8;
-                                    const isMultiValue = dd.dataset.multiValue === "true" || colIndex === 2;
-                                    const container = dd.querySelector('.filter-options-container');
-
-                                    let values = new Set();
-                                    allRows.forEach(row => {
-                                        const cell = row.cells[colIndex];
-                                        if (cell) {
-                                            let text = cell.innerText.trim();
-
-                                            // Nếu ô trống hoặc chỉ chứa dấu gạch ngang
-                                            if (!text || text === '-' || text === '---') {
-                                                values.add('(Trống)');
-                                            }
-                                            else if (isTagColumn) {
-                                                const badges = cell.querySelectorAll('.badge');
-                                                if (badges.length > 0) {
-                                                    badges.forEach(b => {
-                                                        const tagText = b.innerText.trim();
-                                                        if (tagText && tagText !== '-') values.add(tagText);
-                                                    });
-                                                } else {
-                                                    values.add('(Trống)');
-                                                }
-                                            }
-                                            else {
-                                                if (isMultiValue) {
-                                                    text.split(/[\n,]+/).forEach(val => {
-                                                        val = val.trim();
-                                                        if (val === 'Chưa giao') values.add('Chưa giao');
-                                                        else if (val) values.add(val);
-                                                    });
-                                                } else {
-                                                    values.add(text);
-                                                }
-                                            }
-                                        }
-                                    });
-
-                                    let html = `<div class="form-check"><input class="form-check-input select-all" type="checkbox" checked onchange="toggleAll(this)"><label class="form-check-label fst-italic fw-bold">Chọn tất cả</label></div><hr class="my-1">`;
-                                    Array.from(values).sort().forEach(val => {
-                                        html += `<div class="form-check filter-item"><input class="form-check-input filter-check" type="checkbox" checked value="${val}" onchange="applyFilters()"><label class="form-check-label text-wrap small">${val}</label></div>`;
-                                    });
-                                    container.innerHTML = html;
-                                });
-                            }
-
-                            // 2. HÀM LỌC CHÍNH
-                            window.applyFilters = function () {
-                                const textInputs = document.querySelectorAll('.filter-input');
-                                const dateFromInputs = document.querySelectorAll('.filter-date-from');
-                                const dateToInputs = document.querySelectorAll('.filter-date-to');
-                                const dropdowns = document.querySelectorAll('.filter-dropdown');
-
-                                filteredRows = [];
-
-                                allRows.forEach(row => {
-                                    let show = true;
-
-                                    // A. Lọc theo chữ (Input text)
-                                    textInputs.forEach(input => {
-                                        const colIdx = input.dataset.col;
-                                        if (input.value && !row.cells[colIdx].innerText.toLowerCase().includes(input.value.toLowerCase())) show = false;
-                                    });
-
-                                    // B. Lọc theo ngày
-                                    if (show) {
-                                        const parseDate = (str) => {
-                                            if (!str || str === '-' || str === '---') return null;
-                                            const parts = str.trim().split(/[\s/:]+/);
-                                            if (parts.length >= 3) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-                                            return null;
-                                        };
-                                        dateFromInputs.forEach(input => {
-                                            const cellDate = parseDate(row.cells[input.dataset.col].innerText);
-                                            if (input.valueAsDate && (!cellDate || cellDate < input.valueAsDate)) show = false;
-                                        });
-                                        dateToInputs.forEach(input => {
-                                            const cellDate = parseDate(row.cells[input.dataset.col].innerText);
-                                            if (input.valueAsDate && (!cellDate || cellDate > input.valueAsDate)) show = false;
-                                        });
-                                    }
-
-                                    // C. Lọc theo Dropdown
-                                    if (show) {
-                                        dropdowns.forEach(dd => {
-                                            const selectAllCb = dd.querySelector('.select-all');
-
-                                            // [QUAN TRỌNG] Bỏ qua kiểm tra cột này nếu "Chọn tất cả" đang được tick
-                                            if (selectAllCb && selectAllCb.checked) return;
-
-                                            const colIdx = dd.dataset.col;
-                                            let cellText = row.cells[colIdx].innerText.trim();
-                                            if (!cellText || cellText === '-' || cellText === '---') cellText = '(Trống)';
-
-                                            const checkedBoxes = Array.from(dd.querySelectorAll('.filter-check:checked')).map(cb => cb.value);
-                                            if (checkedBoxes.length === 0) {
-                                                show = false;
-                                            } else {
-                                                const hasMatch = checkedBoxes.some(val => cellText.includes(val));
-                                                if (!hasMatch) show = false;
-                                            }
-                                        });
-                                    }
-
-                                    if (show) filteredRows.push(row);
-                                    row.style.display = 'none'; // Ẩn toàn bộ để nhường cho hàm Render hiển thị
-                                });
-
-                                currentPage = 1;
-                                renderPagination();
-                            };
-
-                            // 3. HÀM VẼ GIAO DIỆN PHÂN TRANG
-                            function renderPagination() {
-                                const totalRows = filteredRows.length;
-                                const pageSizeSelect = document.getElementById('pageSize').value;
-                                rowsPerPage = pageSizeSelect === 'all' ? totalRows : parseInt(pageSizeSelect);
-
-                                const totalPages = rowsPerPage === 0 ? 1 : Math.ceil(totalRows / rowsPerPage);
-                                if (currentPage > totalPages) currentPage = totalPages || 1;
-
-                                const start = rowsPerPage === totalRows ? 0 : (currentPage - 1) * rowsPerPage;
-                                const end = Math.min(start + rowsPerPage, totalRows);
-
-                                allRows.forEach(row => row.style.display = 'none');
-                                for (let i = start; i < end; i++) {
-                                    if (filteredRows[i]) {
-                                        filteredRows[i].style.display = '';
-                                        filteredRows[i].querySelector('.row-index').innerText = i + 1; // Update lại số thứ tự
-                                    }
-                                }
-
-                                let emptyRow = document.getElementById("emptyRow");
-                                if (totalRows === 0) {
-                                    if (!emptyRow) tbody.insertAdjacentHTML('beforeend', '<tr id="emptyRow"><td colspan="9" class="text-center py-5 text-muted">Không có dữ liệu phù hợp</td></tr>');
-                                } else if (emptyRow) emptyRow.remove();
-
-                                const infoEl = document.getElementById('paginationInfo');
-                                if (totalRows === 0) {
-                                    infoEl.innerHTML = "Không có dữ liệu";
-                                } else {
-                                    infoEl.innerHTML = `Đang hiện ${start + 1} đến ${end} của ${totalRows} dòng`;
-                                }
-
-                                const ul = document.getElementById('paginationControls');
-                                ul.innerHTML = '';
-                                if (totalPages > 1) {
-                                    ul.innerHTML += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}"><a class="page-link shadow-none text-dark" href="#" onclick="changePage(${currentPage - 1}); return false;">&laquo;</a></li>`;
-                                    for (let i = 1; i <= totalPages; i++) {
-                                        if (totalPages > 7) {
-                                            if (i !== 1 && i !== totalPages && Math.abs(i - currentPage) > 1) {
-                                                if (i === 2 || i === totalPages - 1) ul.innerHTML += `<li class="page-item disabled"><a class="page-link border-0 text-dark">...</a></li>`;
-                                                continue;
-                                            }
-                                        }
-                                        ul.innerHTML += `<li class="page-item ${i === currentPage ? 'active' : ''}"><a class="page-link shadow-none ${i === currentPage ? 'bg-secondary border-secondary text-white' : 'text-dark'}" href="#" onclick="changePage(${i}); return false;">${i}</a></li>`;
-                                    }
-                                    ul.innerHTML += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}"><a class="page-link shadow-none text-dark" href="#" onclick="changePage(${currentPage + 1}); return false;">&raquo;</a></li>`;
-                                }
-                            }
-
-                            // CÁC HÀM SỰ KIỆN BỔ TRỢ
-                            window.changePage = function (page) {
-                                currentPage = page;
-                                renderPagination();
-                            }
-
-                            window.toggleAll = function (source) {
-                                const checkboxes = source.closest('.filter-options-container').querySelectorAll('.filter-check');
-                                checkboxes.forEach(cb => cb.checked = source.checked);
-                                applyFilters();
-                            };
-
-                            window.filterDropdownItems = function (input) {
-                                const filter = input.value.toLowerCase();
-                                input.nextElementSibling.querySelectorAll('.filter-item').forEach(item => {
-                                    item.style.display = item.innerText.toLowerCase().includes(filter) ? '' : 'none';
-                                });
-                            };
-
-                            document.getElementById('pageSize')?.addEventListener('change', () => {
-                                currentPage = 1;
-                                renderPagination();
-                            });
-
-                            // Chạy lệnh khởi tạo lần đầu
-                            buildDropdowns();
-                            document.querySelectorAll('.filter-input, .filter-date-from, .filter-date-to').forEach(el => el.addEventListener('input', applyFilters));
-                            document.querySelectorAll('.dropdown-menu').forEach(menu => menu.addEventListener('click', e => e.stopPropagation()));
-
-                            if (allRows.length > 0) applyFilters();
-                        });
-                    </script>
-                    <% } %>
-
-                        <%- include('../partials/modal-create-task') %>
+<%- include('../partials/header') %>
+
+
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+
+
+
+
+
+    <div
+
+
+
+        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-3 mb-4 border-bottom">
+
+
+
+        <div>
+
+
+
+            <h1 class="h2 fw-bold text-primary">
+
+
+
+                <%= (locals.pageTitle) ? pageTitle : 'Tổng quan công việc' %>
+
+
+
+            </h1>
+
+
+
+            <% if (locals.isDashboard) { %>
+
+
+
+                <small class="text-muted">Xin chào, <strong>
+
+
+
+                        <%= user.fullname %>
+
+
+
+                    </strong>! Dưới đây là báo cáo hiệu suất của bạn.</small>
+
+
+
+                <% } %>
+
+
+
+        </div>
+
+
+
+
+
+
+
+        <div class="btn-toolbar mb-2 mb-md-0 gap-2">
+
+
+
+            <a href="/tasks/invited"
+
+
+
+                class="btn btn-sm btn-outline-warning d-flex align-items-center gap-2 shadow-sm position-relative btn-no-hover"
+
+
+
+                title="Lời mời hợp tác">
+
+
+
+                <span data-feather="mail"></span>
+
+
+
+                <span class="d-none d-md-inline">Lời mời hợp tác</span>
+
+
+
+
+
+
+
+                <% if (typeof invitationCount !=='undefined' && invitationCount> 0) { %>
+
+
+
+                    <span
+
+
+
+                        class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light">
+
+
+
+                        <%= invitationCount %>
+
+
+
+                            <span class="visually-hidden">lời mời mới</span>
+
+
+
+                    </span>
+
+
+
+                    <% } %>
+
+
+
+            </a>
+
+
+
+
+
+
+
+            <% if (user.role !=='ADMIN' && user.role !=='STAFF' ) { %>
+
+
+
+                <button type="button" class="btn btn-sm btn-primary d-flex align-items-center gap-2 shadow-sm"
+
+
+
+                    data-bs-toggle="modal" data-bs-target="#createTaskModal" title="Giao việc mới">
+
+
+
+                    <span data-feather="plus"></span>
+
+
+
+                    <span class="d-none d-md-inline">Giao việc mới</span>
+
+
+
+                </button>
+
+
+
+                <% } %>
+
+
+
+
+
+
+
+                    <% if (user.role==='STAFF' || (typeof filterType !=='undefined' && filterType==='mine' )) { %>
+
+
+
+                        <button type="button"
+
+
+
+                            class="btn btn-sm btn-outline-success d-flex align-items-center gap-2 shadow-sm"
+
+
+
+                            data-bs-toggle="modal" data-bs-target="#createTaskModal" data-auto-self="true" title="Tự tạo việc">
+
+
+
+                            <span data-feather="user-check"></span>
+
+
+
+                            <span class="d-none d-md-inline">Tự tạo việc</span>
+
+
+
+                        </button>
+
+
+
+                        <% } %>
+
+
+
+        </div>
+
+
+
+
+
+
+
+        <style>
+
+
+
+            .btn-no-hover {
+
+
+
+                color: #000000 !important;
+
+
+
+                border-color: #ffc107 !important;
+
+
+
+                background-color: #ffc107 !important;
+
+
+
+            }
+
+
+
+
+
+
+
+            .btn-no-hover:hover {
+
+
+
+                transform: scale(1.03);
+
+
+
+                transition: all 0.3s ease;
+
+
+
+                cursor: pointer;
+
+
+
+            }
+
+
+
+        </style>
+
+
+
+    </div>
+
+
+
+
+
+
+
+    <% /* --- TRƯỜNG HỢP 1: TRANG DASHBOARD (HIỆN BIỂU ĐỒ) --- */ %>
+
+
+
+        <% if (locals.isDashboard) { %>
+
+
+
+            <div class="row mb-4">
+
+
+
+                <div class="col-md-5 mb-3 mb-md-0">
+
+
+
+                    <div class="card shadow border-0 h-100 rounded-3">
+
+
+
+                        <div class="card-body">
+
+
+
+                            <h6 class="card-title text-uppercase text-muted fw-bold mb-3 small">Hiệu suất cá nhân</h6>
+
+
+
+
+
+
+
+                            <div class="d-flex align-items-center mb-4">
+
+
+
+                                <div class="flex-shrink-0 position-relative">
+
+
+
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center bg-gradient bg-primary text-white shadow"
+
+
+
+                                        style="width: 80px; height: 80px;">
+
+
+
+                                        <span class="fs-2 fw-bold">
+
+
+
+                                            <%= (locals.myAvgScore) ? myAvgScore : '--' %>
+
+
+
+                                        </span>
+
+
+
+                                    </div>
+
+
+
+                                </div>
+
+
+
+                                <div class="flex-grow-1 ms-3">
+
+
+
+                                    <h4 class="mb-0 fw-bold">Điểm trung bình</h4>
+
+
+
+                                    <small class="text-muted">Đánh giá trên các công việc bạn đã hoàn thành.</small>
+
+
+
+                                </div>
+
+
+
+                            </div>
+
+
+
+
+
+
+
+                            <div class="row text-center g-2">
+
+
+
+                                <div class="col-4">
+
+
+
+                                    <div class="p-2 border rounded bg-light h-100">
+
+
+
+                                        <h5 class="text-success mb-0 fw-bold">
+
+
+
+                                            <%= (locals.stats) ? stats.completed : 0 %>
+
+
+
+                                        </h5>
+
+
+
+                                        <small class="text-muted" style="font-size: 0.75rem;">Hoàn thành</small>
+
+
+
+                                    </div>
+
+
+
+                                </div>
+
+
+
+                                <div class="col-4">
+
+
+
+                                    <div class="p-2 border rounded bg-light h-100">
+
+
+
+                                        <h5 class="text-primary mb-0 fw-bold">
+
+
+
+                                            <%= (locals.stats) ? stats.inProgress : 0 %>
+
+
+
+                                        </h5>
+
+
+
+                                        <small class="text-muted" style="font-size: 0.75rem;">Đang làm</small>
+
+
+
+                                    </div>
+
+
+
+                                </div>
+
+
+
+                                <div class="col-4">
+
+
+
+                                    <div class="p-2 border rounded bg-light h-100">
+
+
+
+                                        <h5 class="text-danger mb-0 fw-bold">
+
+
+
+                                            <%= (locals.stats) ? stats.overdue : 0 %>
+
+
+
+                                        </h5>
+
+
+
+                                        <small class="text-muted" style="font-size: 0.75rem;">Quá hạn</small>
+
+
+
+                                    </div>
+
+
+
+                                </div>
+
+
+
+                            </div>
+
+
+
+                        </div>
+
+
+
+                    </div>
+
+
+
+                </div>
+
+
+
+
+
+
+
+                <div class="col-md-7">
+
+
+
+                    <div class="card shadow border-0 h-100 rounded-3">
+
+
+
+                        <div class="card-body">
+
+
+
+                            <h6 class="card-title text-uppercase text-muted fw-bold mb-3 small">Tỷ lệ trạng thái công
+
+
+
+                                việc</h6>
+
+
+
+
+
+
+
+                            <div style="height: 260px; width: 100%; position: relative;">
+
+
+
+                                <canvas id="taskStatusChart"></canvas>
+
+
+
+
+
+
+
+                                <% const hasData=(typeof stats !=='undefined' ) && (stats.completed + stats.inProgress +
+
+
+
+                                    stats.overdue> 0); %>
+
+
+
+
+
+
+
+                                    <div class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center"
+
+
+
+                                        style="pointer-events: none; padding-bottom: 30px;">
+
+
+
+                                        <% if (hasData) { %>
+
+
+
+                                            <h1 class="mb-0 fw-bold"
+
+
+
+                                                style="font-size: 2.5rem; line-height: 1;">
+
+
+
+                                                <%= stats.totalTasks %>
+
+
+
+                                            </h1>
+
+
+
+                                            <span class="text-muted fw-bold text-uppercase"
+
+
+
+                                                style="font-size: 0.7rem; letter-spacing: 1px;">
+
+
+
+                                                Công việc
+
+
+
+                                            </span>
+
+
+
+                                            <% } else { %>
+
+
+
+                                                <span class="text-muted small bg-white px-2">Chưa có dữ liệu</span>
+
+
+
+                                                <% } %>
+
+
+
+                                    </div>
+
+
+
+                            </div>
+
+
+
+                        </div>
+
+
+
+                    </div>
+
+
+
+                </div>
+
+
+
+            </div>
+
+
+
+
+
+
+
+            <script>
+
+
+
+                document.addEventListener("DOMContentLoaded", function () {
+
+
+
+                    const ctx = document.getElementById('taskStatusChart');
+
+
+
+                    if (ctx) {
+
+
+
+                        const completed = <%= (locals.stats) ? stats.completed : 0 %>;
+
+
+
+                        const inProgress = <%= (locals.stats) ? stats.inProgress : 0 %>;
+
+
+
+                        const overdue = <%= (locals.stats) ? stats.overdue : 0 %>;
+
+
+
+                        const total = completed + inProgress + overdue;
+
+
+
+
+
+
+
+                        const data = total === 0 ? [1] : [completed, inProgress, overdue];
+
+
+
+                        const colors = total === 0 ? ['#f8f9fa'] : ['#198754', '#0d6efd', '#dc3545'];
+
+
+
+                        const labels = total === 0 ? ['Chưa có dữ liệu'] : ['Hoàn thành', 'Đang thực hiện', 'Quá hạn'];
+
+
+
+
+
+
+
+                        new Chart(ctx, {
+
+
+
+                            type: 'doughnut',
+
+
+
+                            data: {
+
+
+
+                                labels: labels,
+
+
+
+                                datasets: [{
+
+
+
+                                    data: data,
+
+
+
+                                    backgroundColor: colors,
+
+
+
+                                    borderWidth: 2,
+
+
+
+                                    borderColor: '#ffffff',
+
+
+
+                                    hoverOffset: 4
+
+
+
+                                }]
+
+
+
+                            },
+
+
+
+                            options: {
+
+
+
+                                responsive: true,
+
+
+
+                                maintainAspectRatio: false,
+
+
+
+                                cutout: '75%',
+
+
+
+                                plugins: {
+
+
+
+                                    legend: {
+
+
+
+                                        position: 'bottom',
+
+
+
+                                        labels: { usePointStyle: true, padding: 20, font: { size: 11 } }
+
+
+
+                                    },
+
+
+
+                                    tooltip: { enabled: total !== 0 }
+
+
+
+                                }
+
+
+
+                            }
+
+
+
+                        });
+
+
+
+                    }
+
+
+
+                });
+
+
+
+            </script>
+
+
+
+
+
+
+
+            <% /* --- TRƯỜNG HỢP 2: CÁC TRANG DANH SÁCH KHÁC (HIỆN BẢNG CÓ PHÂN TRANG) --- */ %>
+
+
+
+                <% } else { %>
+
+
+
+
+
+
+
+                    <div class="card shadow-sm border-0 rounded-3">
+
+
+
+                        <div class="card-body p-3">
+
+
+
+
+
+
+
+                            <div class="table-responsive"
+
+
+
+                                style="min-height: 400px; border-radius: 0.5rem; padding-bottom: 20px;">
+
+
+
+                                <table class="table table-hover align-middle mb-0" id="mainTable">
+
+
+
+                                    <thead class="sticky-top bg-white"
+
+
+
+                                        style="z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+
+
+
+                                        <tr class="table-dark text-white">
+
+
+
+                                            <th class="text-center text-nowrap py-3" style="width: 5%">STT</th>
+
+
+
+                                            <th class="text-nowrap py-3" style="width: 20%">Tiêu đề</th>
+
+
+
+                                            <th class="text-nowrap py-3" style="width: 15%">Người nhận</th>
+
+
+
+                                            <th class="text-nowrap py-3" style="width: 10%">Bắt đầu</th>
+
+
+
+                                            <th class="text-nowrap py-3" style="width: 10%">Hạn chót</th>
+
+
+
+                                            <th class="text-nowrap py-3" style="width: 10%">Người tạo</th>
+
+
+
+                                            <th class="text-nowrap py-3" style="width: 10%">Ưu tiên</th>
+
+
+
+                                            <th class="text-nowrap py-3" style="width: 10%">Trạng thái</th>
+
+
+
+                                            <th class="text-nowrap py-3" style="width: 10%">Nhãn</th>
+
+
+
+                                        </tr>
+
+
+
+
+
+
+
+                                        <tr class="bg-light border-bottom align-middle filter-row">
+
+
+
+                                            <td class="p-1"></td>
+
+
+
+                                            <td class="p-1">
+
+
+
+                                                <input type="text"
+
+
+
+                                                    class="form-control form-control-sm filter-input shadow-none border-secondary-subtle"
+
+
+
+                                                    data-col="1" placeholder="Tìm kiếm..." style="font-size: 0.85rem;">
+
+
+
+                                            </td>
+
+
+
+                                            <td class="p-1 position-relative">
+
+
+
+                                                <div class="dropdown filter-dropdown" data-col="2">
+
+
+
+                                                    <button
+
+
+
+                                                        class="btn btn-sm btn-white border border-secondary-subtle w-100 dropdown-toggle text-truncate shadow-none d-flex justify-content-between align-items-center px-2"
+
+
+
+                                                        type="button" data-bs-toggle="dropdown"
+
+
+
+                                                        style="font-size: 0.8rem; background: var(--bg-card); color: var(--text-main); border: 1.5px solid var(--border-color) !important;">
+
+
+
+                                                        <span>Tất cả</span>
+
+
+
+                                                    </button>
+
+
+
+                                                    <div class="dropdown-menu p-2 shadow border-0"
+
+
+
+                                                        style="max-height: 300px; overflow-y: auto; width: 220px;">
+
+
+
+                                                        <input type="text" class="form-control form-control-sm mb-2"
+
+
+
+                                                            placeholder="Tìm người..."
+
+
+
+                                                            onkeyup="filterDropdownItems(this)">
+
+
+
+                                                        <div class="filter-options-container"></div>
+
+
+
+                                                    </div>
+
+
+
+                                                </div>
+
+
+
+                                            </td>
+
+
+
+                                            <td class="p-1">
+
+
+
+                                                <div class="d-flex flex-column gap-1">
+
+
+
+                                                    <input type="date"
+
+
+
+                                                        class="form-control form-control-sm filter-date-from shadow-none px-1 border-secondary-subtle"
+
+
+
+                                                        data-col="3" style="font-size: 0.75rem; height: 24px;">
+
+
+
+                                                    <input type="date"
+
+
+
+                                                        class="form-control form-control-sm filter-date-to shadow-none px-1 border-secondary-subtle"
+
+
+
+                                                        data-col="3" style="font-size: 0.75rem; height: 24px;">
+
+
+
+                                                </div>
+
+
+
+                                            </td>
+
+
+
+                                            <td class="p-1">
+
+
+
+                                                <div class="d-flex flex-column gap-1">
+
+
+
+                                                    <input type="date"
+
+
+
+                                                        class="form-control form-control-sm filter-date-from shadow-none px-1 border-secondary-subtle"
+
+
+
+                                                        data-col="4" style="font-size: 0.75rem; height: 24px;">
+
+
+
+                                                    <input type="date"
+
+
+
+                                                        class="form-control form-control-sm filter-date-to shadow-none px-1 border-secondary-subtle"
+
+
+
+                                                        data-col="4" style="font-size: 0.75rem; height: 24px;">
+
+
+
+                                                </div>
+
+
+
+                                            </td>
+
+
+
+                                            <td class="p-1 position-relative">
+
+
+
+                                                <div class="dropdown filter-dropdown" data-col="5">
+
+
+
+                                                    <button
+
+
+
+                                                        class="btn btn-sm btn-white border border-secondary-subtle w-100 dropdown-toggle text-truncate shadow-none px-1"
+
+
+
+                                                        type="button" data-bs-toggle="dropdown"
+
+
+
+                                                        style="font-size: 0.8rem; background: var(--bg-card); color: var(--text-main); border: 1.5px solid var(--border-color) !important;">All</button>
+
+
+
+                                                    <div class="dropdown-menu p-2 shadow border-0"
+
+
+
+                                                        style="max-height: 300px; overflow-y: auto;">
+
+
+
+                                                        <div class="filter-options-container"></div>
+
+
+
+                                                    </div>
+
+
+
+                                                </div>
+
+
+
+                                            </td>
+
+
+
+                                            <td class="p-1 position-relative">
+
+
+
+                                                <div class="dropdown filter-dropdown" data-col="6">
+
+
+
+                                                    <button
+
+
+
+                                                        class="btn btn-sm btn-white border border-secondary-subtle w-100 dropdown-toggle text-truncate shadow-none px-1"
+
+
+
+                                                        type="button" data-bs-toggle="dropdown"
+
+
+
+                                                        style="font-size: 0.8rem; background: var(--bg-card); color: var(--text-main); border: 1.5px solid var(--border-color) !important;">All</button>
+
+
+
+                                                    <div class="dropdown-menu p-2 shadow border-0">
+
+
+
+                                                        <div class="filter-options-container"></div>
+
+
+
+                                                    </div>
+
+
+
+                                                </div>
+
+
+
+                                            </td>
+
+
+
+                                            <td class="p-1 position-relative">
+
+
+
+                                                <div class="dropdown filter-dropdown" data-col="7">
+
+
+
+                                                    <button
+
+
+
+                                                        class="btn btn-sm btn-white border border-secondary-subtle w-100 dropdown-toggle text-truncate shadow-none px-1"
+
+
+
+                                                        type="button" data-bs-toggle="dropdown"
+
+
+
+                                                        style="font-size: 0.8rem; background: var(--bg-card); color: var(--text-main); border: 1.5px solid var(--border-color) !important;">All</button>
+
+
+
+                                                    <div class="dropdown-menu p-2 shadow border-0">
+
+
+
+                                                        <div class="filter-options-container"></div>
+
+
+
+                                                    </div>
+
+
+
+                                                </div>
+
+
+
+                                            </td>
+
+
+
+                                            <td class="p-1 position-relative">
+
+
+
+                                                <div class="dropdown filter-dropdown" data-col="8"
+
+
+
+                                                    data-multi-value="true">
+
+
+
+                                                    <button
+
+
+
+                                                        class="btn btn-sm btn-white border border-secondary-subtle w-100 dropdown-toggle text-truncate shadow-none px-1"
+
+
+
+                                                        type="button" data-bs-toggle="dropdown"
+
+
+
+                                                        style="font-size: 0.8rem; background: var(--bg-card); color: var(--text-main); border: 1.5px solid var(--border-color) !important;">Tags</button>
+
+
+
+                                                    <div class="dropdown-menu p-2 shadow border-0 dropdown-menu-end"
+
+
+
+                                                        style="width: 200px;">
+
+
+
+                                                        <div class="filter-options-container"></div>
+
+
+
+                                                    </div>
+
+
+
+                                                </div>
+
+
+
+                                            </td>
+
+
+
+                                        </tr>
+
+
+
+                                    </thead>
+
+
+
+                                    <tbody id="taskTableBody">
+
+
+
+                                        <% if (tasks && tasks.length> 0) { %>
+
+
+
+                                            <% tasks.forEach((task, index)=> { %>
+
+
+
+                                                <tr class="task-row" style="cursor: pointer;"
+
+
+
+                                                    onclick="window.location.href='/tasks/<%= task.id %>'">
+
+
+
+                                                    <td class="text-center row-index">
+
+
+
+                                                        <%= index + 1 %>
+
+
+
+                                                    </td>
+
+
+
+                                                    <td>
+
+
+
+                                                        <strong>
+
+
+
+                                                            <%= task.title %>
+
+
+
+                                                        </strong>
+
+
+
+                                                        <% if(task.attachment_path) { %><i data-feather="paperclip"
+
+
+
+                                                                class="text-muted ms-1" style="width:12px"></i>
+
+
+
+                                                            <% } %>
+
+
+
+                                                                <div class="text-muted text-truncate small mt-1"
+
+
+
+                                                                    style="max-width: 250px;">
+
+
+
+                                                                    <%= task.description %>
+
+
+
+                                                                </div>
+
+
+
+                                                                <% if(task.progress> 0 && task.progress < 100) { %>
+
+
+
+                                                                        <div class="progress mt-1 bg-secondary-subtle"
+
+
+
+                                                                            style="height: 4px; width: 60%;">
+
+
+
+                                                                            <div class="progress-bar bg-primary"
+
+
+
+                                                                                style="width: <%= task.progress %>%;">
+
+
+
+                                                                            </div>
+
+
+
+                                                                        </div>
+
+
+
+                                                                        <% } %>
+
+
+
+                                                    </td>
+
+
+
+                                                    <td><small class="text-primary fw-bold">
+
+
+
+                                                            <%= task.assigneeNames || 'Chưa giao' %>
+
+
+
+                                                        </small></td>
+
+
+
+                                                    <td>
+
+
+
+                                                        <%= task.start_date ? new
+
+
+
+                                                            Date(task.start_date).toLocaleString('vi-VN') : '-' %>
+
+
+
+                                                    </td>
+
+
+
+                                                    <td>
+
+
+
+                                                        <% var dueDate=task.due_date ? new Date(task.due_date) : null;
+
+
+
+                                                            var now=new Date(); var isOverdue=dueDate && dueDate < now
+
+
+
+                                                            && task.status !=='Hoàn thành' ; %>
+
+
+
+                                                            <span class="<%= isOverdue ? 'text-danger fw-bold' : '' %>">
+
+
+
+                                                                <%= task.formattedDueDate || (dueDate ?
+
+
+
+                                                                    dueDate.toLocaleString('vi-VN') : '-' ) %>
+
+
+
+                                                            </span>
+
+
+
+                                                            <% if(isOverdue) { %> <i data-feather="alert-circle"
+
+
+
+                                                                    class="text-danger" style="width:14px"></i>
+
+
+
+                                                                <% } %>
+
+
+
+                                                    </td>
+
+
+
+                                                    <td><small>
+
+
+
+                                                            <%= task.Creator ? task.Creator.fullname : 'N/A' %>
+
+
+
+                                                        </small></td>
+
+
+
+                                                    <td>
+
+
+
+                                                        <% var pColor='secondary' ; if(task.priority=='Cao (Gấp)' )
+
+
+
+                                                            pColor='danger' ; else if(task.priority=='Trung bình' )
+
+
+
+                                                            pColor='warning text-dark' ; else if(task.priority=='Thấp' )
+
+
+
+                                                            pColor='info text-dark' ; %>
+
+
+
+                                                            <span class="badge bg-<%= pColor %> fw-normal">
+
+
+
+                                                                <%= task.priority %>
+
+
+
+                                                            </span>
+
+
+
+                                                    </td>
+
+
+
+                                                    <td>
+
+
+
+                                                        <% var sColor='secondary' ; if(task.status=='Mới tạo' )
+
+
+
+                                                            sColor='info text-dark' ; else
+
+
+
+                                                            if(task.status=='Đang thực hiện' ) sColor='primary' ; else
+
+
+
+                                                            if(task.status=='Hoàn thành' ) sColor='success' ; else
+
+
+
+                                                            if(task.status=='Quá hạn' ) sColor='danger' ; else
+
+
+
+                                                            if(task.status=='Đang chờ' ) sColor='warning text-dark' ; %>
+
+
+
+                                                            <span class="badge bg-<%= sColor %> fw-normal">
+
+
+
+                                                                <%= task.status %>
+
+
+
+                                                            </span>
+
+
+
+                                                    </td>
+
+
+
+                                                    <td>
+
+
+
+                                                        <% if (task.tags) { %>
+
+
+
+                                                            <% task.tags.split(',').forEach(tag=> { %>
+
+
+
+                                                                <span
+
+
+
+                                                                    class="badge bg-light text-dark border border-secondary-subtle fw-normal mb-1">
+
+
+
+                                                                    <%= tag.trim() %>
+
+
+
+                                                                </span>
+
+
+
+                                                                <% }) %>
+
+
+
+                                                                    <% } else { %><span
+
+
+
+                                                                            class="text-muted small">-</span>
+
+
+
+                                                                        <% } %>
+
+
+
+                                                    </td>
+
+
+
+                                                </tr>
+
+
+
+                                                <% }); %>
+
+
+
+                                                    <% } else { %>
+
+
+
+                                                        <tr id="emptyRow">
+
+
+
+                                                            <td colspan="9" class="text-center py-5 text-muted">
+
+
+
+                                                                <div class="mb-2"><i data-feather="inbox"
+
+
+
+                                                                        style="width: 40px; height: 40px; opacity: 0.5;"></i>
+
+
+
+                                                                </div>
+
+
+
+                                                                Không có dữ liệu công việc
+
+
+
+                                                            </td>
+
+
+
+                                                        </tr>
+
+
+
+                                                        <% } %>
+
+
+
+                                    </tbody>
+
+
+
+                                </table>
+
+
+
+                            </div>
+
+
+
+
+
+
+
+                            <div class="premium-pagination-container d-flex justify-content-between align-items-center flex-wrap gap-3 mt-4">
+
+
+
+                                <div class="premium-pagination-pill d-flex align-items-center bg-white shadow-sm border border-light-subtle rounded-pill px-3 py-2 gap-2">
+
+
+
+                                    <!-- Left chevron -->
+
+
+
+                                    <button class="btn btn-link p-0 text-secondary border-0 shadow-none d-flex align-items-center justify-content-center" id="btnPrev">
+
+
+
+                                        <i data-feather="chevron-left" style="width: 16px; height: 16px;"></i>
+
+
+
+                                    </button>
+
+
+
+
+
+
+
+                                    <!-- Page numbers container -->
+
+
+
+                                    <div class="d-flex align-items-center gap-1" id="pageNumbers">
+
+
+
+                                    </div>
+
+
+
+
+
+
+
+                                    <!-- Right chevron -->
+
+
+
+                                    <button class="btn btn-link p-0 text-secondary border-0 shadow-none d-flex align-items-center justify-content-center" id="btnNext">
+
+
+
+                                        <i data-feather="chevron-right" style="width: 16px; height: 16px;"></i>
+
+
+
+                                    </button>
+
+
+
+
+
+
+
+                                    <!-- Divider line -->
+
+
+
+                                    <div class="vr mx-1 my-2 text-secondary-subtle" style="width: 1px; height: 20px; opacity: 0.4;"></div>
+
+
+
+
+
+
+
+                                    <!-- Page size selector -->
+
+
+
+                                    <div class="d-flex align-items-center">
+
+
+
+                                        <select id="pageSize" class="form-select form-select-sm border-0 bg-transparent px-2 py-0 shadow-none text-muted" style="width: auto; font-size: 0.85rem; cursor: pointer;">
+
+
+
+                                            <option value="10" selected>10 dòng / trang</option>
+
+
+
+                                            <option value="20">20 dòng / trang</option>
+
+
+
+                                            <option value="50">50 dòng / trang</option>
+
+
+
+                                            <option value="200">200 dòng / trang</option>
+
+
+
+                                            <option value="500">500 dòng / trang</option>
+
+
+
+                                            <option value="all">Tất cả dòng</option>
+
+
+
+                                        </select>
+
+
+
+                                    </div>
+
+
+
+
+
+
+
+                                    <!-- Divider line -->
+
+
+
+                                    <div class="vr mx-1 my-2 text-secondary-subtle" style="width: 1px; height: 20px; opacity: 0.4;"></div>
+
+
+
+
+
+
+
+                                    <!-- Jump to page input -->
+
+
+
+                                    <div class="d-flex align-items-center gap-1 text-muted small">
+
+
+
+                                        <span>Đến trang</span>
+
+
+
+                                        <input type="number" id="jumpPageInput" class="form-control form-control-sm text-center p-0 border border-secondary-subtle rounded-2 shadow-none" value="1" min="1" style="width: 40px; height: 26px; font-size: 0.85rem;">
+
+
+
+                                    </div>
+
+
+
+                                </div>
+
+
+
+
+
+
+
+                                <!-- Total rows display -->
+
+
+
+                                <div id="paginationInfo" class="badge bg-light text-secondary border border-light-subtle rounded-pill px-3 py-2 fw-semibold fs-7">
+
+
+
+                                </div>
+
+
+
+                            </div>
+
+
+
+                        </div>
+
+
+
+                    </div>
+
+
+
+
+
+
+
+                    <script>
+
+
+
+                        document.addEventListener("DOMContentLoaded", function () {
+
+
+
+                            const table = document.getElementById("mainTable");
+
+
+
+                            if (!table) return;
+
+
+
+                            const tbody = document.getElementById("taskTableBody");
+
+
+
+                            const allRows = Array.from(tbody.querySelectorAll(".task-row"));
+
+
+
+
+
+
+
+                            let currentPage = 1;
+
+
+
+                            let rowsPerPage = 10;
+
+
+
+                            let filteredRows = [...allRows];
+
+
+
+
+
+
+
+                            // 1. HÀM XÂY DỰNG DROPDOWN
+
+
+
+                            function buildDropdowns() {
+
+
+
+                                const dropdowns = document.querySelectorAll('.filter-dropdown');
+
+
+
+                                dropdowns.forEach(dd => {
+
+
+
+                                    const colIndex = parseInt(dd.dataset.col);
+
+
+
+                                    const isTagColumn = colIndex === 8;
+
+
+
+                                    const isMultiValue = dd.dataset.multiValue === "true" || colIndex === 2;
+
+
+
+                                    const container = dd.querySelector('.filter-options-container');
+
+
+
+
+
+
+
+                                    let values = new Set();
+
+
+
+                                    allRows.forEach(row => {
+
+
+
+                                        const cell = row.cells[colIndex];
+
+
+
+                                        if (cell) {
+
+
+
+                                            let text = cell.innerText.trim();
+
+
+
+
+
+
+
+                                            // Nếu ô trống hoặc chỉ chứa dấu gạch ngang
+
+
+
+                                            if (!text || text === '-' || text === '---') {
+
+
+
+                                                values.add('(Trống)');
+
+
+
+                                            }
+
+
+
+                                            else if (isTagColumn) {
+
+
+
+                                                const badges = cell.querySelectorAll('.badge');
+
+
+
+                                                if (badges.length > 0) {
+
+
+
+                                                    badges.forEach(b => {
+
+
+
+                                                        const tagText = b.innerText.trim();
+
+
+
+                                                        if (tagText && tagText !== '-') values.add(tagText);
+
+
+
+                                                    });
+
+
+
+                                                } else {
+
+
+
+                                                    values.add('(Trống)');
+
+
+
+                                                }
+
+
+
+                                            }
+
+
+
+                                            else {
+
+
+
+                                                if (isMultiValue) {
+
+
+
+                                                    text.split(/[\n,]+/).forEach(val => {
+
+
+
+                                                        val = val.trim();
+
+
+
+                                                        if (val === 'Chưa giao') values.add('Chưa giao');
+
+
+
+                                                        else if (val) values.add(val);
+
+
+
+                                                    });
+
+
+
+                                                } else {
+
+
+
+                                                    values.add(text);
+
+
+
+                                                }
+
+
+
+                                            }
+
+
+
+                                        }
+
+
+
+                                    });
+
+
+
+
+
+
+
+                                    let html = `<div class="form-check"><input class="form-check-input select-all" type="checkbox" checked onchange="toggleAll(this)"><label class="form-check-label fst-italic fw-bold">Chọn tất cả</label></div><hr class="my-1">`;
+
+
+
+                                    Array.from(values).sort().forEach(val => {
+
+
+
+                                        html += `<div class="form-check filter-item"><input class="form-check-input filter-check" type="checkbox" checked value="${val}" onchange="applyFilters()"><label class="form-check-label text-wrap small">${val}</label></div>`;
+
+
+
+                                    });
+
+
+
+                                    container.innerHTML = html;
+
+
+
+                                });
+
+
+
+                            }
+
+
+
+
+
+
+
+                            // 2. HÀM LỌC CHÍNH
+
+
+
+                            window.applyFilters = function () {
+
+
+
+                                const textInputs = document.querySelectorAll('.filter-input');
+
+
+
+                                const dateFromInputs = document.querySelectorAll('.filter-date-from');
+
+
+
+                                const dateToInputs = document.querySelectorAll('.filter-date-to');
+
+
+
+                                const dropdowns = document.querySelectorAll('.filter-dropdown');
+
+
+
+
+
+
+
+                                filteredRows = [];
+
+
+
+
+
+
+
+                                allRows.forEach(row => {
+
+
+
+                                    let show = true;
+
+
+
+
+
+
+
+                                    // A. Lọc theo chữ (Input text)
+
+
+
+                                    textInputs.forEach(input => {
+
+
+
+                                        const colIdx = input.dataset.col;
+
+
+
+                                        if (input.value && !row.cells[colIdx].innerText.toLowerCase().includes(input.value.toLowerCase())) show = false;
+
+
+
+                                    });
+
+
+
+
+
+
+
+                                    // B. Lọc theo ngày
+
+
+
+                                    if (show) {
+
+
+
+                                        const parseDate = (str) => {
+
+
+
+                                            if (!str || str === '-' || str === '---') return null;
+
+
+
+                                            const parts = str.trim().split(/[\s/:]+/);
+
+
+
+                                            if (parts.length >= 3) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+
+
+
+                                            return null;
+
+
+
+                                        };
+
+
+
+                                        dateFromInputs.forEach(input => {
+
+
+
+                                            const cellDate = parseDate(row.cells[input.dataset.col].innerText);
+
+
+
+                                            if (input.valueAsDate && (!cellDate || cellDate < input.valueAsDate)) show = false;
+
+
+
+                                        });
+
+
+
+                                        dateToInputs.forEach(input => {
+
+
+
+                                            const cellDate = parseDate(row.cells[input.dataset.col].innerText);
+
+
+
+                                            if (input.valueAsDate && (!cellDate || cellDate > input.valueAsDate)) show = false;
+
+
+
+                                        });
+
+
+
+                                    }
+
+
+
+
+
+
+
+                                    // C. Lọc theo Dropdown
+
+
+
+                                    if (show) {
+
+
+
+                                        dropdowns.forEach(dd => {
+
+
+
+                                            const selectAllCb = dd.querySelector('.select-all');
+
+
+
+
+
+
+
+                                            // [QUAN TRỌNG] Bỏ qua kiểm tra cột này nếu "Chọn tất cả" đang được tick
+
+
+
+                                            if (selectAllCb && selectAllCb.checked) return;
+
+
+
+
+
+
+
+                                            const colIdx = dd.dataset.col;
+
+
+
+                                            let cellText = row.cells[colIdx].innerText.trim();
+
+
+
+                                            if (!cellText || cellText === '-' || cellText === '---') cellText = '(Trống)';
+
+
+
+
+
+
+
+                                            const checkedBoxes = Array.from(dd.querySelectorAll('.filter-check:checked')).map(cb => cb.value);
+
+
+
+                                            if (checkedBoxes.length === 0) {
+
+
+
+                                                show = false;
+
+
+
+                                            } else {
+
+
+
+                                                const hasMatch = checkedBoxes.some(val => cellText.includes(val));
+
+
+
+                                                if (!hasMatch) show = false;
+
+
+
+                                            }
+
+
+
+                                        });
+
+
+
+                                    }
+
+
+
+
+
+
+
+                                    if (show) filteredRows.push(row);
+
+
+
+                                    row.style.display = 'none'; // Ẩn toàn bộ để nhường cho hàm Render hiển thị
+
+
+
+                                });
+
+
+
+
+
+
+
+                                currentPage = 1;
+
+
+
+                                renderPagination();
+
+
+
+                            };
+
+
+
+
+
+
+
+                            // 3. HÀM VẼ GIAO DIỆN PHÂN TRANG
+
+
+
+                            function renderPagination() {
+
+
+
+                                const totalRows = filteredRows.length;
+
+
+
+                                const pageSizeSelect = document.getElementById('pageSize').value;
+
+
+
+                                rowsPerPage = pageSizeSelect === 'all' ? totalRows : parseInt(pageSizeSelect);
+
+
+
+
+
+
+
+                                const totalPages = rowsPerPage === 0 ? 1 : Math.ceil(totalRows / rowsPerPage);
+
+
+
+                                if (currentPage > totalPages) currentPage = totalPages || 1;
+
+
+
+
+
+
+
+                                const start = rowsPerPage === totalRows ? 0 : (currentPage - 1) * rowsPerPage;
+
+
+
+                                const end = Math.min(start + rowsPerPage, totalRows);
+
+
+
+
+
+
+
+                                allRows.forEach(row => row.style.display = 'none');
+                filteredRows.forEach(row => tbody.appendChild(row));
+
+
+
+                                for (let i = start; i < end; i++) {
+
+
+
+                                    if (filteredRows[i]) {
+
+
+
+                                        filteredRows[i].style.display = '';
+
+
+
+                                        filteredRows[i].querySelector('.row-index').innerText = i + 1;
+
+
+
+                                    }
+
+
+
+                                }
+
+
+
+
+
+
+
+                                let emptyRow = document.getElementById("emptyRow");
+
+
+
+                                if (totalRows === 0) {
+
+
+
+                                    if (!emptyRow) tbody.insertAdjacentHTML('beforeend', '<tr id="emptyRow"><td colspan="9" class="text-center py-5 text-muted">Không có dữ liệu phù hợp</td></tr>');
+
+
+
+                                } else if (emptyRow) emptyRow.remove();
+
+
+
+
+
+
+
+                                const infoEl = document.getElementById('paginationInfo');
+
+
+
+                                if (totalRows === 0) {
+
+
+
+                                    infoEl.innerHTML = "0/0";
+
+
+
+                                } else {
+
+
+
+                                    infoEl.innerHTML = `Hiển thị: ${end - start}/${totalRows}`;
+
+
+
+                                }
+
+
+
+
+
+
+
+                                const btnPrev = document.getElementById('btnPrev');
+
+
+
+                                const btnNext = document.getElementById('btnNext');
+
+
+
+                                
+
+
+
+                                if (btnPrev && btnNext) {
+
+
+
+                                    if (currentPage === 1) {
+
+
+
+                                        btnPrev.setAttribute('disabled', 'true');
+
+
+
+                                        btnPrev.style.opacity = '0.4';
+
+
+
+                                        btnPrev.onclick = null;
+
+
+
+                                    } else {
+
+
+
+                                        btnPrev.removeAttribute('disabled');
+
+
+
+                                        btnPrev.style.opacity = '1';
+
+
+
+                                        btnPrev.onclick = function() { changePage(currentPage - 1); return false; };
+
+
+
+                                    }
+
+
+
+
+
+
+
+                                    if (currentPage === totalPages) {
+
+
+
+                                        btnNext.setAttribute('disabled', 'true');
+
+
+
+                                        btnNext.style.opacity = '0.4';
+
+
+
+                                        btnNext.onclick = null;
+
+
+
+                                    } else {
+
+
+
+                                        btnNext.removeAttribute('disabled');
+
+
+
+                                        btnNext.style.opacity = '1';
+
+
+
+                                        btnNext.onclick = function() { changePage(currentPage + 1); return false; };
+
+
+
+                                    }
+
+
+
+                                }
+
+
+
+
+
+
+
+                                const pageNumbersContainer = document.getElementById('pageNumbers');
+
+
+
+                                if (pageNumbersContainer) {
+
+
+
+                                    pageNumbersContainer.innerHTML = '';
+
+
+
+                                    for (let i = 1; i <= totalPages; i++) {
+
+
+
+                                        if (totalPages > 6) {
+
+
+
+                                            if (i !== 1 && i !== totalPages && Math.abs(i - currentPage) > 1) {
+
+
+
+                                                if (i === 2 || i === totalPages - 1) {
+
+
+
+                                                    pageNumbersContainer.innerHTML += `<span class="text-muted small px-1">...</span>`;
+
+
+
+                                                }
+
+
+
+                                                continue;
+
+
+
+                                            }
+
+
+
+                                        }
+
+
+
+                                        pageNumbersContainer.innerHTML += `<a href="#" class="page-num ${i === currentPage ? 'active' : ''}" onclick="changePage(${i}); return false;">${i}</a>`;
+
+
+
+                                    }
+
+
+
+                                }
+
+
+
+                                
+
+
+
+                                const jumpInput = document.getElementById('jumpPageInput');
+
+
+
+                                if (jumpInput) {
+
+
+
+                                    jumpInput.value = currentPage;
+
+
+
+                                    jumpInput.max = totalPages;
+
+
+
+                                    jumpInput.onchange = function() {
+
+
+
+                                        let val = parseInt(this.value);
+
+
+
+                                        if (isNaN(val) || val < 1) val = 1;
+
+
+
+                                        if (val > totalPages) val = totalPages;
+
+
+
+                                        changePage(val);
+
+
+
+                                    };
+
+
+
+                                    jumpInput.onkeydown = function(e) {
+
+
+
+                                        if (e.key === 'Enter') {
+
+
+
+                                            let val = parseInt(this.value);
+
+
+
+                                            if (isNaN(val) || val < 1) val = 1;
+
+
+
+                                            if (val > totalPages) val = totalPages;
+
+
+
+                                            changePage(val);
+
+
+
+                                            e.preventDefault();
+
+
+
+                                        }
+
+
+
+                                    };
+
+
+
+                                }
+
+
+
+                            }
+
+
+
+
+
+
+
+                            // CÁC HÀM SỰ KIỆN BỔ TRỢ
+
+
+
+                            window.changePage = function (page) {
+
+
+
+                                currentPage = page;
+
+
+
+                                renderPagination();
+
+
+
+                            }
+
+
+
+
+
+
+
+                            window.toggleAll = function (source) {
+
+
+
+                                const checkboxes = source.closest('.filter-options-container').querySelectorAll('.filter-check');
+
+
+
+                                checkboxes.forEach(cb => cb.checked = source.checked);
+
+
+
+                                applyFilters();
+
+
+
+                            };
+
+
+
+
+
+
+
+                            window.filterDropdownItems = function (input) {
+
+
+
+                                const filter = input.value.toLowerCase();
+
+
+
+                                input.nextElementSibling.querySelectorAll('.filter-item').forEach(item => {
+
+
+
+                                    item.style.display = item.innerText.toLowerCase().includes(filter) ? '' : 'none';
+
+
+
+                                });
+
+
+
+                            };
+
+
+
+
+
+
+
+                            document.getElementById('pageSize')?.addEventListener('change', () => {
+
+                                currentPage = 1;
+
+                                renderPagination();
+
+                            });
+
+
+
+                            // 4. CHỨC NĂNG SẮP XẾP CỘT (SORTING)
+
+                            let currentSortCol = -1;
+
+                            let currentSortDir = 'asc';
+
+
+
+                            window.sortTable = function(colIndex) {
+
+                                if (colIndex === 0) return; // Không sắp xếp cột STT
+
+                                
+
+                                if (currentSortCol === colIndex) {
+
+                                    currentSortDir = currentSortDir === 'asc' ? 'desc' : 'asc';
+
+                                } else {
+
+                                    currentSortCol = colIndex;
+
+                                    currentSortDir = 'asc';
+
+                                }
+
+
+
+                                // Cập nhật biểu tượng mũi tên trên giao diện
+
+                                const headers = table.querySelectorAll('thead tr:first-child th');
+
+                                headers.forEach((th, idx) => {
+
+                                    if (idx === 0) return;
+
+                                    let baseText = th.innerText.replace(/[▲▼⇅]/g, '').trim();
+
+                                    if (idx === colIndex) {
+
+                                        th.innerText = baseText + (currentSortDir === 'asc' ? ' ▲' : ' ▼');
+
+                                    } else {
+
+                                        th.innerText = baseText + ' ⇅';
+
+                                    }
+
+                                });
+
+
+
+                                // Thực hiện sắp xếp mảng filteredRows
+
+                                filteredRows.sort((rowA, rowB) => {
+
+                                    let cellA = rowA.cells[colIndex] ? rowA.cells[colIndex].innerText.trim() : '';
+
+                                    let cellB = rowB.cells[colIndex] ? rowB.cells[colIndex].innerText.trim() : '';
+
+
+
+                                    // Nếu là cột Ngày bắt đầu (3) hoặc Ngày hạn chót (4)
+
+                                    if (colIndex === 3 || colIndex === 4) {
+
+                                        const parseDate = (str) => {
+
+                                            if (!str || str === '-' || str === '---') return new Date(0);
+
+                                            let cleaned = str.replace(',', '').trim();
+
+                                            let parts = cleaned.split(/\s+/);
+
+                                            let datePart = '';
+
+                                            let timePart = '00:00:00';
+
+                                            
+
+                                            parts.forEach(p => {
+
+                                                if (p.includes('/')) datePart = p;
+
+                                                else if (p.includes(':')) timePart = p;
+
+                                            });
+
+
+
+                                            if (!datePart) return new Date(0);
+
+                                            let dParts = datePart.split('/');
+
+                                            let tParts = timePart.split(':');
+
+                                            return new Date(
+
+                                                parseInt(dParts[2]),
+
+                                                parseInt(dParts[1]) - 1,
+
+                                                parseInt(dParts[0]),
+
+                                                parseInt(tParts[0] || 0),
+
+                                                parseInt(tParts[1] || 0),
+
+                                                parseInt(tParts[2] || 0)
+
+                                            );
+
+                                        };
+
+                                        let dateA = parseDate(cellA);
+
+                                        let dateB = parseDate(cellB);
+
+                                        return currentSortDir === 'asc' ? dateA - dateB : dateB - dateA;
+
+                                    }
+
+
+
+                                    // Sắp xếp theo tiếng Việt
+
+                                    return currentSortDir === 'asc' 
+
+                                        ? cellA.localeCompare(cellB, 'vi', { sensitivity: 'base' })
+
+                                        : cellB.localeCompare(cellA, 'vi', { sensitivity: 'base' });
+
+                                });
+
+
+
+                                currentPage = 1;
+
+                                renderPagination();
+
+                            };
+
+
+
+                            // Chạy lệnh khởi tạo lần đầu
+
+                            buildDropdowns();
+
+                            document.querySelectorAll('.filter-input, .filter-date-from, .filter-date-to').forEach(el => el.addEventListener('input', applyFilters));
+
+                            document.querySelectorAll('.dropdown-menu').forEach(menu => menu.addEventListener('click', e => e.stopPropagation()));
+
+
+
+                            // Gán sự kiện click cho các cột tiêu đề để sắp xếp
+
+                            const headers = table.querySelectorAll('thead tr:first-child th');
+
+                            headers.forEach((th, idx) => {
+
+                                if (idx > 0) {
+
+                                    th.style.cursor = 'pointer';
+
+                                    th.innerText = th.innerText + ' ⇅';
+
+                                    th.addEventListener('click', () => sortTable(idx));
+
+                                }
+
+                            });
+
+
+
+                            if (allRows.length > 0) applyFilters();
+
+
+
+                        });
+
+
+
+                    </script>
+
+
+
+                    <% } %>
+
+
+
+
+
+
+
+                        <%- include('../partials/modal-create-task') %>
+
+
+
                             <%- include('../partials/footer') %>
