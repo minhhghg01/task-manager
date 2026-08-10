@@ -121,9 +121,9 @@
                     <div class="mb-3">
                         <label class="form-label fw-bold">Người nhận việc <span class="text-danger">*</span></label>
 
-                        <div class="card p-2" style="background-color: #f8f9fa;">
+                        <div class="card p-2 user-list-wrapper">
 
-                            <div class="form-check border-bottom pb-2 mb-2 bg-white p-2 rounded border">
+                            <div class="form-check border-bottom pb-2 mb-2 self-assign-box p-2 rounded border">
                                 <input class="form-check-input" type="checkbox" id="selfAssignCheck"
                                     name="is_self_assign" value="true">
                                 <label class="form-check-label fw-bold text-success" for="selfAssignCheck">
@@ -257,14 +257,14 @@
 
                 const titleVal = titleInput ? titleInput.value.trim() : '';
                 if (!titleVal) {
-                    alert('Vui lòng nhập Tiêu đề công việc trước khi lưu thành Mẫu!');
+                    showAlert('Cảnh báo', 'Vui lòng nhập Tiêu đề công việc trước khi lưu thành Mẫu!', 'warning');
                     if (titleInput) titleInput.focus();
                     return;
                 }
 
                 const templateName = templateNameInput ? templateNameInput.value.trim() : '';
                 if (!templateName) {
-                    alert('Vui lòng nhập tên gợi nhớ cho Mẫu công việc trước khi lưu!');
+                    showAlert('Cảnh báo', 'Vui lòng nhập tên gợi nhớ cho Mẫu công việc trước khi lưu!', 'warning');
                     if (templateNameInput) templateNameInput.focus();
                     return;
                 }
@@ -289,16 +289,17 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        alert(data.message);
-                        if (templateNameInput) templateNameInput.value = '';
-                        loadTemplates(data.template.id);
+                        showAlert('Thành công', data.message || 'Lưu mẫu thành công!', 'success').then(() => {
+                            if (templateNameInput) templateNameInput.value = '';
+                            loadTemplates(data.template.id);
+                        });
                     } else {
-                        alert('Lỗi: ' + data.message);
+                        showAlert('Lỗi', data.message || 'Không thể lưu mẫu!', 'error');
                     }
                 })
                 .catch(err => {
                     console.error(err);
-                    alert('Lỗi kết nối máy chủ!');
+                    showAlert('Thất bại', 'Lỗi kết nối máy chủ!', 'error');
                 });
             });
         }
@@ -308,21 +309,24 @@
                 const val = templateSelect.value;
                 if (!val) return;
 
-                if (!confirm('Bạn có chắc chắn muốn xóa mẫu công việc này?')) return;
-
-                fetch(`/api/templates/${val}`, { method: 'DELETE' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        alert(data.message);
-                        loadTemplates();
-                    } else {
-                        alert('Lỗi: ' + data.message);
+                showConfirm('Xác nhận', 'Bạn có chắc chắn muốn xóa mẫu công việc này?').then(result => {
+                    if (result.isConfirmed) {
+                        fetch(`/api/templates/${val}`, { method: 'DELETE' })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success) {
+                                showAlert('Thành công', data.message || 'Đã xóa mẫu!', 'success').then(() => {
+                                    loadTemplates();
+                                });
+                            } else {
+                                showAlert('Lỗi', data.message || 'Không thể xóa mẫu!', 'error');
+                            }
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            showAlert('Thất bại', 'Lỗi kết nối máy chủ!', 'error');
+                        });
                     }
-                })
-                .catch(err => {
-                    console.error(err);
-                    alert('Lỗi kết nối máy chủ!');
                 });
             });
         }
@@ -450,7 +454,7 @@
                             }
 
                             const checkedAttr = isChecked ? 'checked' : '';
-                            const bgClass = isChecked ? 'bg-warning bg-opacity-10' : 'bg-white';
+                            const bgClass = isChecked ? 'user-row-selected' : '';
 
                             const div = document.createElement('div');
                             div.className = `d-flex align-items-center mb-1 p-2 border rounded user-row-item ${bgClass}`;
@@ -481,11 +485,9 @@
                             const cb = div.querySelector('.user-checkbox');
                             cb.addEventListener('change', function() {
                                 if (this.checked) {
-                                    div.classList.add('bg-warning', 'bg-opacity-10');
-                                    div.classList.remove('bg-white');
+                                    div.classList.add('user-row-selected');
                                 } else {
-                                    div.classList.remove('bg-warning', 'bg-opacity-10');
-                                    div.classList.add('bg-white');
+                                    div.classList.remove('user-row-selected');
                                 }
                             });
 
@@ -522,7 +524,7 @@
                 const checked = document.querySelectorAll('.user-checkbox:checked');
 
                 if (!isSelf && checked.length === 0) {
-                    alert('Vui lòng chọn ít nhất một người nhận việc (hoặc chọn "Tôi tự thực hiện")!');
+                    showAlert('Cảnh báo', 'Vui lòng chọn ít nhất một người nhận việc (hoặc chọn "Tôi tự thực hiện")!', 'warning');
                     const target = document.querySelector('.card.p-2');
                     if (target) {
                         target.scrollIntoView({ behavior: 'smooth' });
@@ -546,14 +548,16 @@
                     const result = await response.json();
 
                     if (result.success) {
-                        window.location.reload();
+                        showAlert('Thành công', result.message || 'Giao việc thành công!', 'success').then(() => {
+                            window.location.reload();
+                        });
                     } else {
-                        alert(result.message || 'Có lỗi xảy ra!');
+                        showAlert('Lỗi', result.message || 'Có lỗi xảy ra!', 'error');
                     }
 
                 } catch (err) {
                     console.error(err);
-                    alert('Lỗi kết nối đến máy chủ!');
+                    showAlert('Thất bại', 'Lỗi kết nối đến máy chủ!', 'error');
                 } finally {
                     btnSubmit.disabled = false;
                     btnSubmit.innerHTML = originalBtnText;

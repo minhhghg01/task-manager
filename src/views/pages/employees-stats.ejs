@@ -189,25 +189,29 @@
     <script>
         function setLeaderRole(userId, action) {
             const msg = action === 'promote' ? 'Bổ nhiệm nhân viên này làm Tổ trưởng?' : 'Hủy chức Tổ trưởng của người này?';
-            if (!confirm(msg)) return;
-
-            fetch('/employees/set-role', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, action })
-            })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        window.location.reload();
-                    } else {
-                        alert('Lỗi: ' + data.message);
-                    }
-                })
-                .catch(err => {
-                    console.error(err);
-                    alert('Lỗi kết nối server');
-                });
+            showConfirm('Xác nhận', msg).then(result => {
+                if (result.isConfirmed) {
+                    fetch('/employees/set-role', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId, action })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            showAlert('Thành công', data.message || 'Cập nhật thành công!', 'success').then(() => {
+                                window.location.reload();
+                            });
+                        } else {
+                            showAlert('Lỗi', data.message || 'Có lỗi xảy ra!', 'error');
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        showAlert('Thất bại', 'Lỗi kết nối máy chủ', 'error');
+                    });
+                }
+            });
         }
 
         document.addEventListener("DOMContentLoaded", function () {

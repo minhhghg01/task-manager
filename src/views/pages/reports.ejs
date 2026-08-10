@@ -220,14 +220,14 @@
                 if (data.success) {
                     renderCharts(data.tasks);
                 } else {
-                    alert('Lỗi khi tải số liệu: ' + data.message);
+                    showAlert('Lỗi', 'Lỗi khi tải số liệu: ' + data.message, 'error');
                 }
             })
             .catch(err => {
                 console.error(err);
                 loader.classList.add('d-none');
                 dashboard.style.opacity = '1';
-                alert('Không thể kết nối đến máy chủ để tải số liệu thống kê.');
+                showAlert('Thất bại', 'Không thể kết nối đến máy chủ để tải số liệu thống kê.', 'error');
             });
     }
 

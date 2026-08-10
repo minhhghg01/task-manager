@@ -27,6 +27,35 @@
 
 
 <script>
+    // --- UTILITY FUNCTIONS FOR SWEETALERT2 ---
+    window.showConfirm = function(title, text, icon = 'question') {
+        const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+        return Swal.fire({
+            title: title,
+            text: text,
+            icon: icon,
+            showCancelButton: true,
+            confirmButtonColor: '#4f46e5',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Đồng ý',
+            cancelButtonText: 'Hủy',
+            background: isDark ? '#1e293b' : '#fff',
+            color: isDark ? '#f8fafc' : '#1e293b'
+        });
+    };
+
+    window.showAlert = function(title, text, icon = 'info') {
+        const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+        return Swal.fire({
+            title: title,
+            text: text,
+            icon: icon,
+            confirmButtonColor: '#4f46e5',
+            background: isDark ? '#1e293b' : '#fff',
+            color: isDark ? '#f8fafc' : '#1e293b'
+        });
+    };
+
     // --- A. KHỞI TẠO DATATABLE ---
     const tables = document.querySelectorAll(".datatable-init");
     tables.forEach(table => {

@@ -531,7 +531,7 @@
                             if (btn) {
                                 btn.textContent = '...'; btn.disabled = true;
                                 fetch(`/tasks/${taskId}/progress`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ progress: rangeInput.value }) })
-                                    .then(r => r.json()).then(d => { if (d.success) location.reload(); else { alert('Lỗi: ' + d.message); btn.disabled = false; btn.textContent = 'Lưu'; } });
+                                    .then(r => r.json()).then(d => { if (d.success) location.reload(); else { showAlert('Lỗi', d.message, 'error'); btn.disabled = false; btn.textContent = 'Lưu'; } });
                             }
                         });
                     }
@@ -543,7 +543,7 @@
                             const input = document.getElementById('newTodoInput');
                             if (!input.value.trim()) return;
                             fetch(`/tasks/${taskId}/todos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ADD', text: input.value.trim() }) })
-                                .then(r => r.json()).then(d => { if (d.success) location.reload(); else alert('Lỗi: ' + d.message || 'Không thể thêm'); });
+                                .then(r => r.json()).then(d => { if (d.success) location.reload(); else showAlert('Lỗi', d.message || 'Không thể thêm', 'error'); });
                         });
                     }
                     document.querySelectorAll('.todo-check').forEach(chk => {
@@ -551,7 +551,7 @@
                             fetch(`/tasks/${taskId}/todos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'TOGGLE', todoId: this.value }) })
                                 .then(r => r.json()).then(d => {
                                     if (!d.success) {
-                                        alert(d.message);
+                                        showAlert('Lỗi', d.message, 'error');
                                         this.checked = !this.checked;
                                     } else {
                                         const span = this.nextElementSibling;
@@ -564,35 +564,51 @@
                     // Xử lý Collaborators
                     function inviteCollab(uid) {
                         console.log("inviteCollab called for uid:", uid);
-                        if (!confirm('Mời nhân viên này?')) {
-                            console.log("inviteCollab confirm cancelled");
-                            return;
-                        }
-                        console.log("Sending fetch to:", `/tasks/${taskId}/collaborators`);
-                        fetch(`/tasks/${taskId}/collaborators`, { 
-                            method: 'POST', 
-                            headers: { 'Content-Type': 'application/json' }, 
-                            body: JSON.stringify({ targetUserId: uid }) 
-                        })
-                        .then(r => {
-                            console.log("Fetch response status:", r.status);
-                            return r.json();
-                        })
-                        .then(d => {
-                            console.log("Fetch response data:", d);
-                            if (d.success) location.reload(); 
-                            else alert(d.message); 
-                        })
-                        .catch(err => {
-                            console.error("Fetch error:", err);
-                            alert("Lỗi kết nối: " + err.message);
+                        showConfirm('Mời người phối hợp', 'Mời nhân viên này phối hợp thực hiện công việc?').then(result => {
+                            if (result.isConfirmed) {
+                                console.log("Sending fetch to:", `/tasks/${taskId}/collaborators`);
+                                fetch(`/tasks/${taskId}/collaborators`, { 
+                                    method: 'POST', 
+                                    headers: { 'Content-Type': 'application/json' }, 
+                                    body: JSON.stringify({ targetUserId: uid }) 
+                                })
+                                .then(r => {
+                                    console.log("Fetch response status:", r.status);
+                                    return r.json();
+                                })
+                                .then(d => {
+                                    console.log("Fetch response data:", d);
+                                    if (d.success) {
+                                        showAlert('Thành công', 'Đã gửi lời mời phối hợp!', 'success').then(() => {
+                                            location.reload();
+                                        });
+                                    } else {
+                                        showAlert('Lỗi', d.message, 'error');
+                                    }
+                                })
+                                .catch(err => {
+                                    console.error("Fetch error:", err);
+                                    showAlert('Lỗi', "Lỗi kết nối: " + err.message, 'error');
+                                });
+                            }
                         });
                     }
                     function respondCollab(action) {
                         let msg = action === 'ACCEPT' ? 'Xác nhận tham gia?' : (action === 'REMOVE' ? 'Rời khỏi công việc?' : 'Từ chối tham gia?');
-                        if (!confirm(msg)) return;
-                        fetch(`/tasks/${taskId}/collaborators/respond`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: action }) })
-                            .then(r => r.json()).then(d => { if (d.success) location.reload(); else alert(d.message); });
+                        showConfirm('Xác nhận', msg).then(result => {
+                            if (result.isConfirmed) {
+                                fetch(`/tasks/${taskId}/collaborators/respond`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: action }) })
+                                    .then(r => r.json()).then(d => { 
+                                        if (d.success) {
+                                            showAlert('Thành công', 'Cập nhật trạng thái thành công!', 'success').then(() => {
+                                                location.reload();
+                                            });
+                                        } else {
+                                            showAlert('Lỗi', d.message, 'error');
+                                        }
+                                    });
+                            }
+                        });
                     }
                     function filterUsers(input) {
                         const filter = input.value.toUpperCase();
@@ -610,7 +626,13 @@
                     if (sForm) sForm.addEventListener('submit', e => {
                         e.preventDefault();
                         fetch(`/tasks/${taskId}/score`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ score: document.getElementById('scoreInput').value }) })
-                            .then(r => r.json()).then(d => { if (d.success) { alert('Đã chấm điểm!'); location.reload(); } });
+                            .then(r => r.json()).then(d => { 
+                                if (d.success) { 
+                                    showAlert('Thành công', 'Đã chấm điểm!', 'success').then(() => {
+                                        location.reload(); 
+                                    });
+                                } 
+                            });
                     });
                     const cForm = document.getElementById('commentForm');
                     if (cForm) cForm.addEventListener('submit', e => {
@@ -645,7 +667,7 @@
                             btnSubmitEdit.addEventListener('click', async function () {
                                 const form = document.getElementById('editTaskForm');
                                 if (!document.getElementById('editTitle').value.trim()) {
-                                    alert('Vui lòng nhập tiêu đề công việc!');
+                                    showAlert('Cảnh báo', 'Vui lòng nhập tiêu đề công việc!', 'warning');
                                     return;
                                 }
                                 const formData = new FormData(form);
@@ -658,16 +680,17 @@
                                     });
                                     const result = await response.json();
                                     if (result.success) {
-                                        alert(result.message);
-                                        window.location.reload();
+                                        showAlert('Thành công', result.message || 'Lưu thay đổi thành công!', 'success').then(() => {
+                                            window.location.reload();
+                                        });
                                     } else {
-                                        alert('Lỗi: ' + result.message);
+                                        showAlert('Lỗi', result.message || 'Có lỗi xảy ra!', 'error');
                                         btnSubmitEdit.disabled = false;
                                         btnSubmitEdit.innerText = 'Lưu thay đổi';
                                     }
                                 } catch (error) {
                                     console.error('Error:', error);
-                                    alert('Lỗi kết nối máy chủ!');
+                                    showAlert('Thất bại', 'Lỗi kết nối máy chủ!', 'error');
                                     btnSubmitEdit.disabled = false;
                                     btnSubmitEdit.innerText = 'Lưu thay đổi';
                                 }

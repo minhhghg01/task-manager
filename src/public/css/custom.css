@@ -196,17 +196,6 @@ header.navbar .dropdown-menu {
     transition: transform 0.3s ease, left 0.3s ease, width 0.3s ease !important;
 }
 
-@media (min-width: 768px) {
-    .fixed-bottom-footer {
-        left: var(--sidebar-width) !important;
-        width: calc(100% - var(--sidebar-width)) !important;
-    }
-    body.sidebar-collapsed .fixed-bottom-footer {
-        left: var(--sidebar-collapsed-width) !important;
-        width: calc(100% - var(--sidebar-collapsed-width)) !important;
-    }
-}
-
 /* Scroll Animations */
 body.scroll-down header.navbar {
     transform: translateY(-100%);
@@ -702,10 +691,13 @@ body.scroll-down .fixed-bottom-footer {
 }
 
 @media (min-width: 768px) {
+    .container-fluid > .row {
+        min-height: calc(100vh - var(--header-height)) !important;
+    }
     .sidebar {
         position: sticky !important;
         top: var(--header-height) !important;
-        height: calc(100vh - var(--header-height)) !important;
+        height: calc(100vh - var(--header-height) - 54px) !important;
         overflow-y: auto !important;
     }
 }
@@ -1032,5 +1024,85 @@ body.scroll-down .fixed-bottom-footer {
     width: 28px !important;
     height: 28px !important;
     padding: 0 !important;
+}
+
+/* Option elements contrast styling for Dark Mode */
+[data-bs-theme="dark"] select#pageSize option,
+[data-bs-theme="dark"] select.form-select option,
+[data-bs-theme="dark"] .premium-pagination-pill select#pageSize option {
+    background-color: #1e293b !important;
+    color: #f8fafc !important;
+}
+
+/* Sidebar transition and scroll-down responsiveness */
+@media (min-width: 768px) {
+    .sidebar {
+        transition: top 0.3s ease, height 0.3s ease !important;
+    }
+    body.scroll-down .sidebar {
+        top: 0 !important;
+        height: 100vh !important;
+    }
+}
+
+/* User Assignee Checklist styling */
+.user-list-wrapper {
+    background-color: #f8f9fa !important;
+    border: 1px solid var(--border-color) !important;
+}
+.self-assign-box {
+    background-color: #ffffff !important;
+    border-color: var(--border-color) !important;
+}
+.user-row-item {
+    background-color: #ffffff !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-main) !important;
+    transition: background-color 0.15s ease, border-color 0.15s ease !important;
+}
+.user-row-item.user-row-selected {
+    background-color: rgba(255, 193, 7, 0.15) !important; /* bg-warning with opacity */
+    border-color: #ffc107 !important;
+}
+
+[data-bs-theme="dark"] .user-list-wrapper {
+    background-color: var(--bg-body) !important;
+}
+[data-bs-theme="dark"] .self-assign-box {
+    background-color: var(--bg-card) !important;
+}
+[data-bs-theme="dark"] .user-row-item {
+    background-color: var(--bg-card) !important;
+}
+[data-bs-theme="dark"] .user-row-item.user-row-selected {
+    background-color: rgba(255, 193, 7, 0.15) !important;
+    border-color: #ffc107 !important;
+}
+
+/* Dark Mode Global bg-white / bg-light / form-check-label overrides */
+[data-bs-theme="dark"] .bg-white,
+[data-bs-theme="dark"] .bg-light {
+    background-color: var(--bg-card) !important;
+    color: var(--text-main) !important;
+    border-color: var(--border-color) !important;
+}
+
+[data-bs-theme="dark"] .form-check-label,
+[data-bs-theme="dark"] .form-check-inline label,
+[data-bs-theme="dark"] label.form-check-label {
+    color: var(--text-main) !important;
+}
+
+/* Dark Mode Nav-Tabs styling */
+[data-bs-theme="dark"] .nav-tabs .nav-link {
+    background-color: var(--bg-body) !important;
+    color: var(--text-muted) !important;
+    border-color: var(--border-color) !important;
+}
+[data-bs-theme="dark"] .nav-tabs .nav-link.active {
+    background-color: var(--bg-card) !important;
+    color: var(--primary-color) !important;
+    border-color: var(--border-color) !important;
+    border-bottom-color: transparent !important;
 }
 
