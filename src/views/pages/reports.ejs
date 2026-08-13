@@ -15,7 +15,7 @@
             <form id="reportForm" action="/reports/export" method="GET">
                 <div class="row g-3 align-items-end">
                     <!-- Chọn Khoa Phòng -->
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label fw-semibold text-muted small">Khoa / Phòng</label>
                         <select class="form-select border-0 shadow-sm" id="departmentFilter" name="departmentId" onchange="updateUsersList()">
                             <% if (['ADMIN', 'DIRECTOR'].includes(user.role)) { %>
@@ -30,7 +30,7 @@
                     </div>
 
                     <!-- Chọn Nhân Viên -->
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label fw-semibold text-muted small">Nhân viên thực hiện</label>
                         <select class="form-select border-0 shadow-sm" id="userFilter" name="userId" onchange="refreshPreview()">
                             <option value="all">-- Tất cả nhân viên --</option>
@@ -42,16 +42,28 @@
                         </select>
                     </div>
 
+                    <!-- Lọc nhanh thời gian -->
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold text-muted small">Lọc thời gian nhanh</label>
+                        <select class="form-select border-0 shadow-sm" id="timePresetFilter" onchange="applyTimePreset()">
+                            <option value="custom">-- Tùy chọn --</option>
+                            <option value="today">Hôm nay</option>
+                            <option value="month">Tháng này</option>
+                            <option value="quarter">Quý này</option>
+                            <option value="year">Năm nay</option>
+                        </select>
+                    </div>
+
                     <!-- Từ Ngày -->
                     <div class="col-md-2">
                         <label class="form-label fw-semibold text-muted small">Từ ngày (Ngày tạo)</label>
-                        <input type="date" class="form-control border-0 shadow-sm" id="startDateFilter" name="startDate" onchange="refreshPreview()">
+                        <input type="date" class="form-control border-0 shadow-sm" id="startDateFilter" name="startDate" onchange="resetTimePreset()">
                     </div>
 
                     <!-- Đến Ngày -->
                     <div class="col-md-2">
                         <label class="form-label fw-semibold text-muted small">Đến ngày</label>
-                        <input type="date" class="form-control border-0 shadow-sm" id="endDateFilter" name="endDate" onchange="refreshPreview()">
+                        <input type="date" class="form-control border-0 shadow-sm" id="endDateFilter" name="endDate" onchange="resetTimePreset()">
                     </div>
 
                     <!-- Nút Hành Động -->
@@ -164,6 +176,24 @@
                 </div>
             </div>
         </div>
+
+        <!-- Biểu đồ phân bổ công việc chi tiết theo Khoa/Phòng hoặc Nhân viên (Grouped Stacked Bar) -->
+        <div class="row g-4 mb-4">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+                        <h5 class="card-title fw-bold mb-1" id="employeeChartTitle">Thống kê công việc chi tiết</h5>
+                        <p class="text-muted small mb-0" id="employeeChartSubtitle">Biểu đồ thể hiện mức độ và tiến độ công việc</p>
+                    </div>
+                    <div class="card-body p-4" style="min-height: 400px; position: relative;">
+                        <div id="employeeTaskChartContainer" style="position: relative; height:360px; width:100%">
+                            <canvas id="employeeTaskChart"></canvas>
+                        </div>
+                        <div id="noDataEmployeeTask" class="text-muted text-center d-none py-5">Không có dữ liệu công việc để thống kê</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -173,6 +203,55 @@
 <script>
     // Toàn bộ danh sách nhân viên để filter động trên client
     const allUsers = <%- JSON.stringify(usersInDept) %>;
+
+    // Hàm chuyển đổi bộ lọc thời gian nhanh
+    function applyTimePreset() {
+        const preset = document.getElementById('timePresetFilter').value;
+        if (preset === 'custom') return;
+
+        const startInput = document.getElementById('startDateFilter');
+        const endInput = document.getElementById('endDateFilter');
+
+        const now = new Date();
+        let startDate, endDate;
+
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        switch (preset) {
+            case 'today':
+                startDate = now;
+                endDate = now;
+                break;
+            case 'month':
+                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                break;
+            case 'quarter':
+                const quarter = Math.floor(now.getMonth() / 3);
+                startDate = new Date(now.getFullYear(), quarter * 3, 1);
+                endDate = new Date(now.getFullYear(), (quarter + 1) * 3, 0);
+                break;
+            case 'year':
+                startDate = new Date(now.getFullYear(), 0, 1);
+                endDate = new Date(now.getFullYear(), 11, 31);
+                break;
+        }
+
+        startInput.value = formatDate(startDate);
+        endInput.value = formatDate(endDate);
+
+        refreshPreview();
+    }
+
+    function resetTimePreset() {
+        document.getElementById('timePresetFilter').value = 'custom';
+        refreshPreview();
+    }
 
     // Cập nhật danh sách nhân viên khi đổi khoa phòng
     function updateUsersList() {
@@ -233,6 +312,19 @@
 
     let statusChartInstance = null;
     let priorityChartInstance = null;
+    let employeeTaskChartInstance = null;
+
+    function getPriorityGroup(p) {
+        if (p === 'Cao (Gấp)' || p === 'Cao') return 'Cao';
+        if (p === 'Trung bình') return 'Trung bình';
+        return 'Thấp';
+    }
+
+    function getStatusGroup(s) {
+        if (s === 'Hoàn thành') return 'Đã xong';
+        if (s === 'Quá hạn') return 'Quá hạn';
+        return 'Đang làm';
+    }
 
     function renderCharts(tasks) {
         const total = tasks.length;
@@ -256,14 +348,20 @@
         const noDataStatus = document.getElementById('noDataStatus');
         const priorityCanvas = document.getElementById('priorityChart');
         const noDataPriority = document.getElementById('noDataPriority');
+        const empCanvas = document.getElementById('employeeTaskChart');
+        const noDataEmp = document.getElementById('noDataEmployeeTask');
 
         if (total === 0) {
             statusCanvas.style.display = 'none';
             noDataStatus.classList.remove('d-none');
             priorityCanvas.style.display = 'none';
             noDataPriority.classList.remove('d-none');
+            empCanvas.style.display = 'none';
+            noDataEmp.classList.remove('d-none');
+
             if (statusChartInstance) statusChartInstance.destroy();
             if (priorityChartInstance) priorityChartInstance.destroy();
+            if (employeeTaskChartInstance) employeeTaskChartInstance.destroy();
             return;
         } else {
             statusCanvas.style.display = 'block';
@@ -358,6 +456,201 @@
             }
         });
 
+        // 3. Xây dựng biểu đồ cột nhóm chi tiết (employeeTaskChart)
+        const deptId = document.getElementById('departmentFilter').value;
+        let groups = [];
+        const isDeptMode = (deptId === 'all');
+
+        if (isDeptMode) {
+            // Mode 1: Tổng quát theo Khoa/Phòng
+            document.getElementById('employeeChartTitle').textContent = 'Thống kê công việc tổng quát theo Khoa/Phòng';
+            document.getElementById('employeeChartSubtitle').textContent = 'Biểu đồ thể hiện mức độ và tiến độ công việc của từng Khoa/Phòng';
+
+            const deptSelect = document.getElementById('departmentFilter');
+            for (let i = 0; i < deptSelect.options.length; i++) {
+                const opt = deptSelect.options[i];
+                if (opt.value !== 'all') {
+                    groups.push({ id: opt.value, name: opt.textContent.trim() });
+                }
+            }
+        } else {
+            // Mode 2: Chi tiết theo Nhân viên
+            document.getElementById('employeeChartTitle').textContent = 'Thống kê công việc chi tiết theo Nhân viên';
+            document.getElementById('employeeChartSubtitle').textContent = 'Biểu đồ thể hiện mức độ và tiến độ công việc được giao cho từng Nhân viên';
+
+            const userSelect = document.getElementById('userFilter');
+            const selectedUserId = userSelect.value;
+            if (selectedUserId !== 'all') {
+                const selectedOpt = userSelect.options[userSelect.selectedIndex];
+                groups.push({ id: selectedUserId, name: selectedOpt.textContent.trim() });
+            } else {
+                for (let i = 0; i < userSelect.options.length; i++) {
+                    const opt = userSelect.options[i];
+                    if (opt.value !== 'all') {
+                        groups.push({ id: opt.value, name: opt.textContent.trim() });
+                    }
+                }
+            }
+        }
+
+        if (groups.length === 0) {
+            empCanvas.style.display = 'none';
+            noDataEmp.classList.remove('d-none');
+            if (employeeTaskChartInstance) employeeTaskChartInstance.destroy();
+        } else {
+            empCanvas.style.display = 'block';
+            noDataEmp.classList.add('d-none');
+
+            // Khởi tạo bộ đếm cho từng nhóm
+            const counts = {};
+            groups.forEach(g => {
+                counts[g.id] = {
+                    'Thấp': { 'Đang làm': 0, 'Đã xong': 0, 'Quá hạn': 0 },
+                    'Trung bình': { 'Đang làm': 0, 'Đã xong': 0, 'Quá hạn': 0 },
+                    'Cao': { 'Đang làm': 0, 'Đã xong': 0, 'Quá hạn': 0 }
+                };
+            });
+
+            // Phân bổ công việc vào các nhóm
+            tasks.forEach(t => {
+                const pGrp = getPriorityGroup(t.priority);
+                const sGrp = getStatusGroup(t.status);
+
+                if (isDeptMode) {
+                    const dId = String(t.departmentId);
+                    if (counts[dId]) {
+                        counts[dId][pGrp][sGrp]++;
+                    }
+                } else {
+                    if (Array.isArray(t.assignedToIds)) {
+                        t.assignedToIds.forEach(uid => {
+                            const uIdStr = String(uid);
+                            if (counts[uIdStr]) {
+                                counts[uIdStr][pGrp][sGrp]++;
+                            }
+                        });
+                    }
+                }
+            });
+
+            // Tạo dataset cho 9 trạng thái (3 mức độ x 3 tiến độ)
+            const datasets = [
+                // Stack 'Thấp' (Dễ)
+                {
+                    label: 'Đang làm (Dễ)',
+                    data: groups.map(g => counts[g.id]['Thấp']['Đang làm']),
+                    stack: 'Thấp',
+                    backgroundColor: '#60a5fa',
+                    borderRadius: 4
+                },
+                {
+                    label: 'Đã xong (Dễ)',
+                    data: groups.map(g => counts[g.id]['Thấp']['Đã xong']),
+                    stack: 'Thấp',
+                    backgroundColor: '#34d399',
+                    borderRadius: 4
+                },
+                {
+                    label: 'Quá hạn (Dễ)',
+                    data: groups.map(g => counts[g.id]['Thấp']['Quá hạn']),
+                    stack: 'Thấp',
+                    backgroundColor: '#f87171',
+                    borderRadius: 4
+                },
+
+                // Stack 'Trung bình'
+                {
+                    label: 'Đang làm (T.Bình)',
+                    data: groups.map(g => counts[g.id]['Trung bình']['Đang làm']),
+                    stack: 'Trung bình',
+                    backgroundColor: '#2563eb',
+                    borderRadius: 4
+                },
+                {
+                    label: 'Đã xong (T.Bình)',
+                    data: groups.map(g => counts[g.id]['Trung bình']['Đã xong']),
+                    stack: 'Trung bình',
+                    backgroundColor: '#16a34a',
+                    borderRadius: 4
+                },
+                {
+                    label: 'Quá hạn (T.Bình)',
+                    data: groups.map(g => counts[g.id]['Trung bình']['Quá hạn']),
+                    stack: 'Trung bình',
+                    backgroundColor: '#dc2626',
+                    borderRadius: 4
+                },
+
+                // Stack 'Cao' (Khó)
+                {
+                    label: 'Đang làm (Khó)',
+                    data: groups.map(g => counts[g.id]['Cao']['Đang làm']),
+                    stack: 'Cao',
+                    backgroundColor: '#1e3a8a',
+                    borderRadius: 4
+                },
+                {
+                    label: 'Đã xong (Khó)',
+                    data: groups.map(g => counts[g.id]['Cao']['Đã xong']),
+                    stack: 'Cao',
+                    backgroundColor: '#064e3b',
+                    borderRadius: 4
+                },
+                {
+                    label: 'Quá hạn (Khó)',
+                    data: groups.map(g => counts[g.id]['Cao']['Quá hạn']),
+                    stack: 'Cao',
+                    backgroundColor: '#7f1d1d',
+                    borderRadius: 4
+                }
+            ];
+
+            if (employeeTaskChartInstance) {
+                employeeTaskChartInstance.destroy();
+            }
+
+            const empCtx = empCanvas.getContext('2d');
+            employeeTaskChartInstance = new Chart(empCtx, {
+                type: 'bar',
+                data: {
+                    labels: groups.map(g => g.name),
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 15,
+                                font: { family: 'system-ui, -apple-system, sans-serif', size: 11 },
+                                color: textColor
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                            ticks: { stepSize: 1, font: { family: 'system-ui' }, color: textColor },
+                            grid: { color: gridColor }
+                        },
+                        x: {
+                            stacked: true,
+                            grid: { display: false },
+                            ticks: { font: { family: 'system-ui' }, color: textColor }
+                        }
+                    }
+                }
+            });
+        }
+
         // Kích hoạt feather icons cho các thẻ KPI mới vẽ
         if (typeof feather !== 'undefined') {
             feather.replace();
@@ -382,6 +675,14 @@
             priorityChartInstance.options.scales.y.ticks.color = currentText;
             priorityChartInstance.options.scales.y.grid.color = currentGrid;
             priorityChartInstance.update();
+        }
+
+        if (employeeTaskChartInstance) {
+            employeeTaskChartInstance.options.scales.x.ticks.color = currentText;
+            employeeTaskChartInstance.options.scales.y.ticks.color = currentText;
+            employeeTaskChartInstance.options.scales.y.grid.color = currentGrid;
+            employeeTaskChartInstance.options.plugins.legend.labels.color = currentText;
+            employeeTaskChartInstance.update();
         }
     });
     themeObserver.observe(document.documentElement, { attributes: true });
