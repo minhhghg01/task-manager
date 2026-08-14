@@ -97,6 +97,21 @@ const AuthController = {
                 return res.send('<script>alert("Mật khẩu mới không khớp!"); window.history.back();</script>');
             }
 
+            // 1.2. Check các tiêu chuẩn bảo mật của mật khẩu mới (8+ chars, A-Z, a-z, 123, special symbol)
+            const lengthRegex = /^.{8,}$/;
+            const upperRegex = /[A-Z]/;
+            const lowerRegex = /[a-z]/;
+            const numberRegex = /[0-9]/;
+            const specialRegex = /[^A-Za-z0-9]/;
+
+            if (!lengthRegex.test(newPassword) ||
+                !upperRegex.test(newPassword) ||
+                !lowerRegex.test(newPassword) ||
+                !numberRegex.test(newPassword) ||
+                !specialRegex.test(newPassword)) {
+                return res.send('<script>alert("Mật khẩu mới không đủ độ bảo mật! Cần tối thiểu 8 ký tự, gồm ít nhất 1 chữ hoa, 1 chữ thường, 1 chữ số và 1 ký tự đặc biệt."); window.history.back();</script>');
+            }
+
             // 2. Lấy thông tin user từ DB để check pass cũ
             const dbUser = await User.findByPk(user.id);
             const isMatch = await bcrypt.compare(currentPassword, dbUser.password);

@@ -75,33 +75,187 @@
 
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 pt-3">
 
+                <style>
+                    /* Premium Floating Label Input Groups */
+                    .premium-input-group {
+                        position: relative;
+                        margin-top: 18px;
+                        margin-bottom: 12px;
+                    }
+                    .premium-input-group input {
+                        width: 100%;
+                        padding: 12px 42px 12px 16px;
+                        border: 2px solid var(--bs-border-color);
+                        border-radius: 10px;
+                        background: transparent;
+                        color: var(--bs-body-color);
+                        outline: none;
+                        transition: all 0.2s ease;
+                        font-size: 15px;
+                    }
+                    .premium-input-group label {
+                        position: absolute;
+                        left: 14px;
+                        top: -10px;
+                        background-color: var(--bs-modal-bg, var(--bs-body-bg));
+                        padding: 0 6px;
+                        font-size: 12px;
+                        font-weight: 600;
+                        color: var(--bs-secondary-color);
+                        transition: all 0.2s ease;
+                        pointer-events: none;
+                    }
+                    /* When input is focused */
+                    .premium-input-group input:focus {
+                        border-color: var(--bs-primary);
+                        box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.15);
+                    }
+                    .premium-input-group input:focus + label {
+                        color: var(--bs-primary);
+                    }
+                    /* Style adjustments for validation states */
+                    .premium-input-group.is-valid-state input {
+                        border-color: var(--bs-success) !important;
+                    }
+                    .premium-input-group.is-valid-state label {
+                        color: var(--bs-success) !important;
+                    }
+                    .premium-input-group.is-invalid-state input {
+                        border-color: var(--bs-danger) !important;
+                    }
+                    .premium-input-group.is-invalid-state label {
+                        color: var(--bs-danger) !important;
+                    }
+
+                    /* Eye Toggle button styling */
+                    .premium-input-group .toggle-password-btn {
+                        position: absolute;
+                        right: 14px;
+                        top: 50%;
+                        transform: translateY(-50%);
+                        background: none;
+                        border: none;
+                        padding: 0;
+                        cursor: pointer;
+                        color: var(--bs-secondary-color);
+                        transition: color 0.2s;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    }
+                    .premium-input-group .toggle-password-btn:hover {
+                        color: var(--bs-body-color);
+                    }
+
+                    /* Checklist items styling */
+                    .criterion-item {
+                        transition: color 0.25s ease;
+                        font-size: 13px;
+                    }
+                    .criterion-item.valid {
+                        color: var(--bs-success) !important;
+                    }
+                    .criterion-item.invalid {
+                        color: var(--bs-danger) !important;
+                    }
+                    .criterion-item .status-icon {
+                        flex-shrink: 0;
+                        transition: all 0.25s ease;
+                    }
+                </style>
+
+                <!-- Modal Đổi mật khẩu Premium -->
                 <div class="modal fade" id="changePassModal" tabindex="-1">
                     <div class="modal-dialog">
-                        <form action="/change-password" method="POST">
+                        <form id="changePasswordForm" action="/change-password" method="POST">
                             <div class="modal-content">
                                 <div class="modal-header">
-                                    <h5 class="modal-title">Đổi mật khẩu</h5>
+                                    <h5 class="modal-title d-flex align-items-center gap-2">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                        Đổi mật khẩu
+                                    </h5>
                                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                 </div>
-                                <div class="modal-body">
-                                    <div class="mb-3">
-                                        <label>Mật khẩu hiện tại</label>
-                                        <input type="password" name="currentPassword" class="form-control" required>
+                                <div class="modal-body px-4">
+                                    
+                                    <!-- Mật khẩu hiện tại -->
+                                    <div class="premium-input-group">
+                                        <input type="password" id="currentPassword" name="currentPassword" required autocomplete="current-password">
+                                        <label for="currentPassword">Mật khẩu hiện tại</label>
+                                        <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('currentPassword', this)">
+                                            <svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                        </button>
                                     </div>
-                                    <div class="mb-3">
-                                        <label>Mật khẩu mới</label>
-                                        <input type="password" name="newPassword" class="form-control" required
-                                            minlength="6">
+
+                                    <!-- Mật khẩu mới -->
+                                    <div class="premium-input-group">
+                                        <input type="password" id="newPassword" name="newPassword" required autocomplete="new-password">
+                                        <label for="newPassword">Mật khẩu mới</label>
+                                        <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('newPassword', this)">
+                                            <svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                        </button>
                                     </div>
-                                    <div class="mb-3">
-                                        <label>Nhập lại mật khẩu mới</label>
-                                        <input type="password" name="confirmPassword" class="form-control" required
-                                            minlength="6">
+
+                                    <!-- Password Strength Meter -->
+                                    <div class="strength-meter-container mb-3 px-1">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span class="text-muted small fw-semibold">Độ bảo mật</span>
+                                            <span class="small fw-bold text-muted" id="strengthLabel">Chưa nhập</span>
+                                        </div>
+                                        <div class="progress" style="height: 6px; background-color: var(--bs-border-color); border-radius: 4px; overflow: hidden;">
+                                            <div id="strengthProgressBar" class="progress-bar bg-secondary" role="progressbar" style="width: 0%; transition: width 0.3s ease, background-color 0.3s ease;"></div>
+                                        </div>
                                     </div>
+
+                                    <!-- Checklist Criteria -->
+                                    <div class="criteria-checklist mb-4 px-1">
+                                        <div class="row g-2">
+                                            <div class="col-6">
+                                                <div class="criterion-item d-flex align-items-center gap-1 text-muted" id="crit-length">
+                                                    <svg class="status-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>
+                                                    <span class="small">Tối thiểu 8 ký tự</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="criterion-item d-flex align-items-center gap-1 text-muted" id="crit-upper">
+                                                    <svg class="status-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>
+                                                    <span class="small">Chữ in hoa (A-Z)</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="criterion-item d-flex align-items-center gap-1 text-muted" id="crit-lower">
+                                                    <svg class="status-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>
+                                                    <span class="small">Chữ thường (a-z)</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="criterion-item d-flex align-items-center gap-1 text-muted" id="crit-number">
+                                                    <svg class="status-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>
+                                                    <span class="small">Chữ số (123)</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-12">
+                                                <div class="criterion-item d-flex align-items-center gap-1 text-muted" id="crit-special">
+                                                    <svg class="status-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>
+                                                    <span class="small">Ký tự đặc biệt (@#$)</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Nhập lại mật khẩu mới -->
+                                    <div class="premium-input-group mb-3">
+                                        <input type="password" id="confirmPassword" name="confirmPassword" required autocomplete="new-password">
+                                        <label for="confirmPassword">Nhập lại mật khẩu mới</label>
+                                        <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('confirmPassword', this)">
+                                            <svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                        </button>
+                                    </div>
+
                                 </div>
-                                <div class="modal-footer">
+                                <div class="modal-footer bg-light-subtle">
                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                                    <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                                    <button type="submit" id="submitBtn" class="btn btn-primary px-4" disabled>Lưu thay đổi</button>
                                 </div>
                             </div>
                         </form>
@@ -109,10 +263,160 @@
                 </div>
 
                 <script>
+                    // Hàm ẩn hiện mật khẩu toàn cục
+                    function togglePasswordVisibility(inputId, btn) {
+                        const input = document.getElementById(inputId);
+                        const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+                        input.setAttribute('type', type);
+                        
+                        if (type === 'text') {
+                            btn.innerHTML = `<svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+                        } else {
+                            btn.innerHTML = `<svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+                        }
+                    }
+
                     document.addEventListener('DOMContentLoaded', () => {
                         const html = document.documentElement;
                         const switchInput = document.getElementById('darkModeSwitch');
                         const sidebar = document.getElementById('sidebarMenu');
+
+                        // Premium Password Validation Logic
+                        const changePasswordForm = document.getElementById('changePasswordForm');
+                        if (changePasswordForm) {
+                            const newPasswordInput = document.getElementById('newPassword');
+                            const confirmPasswordInput = document.getElementById('confirmPassword');
+                            const currentPasswordInput = document.getElementById('currentPassword');
+                            const submitBtn = document.getElementById('submitBtn');
+                            const strengthLabel = document.getElementById('strengthLabel');
+                            const strengthProgressBar = document.getElementById('strengthProgressBar');
+
+                            const criteria = {
+                                length: {
+                                    element: document.getElementById('crit-length'),
+                                    regex: /^.{8,}$/
+                                },
+                                upper: {
+                                    element: document.getElementById('crit-upper'),
+                                    regex: /[A-Z]/
+                                },
+                                lower: {
+                                    element: document.getElementById('crit-lower'),
+                                    regex: /[a-z]/
+                                },
+                                number: {
+                                    element: document.getElementById('crit-number'),
+                                    regex: /[0-9]/
+                                },
+                                special: {
+                                    element: document.getElementById('crit-special'),
+                                    regex: /[^A-Za-z0-9]/
+                                }
+                            };
+
+                            const metSvg = `<svg class="status-icon text-success" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+                            const unmetSvg = `<svg class="status-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>`;
+
+                            function validatePassword() {
+                                const val = newPasswordInput.value;
+                                let score = 0;
+
+                                // Check each criterion
+                                for (const key in criteria) {
+                                    const criterion = criteria[key];
+                                    const isValid = criterion.regex.test(val);
+                                    const iconSvg = criterion.element.querySelector('.status-icon');
+
+                                    if (isValid) {
+                                        criterion.element.classList.add('valid');
+                                        criterion.element.classList.remove('text-muted');
+                                        if (iconSvg) iconSvg.outerHTML = metSvg;
+                                        score++;
+                                    } else {
+                                        criterion.element.classList.remove('valid');
+                                        criterion.element.classList.add('text-muted');
+                                        if (iconSvg) iconSvg.outerHTML = unmetSvg;
+                                    }
+                                }
+
+                                // Update strength progress bar
+                                const newPasswordGroup = newPasswordInput.closest('.premium-input-group');
+                                if (val.length === 0) {
+                                    strengthLabel.innerText = "Chưa nhập";
+                                    strengthLabel.className = "small fw-bold text-muted";
+                                    strengthProgressBar.style.width = "0%";
+                                    strengthProgressBar.className = "progress-bar bg-secondary";
+                                    if (newPasswordGroup) {
+                                        newPasswordGroup.classList.remove('is-valid-state', 'is-invalid-state');
+                                    }
+                                } else if (score <= 2) {
+                                    strengthLabel.innerText = "Yếu";
+                                    strengthLabel.className = "small fw-bold text-danger";
+                                    strengthProgressBar.style.width = "33%";
+                                    strengthProgressBar.className = "progress-bar bg-danger";
+                                    if (newPasswordGroup) {
+                                        newPasswordGroup.classList.add('is-invalid-state');
+                                        newPasswordGroup.classList.remove('is-valid-state');
+                                    }
+                                } else if (score < 5) {
+                                    strengthLabel.innerText = "Trung bình";
+                                    strengthLabel.className = "small fw-bold text-warning";
+                                    strengthProgressBar.style.width = "66%";
+                                    strengthProgressBar.className = "progress-bar bg-warning";
+                                    if (newPasswordGroup) {
+                                        newPasswordGroup.classList.add('is-invalid-state');
+                                        newPasswordGroup.classList.remove('is-valid-state');
+                                    }
+                                } else {
+                                    strengthLabel.innerText = "Mạnh";
+                                    strengthLabel.className = "small fw-bold text-success";
+                                    strengthProgressBar.style.width = "100%";
+                                    strengthProgressBar.className = "progress-bar bg-success";
+                                    if (newPasswordGroup) {
+                                        newPasswordGroup.classList.add('is-valid-state');
+                                        newPasswordGroup.classList.remove('is-invalid-state');
+                                    }
+                                }
+
+                                checkFormValidity(score);
+                            }
+
+                            function checkFormValidity(score) {
+                                const passVal = newPasswordInput.value;
+                                const confirmVal = confirmPasswordInput.value;
+                                const currentVal = currentPasswordInput.value;
+
+                                const passwordsMatch = passVal === confirmVal && passVal.length > 0;
+                                const isStrongEnough = score === 5;
+                                const hasCurrentPassword = currentVal.trim().length > 0;
+
+                                // Style border of confirm password input
+                                const confirmPasswordGroup = confirmPasswordInput.closest('.premium-input-group');
+                                if (confirmVal.length === 0) {
+                                    if (confirmPasswordGroup) confirmPasswordGroup.classList.remove('is-valid-state', 'is-invalid-state');
+                                } else if (passwordsMatch) {
+                                    if (confirmPasswordGroup) {
+                                        confirmPasswordGroup.classList.add('is-valid-state');
+                                        confirmPasswordGroup.classList.remove('is-invalid-state');
+                                    }
+                                } else {
+                                    if (confirmPasswordGroup) {
+                                        confirmPasswordGroup.classList.add('is-invalid-state');
+                                        confirmPasswordGroup.classList.remove('is-valid-state');
+                                    }
+                                }
+
+                                if (isStrongEnough && passwordsMatch && hasCurrentPassword) {
+                                    submitBtn.removeAttribute('disabled');
+                                } else {
+                                    submitBtn.setAttribute('disabled', 'true');
+                                }
+                            }
+
+                            newPasswordInput.addEventListener('input', validatePassword);
+                            confirmPasswordInput.addEventListener('input', validatePassword);
+                            currentPasswordInput.addEventListener('input', validatePassword);
+                        }
 
                         // 1. Kiểm tra LocalStorage khi load trang
                         const currentTheme = localStorage.getItem('theme');
