@@ -20,6 +20,8 @@
     "express-session": "^1.18.2",
     "multer": "^2.0.2",
     "nodemailer": "^9.0.5",
+    "pg": "^8.23.0",
+    "pg-hstore": "^2.3.4",
     "redis": "^6.2.1",
     "sequelize": "^6.37.7",
     "socket.io": "^4.8.3",
