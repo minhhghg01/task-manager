@@ -36,10 +36,26 @@ const Task = sequelize.define('Task', {
     // completed_date: { type: DataTypes.DATE },
     score: { type: DataTypes.INTEGER, defaultValue: null },
     attachment_path: { type: DataTypes.STRING },
-
     tags: {
-        type: DataTypes.STRING, // Lưu dạng chuỗi (VD: "Marketing, Gấp")
-        allowNull: true         // Cho phép để trống (null)
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    recurrence: {
+        type: DataTypes.ENUM('none', 'daily', 'weekly', 'monthly'),
+        defaultValue: 'none',
+        allowNull: false
+    },
+    recurrence_days: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
+    next_recurrence_date: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    recurrence_parent_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true
     }
 }, {
     timestamps: true,

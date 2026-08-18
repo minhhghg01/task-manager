@@ -135,6 +135,54 @@ class TaskService {
         }
         // ------------------------------------------
 
+        // --- XỬ LÝ LẶP LẠI (RECURRENCE) ---
+        let nextRecurrenceDate = null;
+        const recurrence = taskData.recurrence || 'none';
+        let recurrenceDays = null;
+
+        if (recurrence !== 'none') {
+            if (recurrence === 'weekly') {
+                const rawDays = taskData.recurrence_days;
+                let parsedDays = [];
+                if (Array.isArray(rawDays)) {
+                    parsedDays = rawDays.map(Number);
+                } else if (typeof rawDays === 'string' && rawDays.trim() !== '') {
+                    try {
+                        parsedDays = JSON.parse(rawDays).map(Number);
+                    } catch (e) {
+                        parsedDays = rawDays.split(',').map(Number).filter(n => !isNaN(n));
+                    }
+                }
+                if (parsedDays.length === 0) {
+                    parsedDays = [startDate.getDay()];
+                }
+                recurrenceDays = JSON.stringify(parsedDays);
+            } else if (recurrence === 'monthly') {
+                const rawDays = taskData.recurrence_days;
+                let parsedDays = [];
+                if (Array.isArray(rawDays)) {
+                    parsedDays = rawDays.map(Number);
+                } else if (typeof rawDays === 'string' && rawDays.trim() !== '') {
+                    try {
+                        parsedDays = JSON.parse(rawDays).map(Number);
+                    } catch (e) {
+                        parsedDays = rawDays.split(',').map(Number).filter(n => !isNaN(n));
+                    }
+                } else if (rawDays !== undefined && rawDays !== null) {
+                    const parsedNum = parseInt(rawDays);
+                    if (!isNaN(parsedNum)) {
+                        parsedDays = [parsedNum];
+                    }
+                }
+                if (parsedDays.length === 0) {
+                    parsedDays = [startDate.getDate()];
+                }
+                recurrenceDays = JSON.stringify(parsedDays);
+            }
+            const { calculateNextRecurrenceDate } = require('./recurringTaskScheduler');
+            nextRecurrenceDate = calculateNextRecurrenceDate(startDate, startDate, recurrence, recurrenceDays);
+        }
+
         const newTask = await Task.create({
             title: taskData.title,
             description: taskData.description,
@@ -148,9 +196,10 @@ class TaskService {
             attachment_path: file ? `/uploads/${file.filename}` : null,
             collaborators: '[]',
             todo_list: '[]',
-
-            // [MỚI] THÊM DÒNG NÀY ĐỂ LƯU TAG
-            tags: taskData.tags || null
+            tags: taskData.tags || null,
+            recurrence: recurrence,
+            recurrence_days: recurrenceDays,
+            next_recurrence_date: nextRecurrenceDate
         });
 
         await ActivityLog.create({
@@ -246,9 +295,21 @@ class TaskService {
         if (task.description !== updateData.description) changes.push(`Mô tả`);
         if (task.priority !== updateData.priority) changes.push(`Mức độ ưu tiên`);
 
+        // Xử lý ngày bắt đầu
+        let startDateUpdated = false;
+        let newStartDate = task.start_date;
+        if (updateData.start_date) {
+            const oldStart = task.start_date ? new Date(task.start_date).toISOString().slice(0, 16) : '';
+            const newStart = new Date(updateData.start_date).toISOString().slice(0, 16);
+            if (oldStart !== newStart) {
+                newStartDate = new Date(updateData.start_date);
+                changes.push(`Ngày bắt đầu`);
+                startDateUpdated = true;
+            }
+        }
+
         // Xử lý ngày hạn chót
         const oldDate = task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : '';
-        // Cắt bỏ phần giờ phút nếu updateData.due_date có chứa giờ (từ input datetime-local)
         const newDate = updateData.due_date ? updateData.due_date.split('T')[0] : '';
 
         if (oldDate !== newDate) changes.push(`Hạn chót`);
@@ -260,14 +321,11 @@ class TaskService {
             newAttachmentPath = '/uploads/' + file.filename;
             changes.push(`Cập nhật file đính kèm mới`);
         } else if (updateData.remove_attachment === 'true') {
-            // Nếu người dùng tick chọn "Gỡ bỏ file"
             newAttachmentPath = null;
             changes.push(`Gỡ bỏ file đính kèm`);
 
-            // Xóa file vật lý trên server để giải phóng dung lượng
             if (task.attachment_path) {
                 try {
-                    // Cấu trúc path này giả định thư mục uploads nằm ở thư mục public gốc: /public/uploads/
                     const filePath = path.join(__dirname, '../../public', task.attachment_path);
                     if (fs.existsSync(filePath)) {
                         fs.unlinkSync(filePath);
@@ -275,6 +333,70 @@ class TaskService {
                 } catch (err) {
                     console.error("Lỗi xóa file vật lý:", err);
                 }
+            }
+        }
+
+        // Xử lý lặp lại công việc (chỉ đối với việc gốc)
+        let recurrence = task.recurrence;
+        let recurrenceDays = task.recurrence_days;
+        let nextRecurrenceDate = task.next_recurrence_date;
+
+        if (task.recurrence_parent_id === null && updateData.recurrence !== undefined) {
+            const oldRecurrence = task.recurrence || 'none';
+            const newRecurrence = updateData.recurrence || 'none';
+
+            let newRecurrenceDays = null;
+            if (newRecurrence === 'weekly') {
+                const rawDays = updateData.recurrence_days;
+                let parsedDays = [];
+                if (Array.isArray(rawDays)) {
+                    parsedDays = rawDays.map(Number);
+                } else if (typeof rawDays === 'string' && rawDays.trim() !== '') {
+                    try {
+                        parsedDays = JSON.parse(rawDays).map(Number);
+                    } catch (e) {
+                        parsedDays = rawDays.split(',').map(Number).filter(n => !isNaN(n));
+                    }
+                }
+                if (parsedDays.length === 0) {
+                    parsedDays = [newStartDate ? new Date(newStartDate).getDay() : new Date().getDay()];
+                }
+                newRecurrenceDays = JSON.stringify(parsedDays);
+            } else if (newRecurrence === 'monthly') {
+                const rawDays = updateData.recurrence_days;
+                let parsedDays = [];
+                if (Array.isArray(rawDays)) {
+                    parsedDays = rawDays.map(Number);
+                } else if (typeof rawDays === 'string' && rawDays.trim() !== '') {
+                    try {
+                        parsedDays = JSON.parse(rawDays).map(Number);
+                    } catch (e) {
+                        parsedDays = rawDays.split(',').map(Number).filter(n => !isNaN(n));
+                    }
+                } else if (rawDays !== undefined && rawDays !== null) {
+                    const parsedNum = parseInt(rawDays);
+                    if (!isNaN(parsedNum)) {
+                        parsedDays = [parsedNum];
+                    }
+                }
+                if (parsedDays.length === 0) {
+                    parsedDays = [newStartDate ? new Date(newStartDate).getDate() : new Date().getDate()];
+                }
+                newRecurrenceDays = JSON.stringify(parsedDays);
+            }
+
+            const recurrenceDaysChanged = (task.recurrence_days || null) !== (newRecurrenceDays || null);
+
+            if (oldRecurrence !== newRecurrence || recurrenceDaysChanged || startDateUpdated) {
+                recurrence = newRecurrence;
+                recurrenceDays = newRecurrenceDays;
+                if (newRecurrence !== 'none') {
+                    const { calculateNextRecurrenceDate } = require('./recurringTaskScheduler');
+                    nextRecurrenceDate = calculateNextRecurrenceDate(newStartDate || new Date(), newStartDate || new Date(), newRecurrence, newRecurrenceDays);
+                } else {
+                    nextRecurrenceDate = null;
+                }
+                changes.push(`Cấu hình lặp lại`);
             }
         }
 
@@ -288,8 +410,12 @@ class TaskService {
             title: updateData.title,
             description: updateData.description,
             priority: updateData.priority,
+            start_date: newStartDate,
             due_date: updateData.due_date || null,
-            attachment_path: newAttachmentPath
+            attachment_path: newAttachmentPath,
+            recurrence: recurrence,
+            recurrence_days: recurrenceDays,
+            next_recurrence_date: nextRecurrenceDate
         });
 
         // 5. Ghi Log vào ActivityLog

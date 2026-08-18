@@ -126,6 +126,12 @@ module.exports = (io) => {
     router.post('/login', AuthController.loginProcess);
     router.get('/logout', AuthController.logout);
     router.post('/change-password', requireAuth, AuthController.changePassword);
+    
+    // Quên mật khẩu OTP
+    router.get('/forgot-password', AuthController.forgotPasswordPage);
+    router.post('/forgot-password/send-otp', AuthController.sendOTP);
+    router.post('/forgot-password/verify-otp', AuthController.verifyOTP);
+    router.post('/forgot-password/reset-password', AuthController.resetPassword);
 
     // ============================================================
     // 2. DASHBOARD & DANH SÁCH CÔNG VIỆC

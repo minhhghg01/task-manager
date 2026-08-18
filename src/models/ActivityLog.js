@@ -53,4 +53,33 @@ const ActivityLog = sequelize.define('ActivityLog', {
     tableName: 'activity_logs'
 });
 
+const { requestContextStore } = require('../middleware/requestContext');
+
+ActivityLog.beforeCreate((log, options) => {
+    try {
+        const store = requestContextStore.getStore();
+        if (store) {
+            const { ip, deviceInfo } = store;
+            const rawValue = log.getDataValue('details');
+            
+            let detailsText = '';
+            if (rawValue) {
+                try {
+                    const parsed = JSON.parse(rawValue);
+                    detailsText = typeof parsed === 'object' ? JSON.stringify(parsed) : String(parsed);
+                } catch (e) {
+                    detailsText = String(rawValue);
+                }
+            }
+            
+            const prefix = `[IP: ${ip} | TB: ${deviceInfo}] `;
+            if (!detailsText.startsWith('[IP:')) {
+                log.setDataValue('details', prefix + detailsText);
+            }
+        }
+    } catch (err) {
+        console.error('Lỗi hook beforeCreate ActivityLog:', err);
+    }
+});
+
 module.exports = ActivityLog;

@@ -1,4 +1,5 @@
 // server.js
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -16,7 +17,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-const PORT = 3005;
+const PORT = process.env.PORT || 3005;
 const HOST = '0.0.0.0'; // <--- [QUAN TRỌNG] Lắng nghe trên mọi IP để mạng LAN truy cập được
 
 // --- CẤU HÌNH REDIS ---
@@ -70,6 +71,9 @@ if (USE_REDIS) {
 }
 
 // 1. Middleware
+const { requestContextMiddleware } = require('./src/middleware/requestContext');
+app.use(requestContextMiddleware);
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.set('view engine', 'ejs');
@@ -113,8 +117,30 @@ io.on('connection', (socket) => {
 sequelize.sync().then(async () => {
     console.log('--- Database đã đồng bộ ---');
 
+    // Tự động bổ sung các cột lặp lại công việc nếu chưa có
+    try {
+        await sequelize.query("ALTER TABLE tasks ADD COLUMN recurrence VARCHAR(255) DEFAULT 'none';");
+        console.log('[SQLite] Đã thêm cột recurrence vào bảng tasks');
+    } catch (e) {}
+    try {
+        await sequelize.query("ALTER TABLE tasks ADD COLUMN recurrence_days TEXT;");
+        console.log('[SQLite] Đã thêm cột recurrence_days vào bảng tasks');
+    } catch (e) {}
+    try {
+        await sequelize.query("ALTER TABLE tasks ADD COLUMN next_recurrence_date DATETIME;");
+        console.log('[SQLite] Đã thêm cột next_recurrence_date vào bảng tasks');
+    } catch (e) {}
+    try {
+        await sequelize.query("ALTER TABLE tasks ADD COLUMN recurrence_parent_id INTEGER;");
+        console.log('[SQLite] Đã thêm cột recurrence_parent_id vào bảng tasks');
+    } catch (e) {}
+
     // Gọi hàm tạo dữ liệu mẫu
     await seedData();
+
+    // Khởi động scheduler quét và tạo việc lặp lại định kỳ
+    const recurringTaskScheduler = require('./src/services/recurringTaskScheduler');
+    recurringTaskScheduler.start(io);
 
     // Sửa đoạn listen để lắng nghe HOST
     server.listen(PORT, HOST, () => {

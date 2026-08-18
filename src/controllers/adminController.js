@@ -38,14 +38,14 @@ const AdminController = {
     // 2. TẠO USER MỚI (+ LOG)
     createUser: async (req, res) => {
         try {
-            const { fullname, username, password, role, departments_id } = req.body;
+            const { fullname, username, password, role, departments_id, gmail } = req.body;
 
             // Hash mật khẩu
             const salt = await bcrypt.genSalt(10);
             const hashedPassword = await bcrypt.hash(password, salt);
 
             const newUser = await User.create({
-                fullname, username, password: hashedPassword, role, departments_id, status: 'active'
+                fullname, username, password: hashedPassword, role, departments_id, gmail, status: 'active'
             });
 
             // GHI LOG
@@ -72,8 +72,8 @@ const AdminController = {
     // 4. CẬP NHẬT USER (POST + LOG)
     updateUser: async (req, res) => {
         try {
-            const { fullname, username, role, departments_id, status, password } = req.body;
-            let updateData = { fullname, username, role, departments_id, status };
+            const { fullname, username, role, departments_id, status, password, gmail } = req.body;
+            let updateData = { fullname, username, role, departments_id, status, gmail };
 
             // Chỉ hash password nếu nhập mới
             if (password && password.trim() !== "") {

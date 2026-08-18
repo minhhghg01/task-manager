@@ -72,8 +72,7 @@ body {
     color: var(--text-main);
     font-family: var(--font-sans);
     min-height: 100vh;
-    overflow-x: hidden;
-    padding-bottom: 70px !important;
+    overflow-x: clip;
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
@@ -699,6 +698,7 @@ body.scroll-down .fixed-bottom-footer {
         top: var(--header-height) !important;
         height: calc(100vh - var(--header-height) - 54px) !important;
         overflow-y: auto !important;
+        align-self: flex-start !important;
     }
 }
 
@@ -1104,5 +1104,152 @@ body.scroll-down .fixed-bottom-footer {
     color: var(--primary-color) !important;
     border-color: var(--border-color) !important;
     border-bottom-color: transparent !important;
+}
+
+/* Giao diện lưới chọn ngày lặp lại hàng tháng (8x4) */
+.monthly-days-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 8px;
+    max-width: 440px;
+}
+
+.monthly-day-item {
+    position: relative;
+}
+
+.monthly-day-item input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.monthly-day-item label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    border: 1.5px solid var(--border-color) !important;
+    background-color: var(--bg-card) !important;
+    color: var(--text-muted) !important;
+    border-radius: var(--radius-sm) !important;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+}
+
+.monthly-day-item label:hover {
+    border-color: var(--accent-indigo) !important;
+    color: var(--accent-indigo) !important;
+    background-color: rgba(79, 70, 229, 0.04) !important;
+}
+
+.monthly-day-item input[type="checkbox"]:checked + label {
+    background-color: rgba(79, 70, 229, 0.15) !important;
+    border-color: var(--accent-indigo) !important;
+    color: var(--accent-indigo) !important;
+}
+
+/* Dark Mode cho lưới chọn ngày */
+[data-bs-theme="dark"] .monthly-day-item label:hover {
+    border-color: var(--accent-violet) !important;
+    color: var(--accent-violet) !important;
+    background-color: rgba(124, 58, 237, 0.06) !important;
+}
+
+[data-bs-theme="dark"] .monthly-day-item input[type="checkbox"]:checked + label {
+    background-color: rgba(124, 58, 237, 0.2) !important;
+    border-color: var(--accent-violet) !important;
+    color: #a78bfa !important;
+}
+
+/* Premium Floating Label Input Groups */
+.premium-input-group {
+    position: relative;
+    margin-top: 18px;
+    margin-bottom: 12px;
+}
+.premium-input-group input {
+    width: 100%;
+    padding: 12px 42px 12px 16px;
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-main);
+    outline: none;
+    transition: all 0.2s ease;
+    font-size: 15px;
+}
+.premium-input-group label {
+    position: absolute;
+    left: 14px;
+    top: -10px;
+    background-color: var(--bg-card);
+    padding: 0 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+    pointer-events: none;
+}
+/* When input is focused */
+.premium-input-group input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(79, 70, 229, 0.15);
+}
+.premium-input-group input:focus + label {
+    color: var(--primary-color);
+}
+/* Style adjustments for validation states */
+.premium-input-group.is-valid-state input {
+    border-color: var(--accent-green, #10b981) !important;
+}
+.premium-input-group.is-valid-state label {
+    color: var(--accent-green, #10b981) !important;
+}
+.premium-input-group.is-invalid-state input {
+    border-color: var(--accent-red, #ef4444) !important;
+}
+.premium-input-group.is-invalid-state label {
+    color: var(--accent-red, #ef4444) !important;
+}
+
+/* Eye Toggle button styling */
+.premium-input-group .toggle-password-btn {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.premium-input-group .toggle-password-btn:hover {
+    color: var(--text-main);
+}
+
+/* Checklist items styling */
+.criterion-item {
+    transition: color 0.25s ease;
+    font-size: 13px;
+}
+.criterion-item.valid {
+    color: var(--accent-green, #10b981) !important;
+}
+.criterion-item.invalid {
+    color: var(--accent-red, #ef4444) !important;
+}
+.criterion-item .status-icon {
+    flex-shrink: 0;
+    transition: all 0.25s ease;
 }
 

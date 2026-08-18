@@ -108,6 +108,67 @@
                         </div>
                     </div>
 
+                    <!-- CẤU HÌNH LẶP LẠI (RECURRING TASK) -->
+                    <div class="row bg-light p-2 rounded mb-3 border mx-0">
+                        <div class="col-md-12 mb-2">
+                            <label class="form-label fw-bold d-flex align-items-center gap-1">
+                                <span data-feather="repeat" style="width: 16px; height: 16px;"></span> Thiết lập lặp lại công việc
+                            </label>
+                            <select name="recurrence" id="recurrenceSelect" class="form-select">
+                                <option value="none" selected>Không lặp</option>
+                                <option value="daily">Hàng ngày</option>
+                                <option value="weekly">Hàng tuần (Tùy chỉnh thứ)</option>
+                                <option value="monthly">Hàng tháng</option>
+                            </select>
+                        </div>
+                        <div class="col-md-12 mb-2 mt-2" id="weeklyDaysContainer" style="display: none;">
+                            <label class="form-label small fw-bold text-muted d-block">Chọn các ngày lặp lại trong tuần:</label>
+                            <div class="d-flex flex-wrap gap-2 py-1">
+                                <div class="form-check form-check-inline border rounded p-2 d-flex align-items-center gap-1">
+                                    <input class="form-check-input ms-0" type="checkbox" name="recurrence_days" id="day_mon" value="1">
+                                    <label class="form-check-label small fw-bold text-secondary" for="day_mon">Thứ 2</label>
+                                </div>
+                                <div class="form-check form-check-inline border rounded p-2 d-flex align-items-center gap-1">
+                                    <input class="form-check-input ms-0" type="checkbox" name="recurrence_days" id="day_tue" value="2">
+                                    <label class="form-check-label small fw-bold text-secondary" for="day_tue">Thứ 3</label>
+                                </div>
+                                <div class="form-check form-check-inline border rounded p-2 d-flex align-items-center gap-1">
+                                    <input class="form-check-input ms-0" type="checkbox" name="recurrence_days" id="day_wed" value="3">
+                                    <label class="form-check-label small fw-bold text-secondary" for="day_wed">Thứ 4</label>
+                                </div>
+                                <div class="form-check form-check-inline border rounded p-2 d-flex align-items-center gap-1">
+                                    <input class="form-check-input ms-0" type="checkbox" name="recurrence_days" id="day_thu" value="4">
+                                    <label class="form-check-label small fw-bold text-secondary" for="day_thu">Thứ 5</label>
+                                </div>
+                                <div class="form-check form-check-inline border rounded p-2 d-flex align-items-center gap-1">
+                                    <input class="form-check-input ms-0" type="checkbox" name="recurrence_days" id="day_fri" value="5">
+                                    <label class="form-check-label small fw-bold text-secondary" for="day_fri">Thứ 6</label>
+                                </div>
+                                <div class="form-check form-check-inline border rounded p-2 d-flex align-items-center gap-1">
+                                    <input class="form-check-input ms-0" type="checkbox" name="recurrence_days" id="day_sat" value="6">
+                                    <label class="form-check-label small fw-bold text-secondary" for="day_sat">Thứ 7</label>
+                                </div>
+                                <div class="form-check form-check-inline border rounded p-2 d-flex align-items-center gap-1">
+                                    <input class="form-check-input ms-0" type="checkbox" name="recurrence_days" id="day_sun" value="0">
+                                    <label class="form-check-label small fw-bold text-secondary" for="day_sun">Chủ Nhật</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-12 mb-2 mt-2" id="monthlyDayContainer" style="display: none;">
+                            <label class="form-label small fw-bold text-muted d-block">Chọn ngày lặp lại trong tháng:</label>
+                            <div class="monthly-days-grid mb-2">
+                                <% for (let i = 1; i <= 31; i++) { %>
+                                    <div class="monthly-day-item">
+                                        <input type="checkbox" name="recurrence_days" id="create_monthly_day_<%= i %>" value="<%= i %>" class="btn-check" autocomplete="off">
+                                        <label for="create_monthly_day_<%= i %>"><%= i %></label>
+                                    </div>
+                                <% } %>
+                            </div>
+                            <small class="text-muted d-block mt-1 fst-italic">Nếu tháng không có ngày được chọn (ví dụ ngày 31 ở tháng 2), hệ thống sẽ lùi về ngày cuối cùng của tháng đó.</small>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label class="form-label fw-bold">
                             <span data-feather="paperclip" style="width: 16px"></span> Đính kèm tài liệu
@@ -123,12 +184,14 @@
 
                         <div class="card p-2 user-list-wrapper">
 
-                            <div class="form-check border-bottom pb-2 mb-2 self-assign-box p-2 rounded border">
-                                <input class="form-check-input" type="checkbox" id="selfAssignCheck"
-                                    name="is_self_assign" value="true">
-                                <label class="form-check-label fw-bold text-success" for="selfAssignCheck">
-                                    <span data-feather="user-check" style="width: 16px;"></span> Tôi tự thực hiện công
-                                    việc này
+                            <div class="d-flex align-items-center mb-2 p-2 border rounded self-assign-box bg-light-subtle" style="cursor: pointer;">
+                                <div class="me-2">
+                                    <input class="form-check-input ms-0" type="checkbox" id="selfAssignCheck"
+                                           name="is_self_assign" value="true"
+                                           style="width: 1.2em; height: 1.2em; cursor: pointer; margin-top: 0;">
+                                </div>
+                                <label class="flex-grow-1 mb-0 fw-bold text-success d-flex align-items-center gap-1" style="cursor:pointer; user-select: none;" for="selfAssignCheck">
+                                    <span data-feather="user-check" style="width: 16px;"></span> Tôi tự thực hiện công việc này
                                 </label>
                             </div>
 
@@ -175,6 +238,77 @@
         // Các input thời gian
         const startDateInput = document.getElementById('startDateInput');
         const dueDateInput = document.getElementById('dueDateInput');
+
+        // Cấu hình lặp lại
+        const recurrenceSelect = document.getElementById('recurrenceSelect');
+        const weeklyDaysContainer = document.getElementById('weeklyDaysContainer');
+        const monthlyDayContainer = document.getElementById('monthlyDayContainer');
+
+        function toggleRecurrenceOptions() {
+            if (!recurrenceSelect) return;
+            const val = recurrenceSelect.value;
+            const weeklyCbs = document.querySelectorAll('#weeklyDaysContainer input[name="recurrence_days"]');
+            const monthlyCbs = document.querySelectorAll('#monthlyDayContainer input[name="recurrence_days"]');
+            
+            if (val === 'weekly') {
+                if (weeklyDaysContainer) weeklyDaysContainer.style.display = 'block';
+                if (monthlyDayContainer) monthlyDayContainer.style.display = 'none';
+                
+                weeklyCbs.forEach(cb => cb.disabled = false);
+                monthlyCbs.forEach(cb => cb.disabled = true);
+                
+                autoCheckStartDay();
+            } else if (val === 'monthly') {
+                if (weeklyDaysContainer) weeklyDaysContainer.style.display = 'none';
+                if (monthlyDayContainer) monthlyDayContainer.style.display = 'block';
+                
+                weeklyCbs.forEach(cb => cb.disabled = true);
+                monthlyCbs.forEach(cb => cb.disabled = false);
+                
+                autoCheckMonthlyDay();
+            } else {
+                if (weeklyDaysContainer) weeklyDaysContainer.style.display = 'none';
+                if (monthlyDayContainer) monthlyDayContainer.style.display = 'none';
+                
+                weeklyCbs.forEach(cb => cb.disabled = true);
+                monthlyCbs.forEach(cb => cb.disabled = true);
+            }
+        }
+
+        function autoCheckStartDay() {
+            if (startDateInput && startDateInput.value) {
+                const date = new Date(startDateInput.value);
+                const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, ...
+                document.querySelectorAll('#weeklyDaysContainer input[name="recurrence_days"]').forEach(cb => {
+                    cb.checked = (parseInt(cb.value) === dayOfWeek);
+                });
+            }
+        }
+
+        function autoCheckMonthlyDay() {
+            if (startDateInput && startDateInput.value) {
+                const date = new Date(startDateInput.value);
+                const dayOfMonth = date.getDate();
+                document.querySelectorAll('#monthlyDayContainer input[name="recurrence_days"]').forEach(cb => {
+                    cb.checked = (parseInt(cb.value) === dayOfMonth);
+                });
+            }
+        }
+
+        if (recurrenceSelect) {
+            recurrenceSelect.addEventListener('change', toggleRecurrenceOptions);
+        }
+        if (startDateInput) {
+            startDateInput.addEventListener('change', () => {
+                if (recurrenceSelect) {
+                    if (recurrenceSelect.value === 'weekly') {
+                        autoCheckStartDay();
+                    } else if (recurrenceSelect.value === 'monthly') {
+                        autoCheckMonthlyDay();
+                    }
+                }
+            });
+        }
 
         let preSelectUserId = null;
 
@@ -364,6 +498,12 @@
                 selfAssignCheck.dispatchEvent(new Event('change'));
             }
 
+            // Reset cấu hình lặp lại
+            if (recurrenceSelect) {
+                recurrenceSelect.value = 'none';
+                recurrenceSelect.dispatchEvent(new Event('change'));
+            }
+
             // --- LOGIC THỜI GIAN ---
             const now = new Date();
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -429,6 +569,15 @@
         if (selfAssignCheck) {
             selfAssignCheck.addEventListener('change', function () {
                 // Giữ nguyên danh sách người nhận việc mở để cho phép chọn thêm cấp dưới
+            });
+        }
+        const selfAssignBox = document.querySelector('.self-assign-box');
+        if (selfAssignBox && selfAssignCheck) {
+            selfAssignBox.addEventListener('click', function(e) {
+                if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'LABEL' && e.target.tagName !== 'SPAN' && e.target.tagName !== 'svg' && e.target.tagName !== 'path') {
+                    selfAssignCheck.checked = !selfAssignCheck.checked;
+                    selfAssignCheck.dispatchEvent(new Event('change'));
+                }
             });
         }
 

@@ -155,6 +155,41 @@
                             </div>
                         </div>
 
+                    <% if (task.recurrence && task.recurrence !== 'none') { %>
+                        <div class="alert alert-info p-2 mb-3 d-flex align-items-center gap-2">
+                            <i data-feather="repeat" class="text-primary" style="width: 20px; height: 20px;"></i>
+                            <div>
+                                <strong>Công việc lặp định kỳ: </strong>
+                                <% if (task.recurrence === 'daily') { %>
+                                    Lặp hàng ngày
+                                <% } else if (task.recurrence === 'weekly') { %>
+                                    Lặp hàng tuần vào 
+                                    <% 
+                                        let daysText = [];
+                                        try {
+                                            const daysMap = {1: 'Thứ 2', 2: 'Thứ 3', 3: 'Thứ 4', 4: 'Thứ 5', 5: 'Thứ 6', 6: 'Thứ 7', 0: 'Chủ Nhật'};
+                                            const parsed = JSON.parse(task.recurrence_days || '[]');
+                                            daysText = parsed.map(d => daysMap[d]);
+                                        } catch (e) {}
+                                    %>
+                                    <%= daysText.join(', ') %>
+                                <% } else if (task.recurrence === 'monthly') { %>
+                                    Lặp hàng tháng
+                                <% } %>
+                                <br>
+                                <small class="text-muted">Lần lặp kế tiếp: <%= task.next_recurrence_date ? new Date(task.next_recurrence_date).toLocaleString('vi-VN') : 'Không rõ' %></small>
+                            </div>
+                        </div>
+                    <% } else if (task.recurrence_parent_id) { %>
+                        <div class="alert alert-light border p-2 mb-3 d-flex align-items-center gap-2">
+                            <i data-feather="clock" class="text-secondary" style="width: 20px; height: 20px;"></i>
+                            <div>
+                                <span class="text-secondary">Được sinh tự động từ lịch lặp của công việc gốc </span>
+                                <a href="/tasks/<%= task.recurrence_parent_id %>" class="fw-bold text-decoration-underline">#<%= task.recurrence_parent_id %></a>
+                            </div>
+                        </div>
+                    <% } %>
+
                         <div class="mb-3">
                             <label class="fw-bold text-muted small">Nội dung:</label>
                             <div class="bg-white p-3 border rounded text-break" style="min-height: 80px;">
@@ -455,26 +490,100 @@
                                 </div>
 
                                 <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label class="form-label fw-bold small">Hạn chót (Tùy chọn)</label>
-                                        <% let formattedEditDate='' ; if (task.due_date) { let d=new
-                                            Date(task.due_date); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-                                            formattedEditDate=d.toISOString().slice(0, 19); } %>
-                                            <input type="datetime-local" class="form-control" name="due_date"
-                                                id="editDueDate" value="<%= formattedEditDate %>" step="1">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label fw-bold small">Ngày bắt đầu</label>
+                                        <% let formattedStartEditDate = ''; if (task.start_date) { let d = new Date(task.start_date); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); formattedStartEditDate = d.toISOString().slice(0, 19); } %>
+                                        <input type="datetime-local" class="form-control" name="start_date" id="editStartDate" value="<%= formattedStartEditDate %>" step="1">
                                     </div>
-                                    <div class="col-md-6 mb-3">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label fw-bold small">Hạn chót (Tùy chọn)</label>
+                                        <% let formattedEditDate='' ; if (task.due_date) { let d=new Date(task.due_date); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); formattedEditDate=d.toISOString().slice(0, 19); } %>
+                                        <input type="datetime-local" class="form-control" name="due_date" id="editDueDate" value="<%= formattedEditDate %>" step="1">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
                                         <label class="form-label fw-bold small">Mức độ ưu tiên</label>
                                         <select class="form-select" name="priority" id="editPriority">
-                                            <option value="Bình thường" <%=task.priority==='Bình thường' ? 'selected'
-                                                : '' %>>Bình thường</option>
-                                            <option value="Trung bình" <%=task.priority==='Trung bình' ? 'selected' : ''
-                                                %>>Trung bình</option>
-                                            <option value="Cao (Gấp)" <%=task.priority==='Cao (Gấp)' ? 'selected' : ''
-                                                %>>Cao (Gấp)</option>
+                                            <option value="Bình thường" <%=task.priority==='Bình thường' ? 'selected' : '' %>>Bình thường</option>
+                                            <option value="Trung bình" <%=task.priority==='Trung bình' ? 'selected' : '' %>>Trung bình</option>
+                                            <option value="Cao (Gấp)" <%=task.priority==='Cao (Gấp)' ? 'selected' : '' %>>Cao (Gấp)</option>
                                         </select>
                                     </div>
                                 </div>
+
+                                <% if (task.recurrence_parent_id === null) { %>
+                                    <div class="row bg-light p-2 rounded mb-3 border mx-0">
+                                        <div class="col-md-12 mb-2">
+                                            <label class="form-label fw-bold small d-flex align-items-center gap-1">
+                                                <i data-feather="repeat" style="width: 14px; height: 14px;"></i> Thiết lập lặp lại công việc
+                                            </label>
+                                            <select name="recurrence" id="editRecurrenceSelect" class="form-select">
+                                                <option value="none" <%= task.recurrence === 'none' ? 'selected' : '' %>>Không lặp</option>
+                                                <option value="daily" <%= task.recurrence === 'daily' ? 'selected' : '' %>>Hàng ngày</option>
+                                                <option value="weekly" <%= task.recurrence === 'weekly' ? 'selected' : '' %>>Hàng tuần (Tùy chỉnh thứ)</option>
+                                                <option value="monthly" <%= task.recurrence === 'monthly' ? 'selected' : '' %>>Hàng tháng</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <% 
+                                            let checkedDays = [];
+                                            try {
+                                                if (task.recurrence_days) checkedDays = JSON.parse(task.recurrence_days).map(Number);
+                                            } catch (e) {}
+                                        %>
+                                        <div class="col-md-12 mb-2 mt-2" id="editWeeklyDaysContainer" style="<%= task.recurrence === 'weekly' ? 'display: block;' : 'display: none;' %>">
+                                            <label class="form-label small fw-bold text-muted d-block">Chọn các ngày lặp lại trong tuần:</label>
+                                            <div class="d-flex flex-wrap gap-2 py-1">
+                                                <div class="form-check form-check-inline border rounded p-2 d-flex align-items-center gap-1">
+                                                    <input class="form-check-input ms-0" type="checkbox" name="recurrence_days" id="edit_day_mon" value="1" <%= checkedDays.includes(1) ? 'checked' : '' %>>
+                                                    <label class="form-check-label small fw-bold text-secondary" for="edit_day_mon">Thứ 2</label>
+                                                </div>
+                                                <div class="form-check form-check-inline border rounded p-2 d-flex align-items-center gap-1">
+                                                    <input class="form-check-input ms-0" type="checkbox" name="recurrence_days" id="edit_day_tue" value="2" <%= checkedDays.includes(2) ? 'checked' : '' %>>
+                                                    <label class="form-check-label small fw-bold text-secondary" for="edit_day_tue">Thứ 3</label>
+                                                </div>
+                                                <div class="form-check form-check-inline border rounded p-2 d-flex align-items-center gap-1">
+                                                    <input class="form-check-input ms-0" type="checkbox" name="recurrence_days" id="edit_day_wed" value="3" <%= checkedDays.includes(3) ? 'checked' : '' %>>
+                                                    <label class="form-check-label small fw-bold text-secondary" for="edit_day_wed">Thứ 4</label>
+                                                </div>
+                                                <div class="form-check form-check-inline border rounded p-2 d-flex align-items-center gap-1">
+                                                    <input class="form-check-input ms-0" type="checkbox" name="recurrence_days" id="edit_day_thu" value="4" <%= checkedDays.includes(4) ? 'checked' : '' %>>
+                                                    <label class="form-check-label small fw-bold text-secondary" for="edit_day_thu">Thứ 5</label>
+                                                </div>
+                                                <div class="form-check form-check-inline border rounded p-2 d-flex align-items-center gap-1">
+                                                    <input class="form-check-input ms-0" type="checkbox" name="recurrence_days" id="edit_day_fri" value="5" <%= checkedDays.includes(5) ? 'checked' : '' %>>
+                                                    <label class="form-check-label small fw-bold text-secondary" for="edit_day_fri">Thứ 6</label>
+                                                </div>
+                                                <div class="form-check form-check-inline border rounded p-2 d-flex align-items-center gap-1">
+                                                    <input class="form-check-input ms-0" type="checkbox" name="recurrence_days" id="edit_day_sat" value="6" <%= checkedDays.includes(6) ? 'checked' : '' %>>
+                                                    <label class="form-check-label small fw-bold text-secondary" for="edit_day_sat">Thứ 7</label>
+                                                </div>
+                                                <div class="form-check form-check-inline border rounded p-2 d-flex align-items-center gap-1">
+                                                    <input class="form-check-input ms-0" type="checkbox" name="recurrence_days" id="edit_day_sun" value="0" <%= checkedDays.includes(0) ? 'checked' : '' %>>
+                                                    <label class="form-check-label small fw-bold text-secondary" for="edit_day_sun">Chủ Nhật</label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <% 
+                                            let monthlyDayVal = null;
+                                            if (task.recurrence === 'monthly' && checkedDays.length > 0) {
+                                                monthlyDayVal = checkedDays[0];
+                                            }
+                                        %>
+                                        <div class="col-md-12 mb-2 mt-2" id="editMonthlyDayContainer" style="<%= task.recurrence === 'monthly' ? 'display: block;' : 'display: none;' %>" data-init-val="<%= JSON.stringify(checkedDays) %>">
+                                            <label class="form-label small fw-bold text-muted d-block">Chọn ngày lặp lại trong tháng:</label>
+                                            <div class="monthly-days-grid mb-2">
+                                                <% for (let i = 1; i <= 31; i++) { %>
+                                                    <div class="monthly-day-item">
+                                                        <input type="checkbox" name="recurrence_days" id="edit_monthly_day_<%= i %>" value="<%= i %>" class="btn-check" autocomplete="off" <%= checkedDays.includes(i) ? 'checked' : '' %>>
+                                                        <label for="edit_monthly_day_<%= i %>"><%= i %></label>
+                                                    </div>
+                                                <% } %>
+                                            </div>
+                                            <small class="text-muted d-block mt-1 fst-italic">Nếu tháng không có ngày được chọn (ví dụ ngày 31 ở tháng 2), hệ thống sẽ lùi về ngày cuối cùng của tháng đó.</small>
+                                        </div>
+                                    </div>
+                                <% } %>
 
                                 <div class="mb-3">
                                     <label class="form-label fw-bold small">Cập nhật File đính kèm mới (Tùy
@@ -645,6 +754,109 @@
 
                     // Giữ trạng thái Tab & Gọi API Sửa Task
                     document.addEventListener("DOMContentLoaded", function () {
+                        // Cấu hình lặp lại cho form sửa
+                        const editRecurrenceSelect = document.getElementById('editRecurrenceSelect');
+                        const editWeeklyDaysContainer = document.getElementById('editWeeklyDaysContainer');
+                        const editStartDateInput = document.getElementById('editStartDate');
+
+                        const editMonthlyDayContainer = document.getElementById('editMonthlyDayContainer');
+
+                        function toggleEditRecurrenceOptions() {
+                            if (!editRecurrenceSelect) return;
+                            const val = editRecurrenceSelect.value;
+                            const weeklyCbs = document.querySelectorAll('#editWeeklyDaysContainer input[name="recurrence_days"]');
+                            const monthlyCbs = document.querySelectorAll('#editMonthlyDayContainer input[name="recurrence_days"]');
+                            
+                            if (val === 'weekly') {
+                                if (editWeeklyDaysContainer) editWeeklyDaysContainer.style.display = 'block';
+                                if (editMonthlyDayContainer) editMonthlyDayContainer.style.display = 'none';
+                                
+                                weeklyCbs.forEach(cb => cb.disabled = false);
+                                monthlyCbs.forEach(cb => cb.disabled = true);
+                                
+                                autoCheckEditStartDay();
+                            } else if (val === 'monthly') {
+                                if (editWeeklyDaysContainer) editWeeklyDaysContainer.style.display = 'none';
+                                if (editMonthlyDayContainer) editMonthlyDayContainer.style.display = 'block';
+                                
+                                weeklyCbs.forEach(cb => cb.disabled = true);
+                                monthlyCbs.forEach(cb => cb.disabled = false);
+                                
+                                autoCheckEditMonthlyDay();
+                            } else {
+                                if (editWeeklyDaysContainer) editWeeklyDaysContainer.style.display = 'none';
+                                if (editMonthlyDayContainer) editMonthlyDayContainer.style.display = 'none';
+                                
+                                weeklyCbs.forEach(cb => cb.disabled = true);
+                                monthlyCbs.forEach(cb => cb.disabled = true);
+                            }
+                        }
+
+                        function autoCheckEditStartDay() {
+                            const checked = document.querySelectorAll('#editWeeklyDaysContainer input[name="recurrence_days"]:checked');
+                            if (checked.length === 0 && editStartDateInput && editStartDateInput.value) {
+                                const date = new Date(editStartDateInput.value);
+                                const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, ...
+                                document.querySelectorAll('#editWeeklyDaysContainer input[name="recurrence_days"]').forEach(cb => {
+                                    cb.checked = (parseInt(cb.value) === dayOfWeek);
+                                });
+                            }
+                        }
+
+                        function autoCheckEditMonthlyDay() {
+                            if (editStartDateInput && editStartDateInput.value) {
+                                const date = new Date(editStartDateInput.value);
+                                const dayOfMonth = date.getDate();
+                                const editMonthlyContainer = document.getElementById('editMonthlyDayContainer');
+                                if (editMonthlyContainer) {
+                                    const initValStr = editMonthlyContainer.getAttribute('data-init-val');
+                                    let initVals = [];
+                                    try {
+                                        if (initValStr) initVals = JSON.parse(initValStr).map(Number);
+                                    } catch (e) {}
+
+                                    if (!editMonthlyContainer.dataset.changed && initVals.length > 0) {
+                                        document.querySelectorAll('#editMonthlyDayContainer input[name="recurrence_days"]').forEach(cb => {
+                                            cb.checked = initVals.includes(parseInt(cb.value));
+                                        });
+                                    } else if (!editMonthlyContainer.dataset.changed) {
+                                        document.querySelectorAll('#editMonthlyDayContainer input[name="recurrence_days"]').forEach(cb => {
+                                            cb.checked = (parseInt(cb.value) === dayOfMonth);
+                                        });
+                                    }
+                                }
+                            }
+                        }
+
+                        if (editRecurrenceSelect) {
+                            editRecurrenceSelect.addEventListener('change', toggleEditRecurrenceOptions);
+                            // Initial invocation to set the correct inputs state
+                            toggleEditRecurrenceOptions();
+                        }
+                        if (editStartDateInput) {
+                            editStartDateInput.addEventListener('change', () => {
+                                if (editRecurrenceSelect) {
+                                    if (editRecurrenceSelect.value === 'weekly') {
+                                        autoCheckEditStartDay();
+                                    } else if (editRecurrenceSelect.value === 'monthly') {
+                                        const editMonthlyContainer = document.getElementById('editMonthlyDayContainer');
+                                        if (editMonthlyContainer) {
+                                            delete editMonthlyContainer.dataset.changed;
+                                            editMonthlyContainer.setAttribute('data-init-val', '[]');
+                                        }
+                                        autoCheckEditMonthlyDay();
+                                    }
+                                }
+                            });
+                        }
+                        const editMonthlyContainerEl = document.getElementById('editMonthlyDayContainer');
+                        if (editMonthlyContainerEl) {
+                            editMonthlyContainerEl.addEventListener('change', (e) => {
+                                if (e.target && e.target.name === 'recurrence_days') {
+                                    editMonthlyContainerEl.dataset.changed = 'true';
+                                }
+                            });
+                        }
                         // Giữ Tab
                         var activeTab = localStorage.getItem('activeTaskTab');
                         if (activeTab) {

@@ -620,6 +620,16 @@
 
                                                             <% } %>
 
+                                                        <% if (task.recurrence && task.recurrence !== 'none') { %>
+                                                            <span class="badge bg-info text-dark ms-1" style="font-size: 0.7rem; padding: 2px 4px;">
+                                                                <i data-feather="repeat" style="width: 10px; height: 10px; vertical-align: middle;"></i> Lặp lại
+                                                            </span>
+                                                        <% } else if (task.recurrence_parent_id) { %>
+                                                            <span class="badge bg-light text-secondary border ms-1" style="font-size: 0.7rem; padding: 2px 4px;">
+                                                                <i data-feather="clock" style="width: 10px; height: 10px; vertical-align: middle;"></i> Định kỳ
+                                                            </span>
+                                                        <% } %>
+
                                                                 <div class="text-muted text-truncate small mt-1"
 
                                                                     style="max-width: 250px;">
