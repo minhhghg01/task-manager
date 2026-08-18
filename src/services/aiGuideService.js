@@ -1,5 +1,8 @@
 /**
  * Service Trợ lý AI Ming - Hướng dẫn sử dụng hệ thống Quản lý Công việc
+ * Hỗ trợ hai chế độ:
+ * 1. Chế độ Local AI: Kết nối tới Ollama (Qwen2 / Llama 3) hoàn toàn bảo mật và miễn phí.
+ * 2. Chế độ Fallback: Đối khớp từ khóa thông minh 0ms cực kỳ nhanh và chịu tải cao khi Ollama offline.
  */
 
 // Bộ dữ liệu Cẩm nang Hướng dẫn Sử dụng (Knowledge Base)
@@ -70,12 +73,10 @@ const KNOWLEDGE_BASE = {
 // Các mẫu câu chào hỏi
 const GREETINGS = ["xin chào", "hello", "hi", "chào", "chào bạn", "chào ming", "chào trợ lý"];
 
-// Hàm tìm câu trả lời phù hợp nhất
-function generateResponse(query) {
-    if (!query || typeof query !== 'string') {
-        return "Chào bạn, tôi là Ming - Trợ lý AI hướng dẫn sử dụng. Bạn vui lòng nhập câu hỏi nhé!";
-    }
-
+/**
+ * Xử lý đối khớp tài liệu cẩm nang cục bộ (Fallback)
+ */
+function getLocalFallbackResponse(query) {
     const cleanQuery = query.toLowerCase().trim();
 
     // 1. Kiểm tra chào hỏi
@@ -97,7 +98,6 @@ function generateResponse(query) {
             }
         });
 
-        // Ưu tiên khớp nhiều từ khóa nhất
         if (matches > maxMatches) {
             maxMatches = matches;
             bestMatch = item;
@@ -109,7 +109,7 @@ function generateResponse(query) {
         return `### ${bestMatch.title}\n\n${bestMatch.content}`;
     }
 
-    // 4. Fallback phản hồi lịch sự
+    // 4. Mẫu câu trả lời chung
     return "Xin lỗi bạn, câu hỏi của bạn nằm ngoài phạm vi cẩm nang hướng dẫn sử dụng của hệ thống Quản lý Công việc. \n\n" +
            "Tôi là trợ lý AI chuyên hỗ trợ các chủ đề sau:\n" +
            "- 🗓️ **Tạo và giao công việc**\n" +
@@ -119,6 +119,71 @@ function generateResponse(query) {
            "- 📊 **Báo cáo thống kê** và cách xuất file Excel báo cáo công việc\n" +
            "- 📝 **Hệ thống ghi nhận logs** IP và loại thiết bị tự động.\n\n" +
            "Bạn vui lòng đặt câu hỏi liên quan đến các chủ đề trên để tôi có thể hỗ trợ tốt nhất nhé!";
+}
+
+/**
+ * Hàm sinh câu trả lời (Hỗ trợ Ollama và tự động Fallback)
+ */
+async function generateResponse(query) {
+    if (!query || typeof query !== 'string') {
+        return "Chào bạn, tôi là Ming - Trợ lý AI hướng dẫn sử dụng. Bạn vui lòng nhập câu hỏi nhé!";
+    }
+
+    const localUrl = process.env.LOCAL_AI_URL || 'http://localhost:11434/api/chat';
+    const localModel = process.env.LOCAL_AI_MODEL || 'qwen2:1.5b';
+
+    // Xây dựng Prompt hệ thống hướng dẫn mô hình AI
+    const systemPrompt = `Bạn là Trợ lý ảo AI Ming, chuyên viên hỗ trợ và hướng dẫn sử dụng hệ thống Quản lý Công việc của bệnh viện.
+Hãy trả lời câu hỏi của người dùng một cách chi tiết, cụ thể, dễ hiểu và thân thiện bằng tiếng Việt dựa vào Cẩm nang tài liệu hệ thống dưới đây.
+Tuyệt đối không trả lời chung chung hoặc lặp lại.
+
+TÀI LIỆU CẨM NANG HỆ THỐNG:
+${JSON.stringify(KNOWLEDGE_BASE, null, 2)}
+
+YÊU CẦU:
+1. Trả lời chính xác, bám sát các chức năng thực tế của hệ thống được mô tả trong tài liệu.
+2. Định dạng câu trả lời sử dụng Markdown (dùng **in đậm**, - dấu gạch đầu dòng, danh sách số) để người dùng dễ đọc.
+3. Nếu người dùng hỏi câu hỏi ngoài lề hoặc không liên quan đến hệ thống Quản lý Công việc, hãy từ chối một cách lịch sự và gợi ý họ hỏi các chủ đề có trong tài liệu.`;
+
+    // 1. Thử gửi request bất đồng bộ tới Ollama (Timeout 1.5 giây)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1500);
+
+    try {
+        const response = await fetch(localUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: localModel,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: query }
+                ],
+                stream: false
+            }),
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.message && data.message.content) {
+                return data.message.content;
+            }
+        }
+    } catch (err) {
+        clearTimeout(timeoutId);
+        // Ghi nhận lỗi kết nối hoặc timeout, không làm ảnh hưởng đến trải nghiệm người dùng
+        console.log(`[Ollama Offline/Timeout]: ${err.message}. Chuyển sang chế độ Fallback.`);
+    }
+
+    // 2. Chế độ Fallback: Sử dụng bộ đối khớp cẩm nang offline 0ms
+    const fallbackResponse = getLocalFallbackResponse(query);
+    
+    // Thêm ghi chú nhỏ để hướng dẫn quản trị viên cách khởi chạy AI cục bộ thông minh hơn
+    return fallbackResponse + 
+           `\n\n*(⚠️ Lưu ý: Trợ lý AI đang chạy ở chế độ offline cẩm nang. Hãy khởi động Ollama và chạy mô hình "${localModel}" để trải nghiệm câu trả lời linh hoạt hơn).*`;
 }
 
 module.exports = {

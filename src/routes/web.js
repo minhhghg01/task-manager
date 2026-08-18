@@ -144,10 +144,15 @@ module.exports = (io) => {
     router.get('/guide', requireAuth, (req, res) => {
         res.render('pages/guide', { user: req.session.user });
     });
-    router.post('/guide/chat', requireAuth, (req, res) => {
+    router.post('/guide/chat', requireAuth, async (req, res) => {
         const { message } = req.body;
-        const reply = aiGuideService.generateResponse(message);
-        res.json({ success: true, response: reply });
+        try {
+            const reply = await aiGuideService.generateResponse(message);
+            res.json({ success: true, response: reply });
+        } catch (error) {
+            console.error(error);
+            res.json({ success: false, response: 'Đã xảy ra lỗi khi xử lý hội thoại.' });
+        }
     });
 
     // Danh sách: Công việc chung
