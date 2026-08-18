@@ -14,6 +14,7 @@ const { createAdapter } = require('@socket.io/redis-adapter');
 
 // --- CẤU HÌNH ---
 const app = express();
+app.locals.appVersion = require('./package.json').version;
 const server = http.createServer(app);
 const io = socketIo(server);
 

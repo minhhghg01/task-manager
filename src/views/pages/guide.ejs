@@ -1,0 +1,339 @@
+<%- include('../partials/header') %>
+
+<div class="container-fluid px-4 py-3">
+    <!-- TIÊU ĐỀ TRANG -->
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <h2 class="fw-bold mb-1">Hướng Dẫn Sử Dụng & Trợ Lý AI</h2>
+            <p class="text-muted mb-0 small">Tìm kiếm tài liệu hệ thống hoặc trò chuyện trực tiếp với trợ lý ảo Ming</p>
+        </div>
+    </div>
+
+    <!-- HAI CỘT: CẨM NANG & CHATBOT -->
+    <div class="row g-4">
+        <!-- Cột 1: Cẩm nang hướng dẫn sử dụng (Left) -->
+        <div class="col-lg-6 col-md-12">
+            <div class="card shadow-sm border-0 h-100" style="border: 1px solid var(--border-color) !important;">
+                <div class="card-header bg-transparent py-3 border-0">
+                    <h5 class="fw-bold mb-0 text-primary d-flex align-items-center gap-2">
+                        <i data-feather="book-open"></i> Cẩm Nang Sử Dụng Hệ Thống
+                    </h5>
+                </div>
+                <div class="card-body pt-0">
+                    <div class="accordion accordion-flush" id="docsAccordion">
+                        
+                        <!-- Section 1 -->
+                        <div class="accordion-item bg-transparent border-bottom">
+                            <h2 class="accordion-header" id="headingOne">
+                                <button class="accordion-button collapsed bg-transparent fw-semibold text-body" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false">
+                                    1. Giới thiệu tổng quan hệ thống (v<%= appVersion %>)
+                                </button>
+                            </h2>
+                            <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#docsAccordion">
+                                <div class="accordion-body text-muted small lh-lg">
+                                    Hệ thống Quản lý Công việc là nền tảng quản lý tác vụ toàn diện dành cho bệnh viện, hỗ trợ giao việc, theo dõi tiến độ, tự động lặp lại công việc định kỳ, báo cáo thống kê hiệu suất, và liên kết tài khoản bảo mật bằng mã xác thực OTP qua Gmail.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 2 -->
+                        <div class="accordion-item bg-transparent border-bottom">
+                            <h2 class="accordion-header" id="headingTwo">
+                                <button class="accordion-button collapsed bg-transparent fw-semibold text-body" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false">
+                                    2. Cách tạo mới và giao công việc
+                                </button>
+                            </h2>
+                            <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#docsAccordion">
+                                <div class="accordion-body text-muted small lh-lg">
+                                    Để giao việc, nhấn nút <strong>"Giao việc mới"</strong> trên thanh công cụ. Điền tiêu đề, mô tả, chọn khoa phòng và người nhận việc. Điền thời hạn hoàn thành (Deadline) và tải lên tệp đính kèm nếu cần thiết. Nhấp <strong>"Giao việc"</strong> để hoàn tất.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 3 -->
+                        <div class="accordion-item bg-transparent border-bottom">
+                            <h2 class="accordion-header" id="headingThree">
+                                <button class="accordion-button collapsed bg-transparent fw-semibold text-body" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false">
+                                    3. Cấu hình lặp lại công việc (Hàng ngày / Tuần / Tháng)
+                                </button>
+                            </h2>
+                            <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#docsAccordion">
+                                <div class="accordion-body text-muted small lh-lg">
+                                    Hệ thống hỗ trợ tự động lặp lại công việc định kỳ:
+                                    <ul>
+                                        <li><strong>Hàng ngày:</strong> Lặp vào lúc 0:00 sáng mỗi ngày.</li>
+                                        <li><strong>Từ T2 đến T6:</strong> Tự động bỏ qua Thứ 7 và Chủ nhật để tối ưu hóa ngày làm việc hành chính.</li>
+                                        <li><strong>Hàng tuần:</strong> Tích chọn các ngày cụ thể trong tuần mà bạn muốn lặp lại.</li>
+                                        <li><strong>Hàng tháng:</strong> Chọn ngày cụ thể (từ 1 đến 31). Với các ngày cuối tháng như 31, hệ thống sẽ tự động chuyển đổi phù hợp với các tháng ngắn ngày (ví dụ: ngày 28/2 hoặc 30/4).</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 4 -->
+                        <div class="accordion-item bg-transparent border-bottom">
+                            <h2 class="accordion-header" id="headingFour">
+                                <button class="accordion-button collapsed bg-transparent fw-semibold text-body" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false">
+                                    4. Vai trò và quyền hạn các tài khoản
+                                </button>
+                            </h2>
+                            <div id="collapseFour" class="accordion-collapse collapse" data-bs-parent="#docsAccordion">
+                                <div class="accordion-body text-muted small lh-lg">
+                                    Hệ thống chia làm nhiều chức danh:
+                                    <ul>
+                                        <li><strong>ADMIN:</strong> Quản lý người dùng, khoa phòng và xem lịch sử logs.</li>
+                                        <li><strong>DIRECTOR (Giám đốc):</strong> Theo dõi báo cáo thống kê hiệu suất toàn bệnh viện.</li>
+                                        <li><strong>HEAD / DEPUTY (Trưởng/Phó khoa):</strong> Giao việc và duyệt báo cáo hoàn thành của nhân viên thuộc khoa của mình.</li>
+                                        <li><strong>STAFF (Nhân viên):</strong> Thực hiện việc được giao, báo cáo tiến độ và gửi yêu cầu duyệt hoàn thành.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 5 -->
+                        <div class="accordion-item bg-transparent border-bottom">
+                            <h2 class="accordion-header" id="headingFive">
+                                <button class="accordion-button collapsed bg-transparent fw-semibold text-body" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFive" aria-expanded="false">
+                                    5. Đổi mật khẩu & Khôi phục mật khẩu OTP Gmail
+                                </button>
+                            </h2>
+                            <div id="collapseFive" class="accordion-collapse collapse" data-bs-parent="#docsAccordion">
+                                <div class="accordion-body text-muted small lh-lg">
+                                    Hệ thống áp dụng chính sách bảo mật cao:
+                                    <ul>
+                                        <li><strong>Đổi mật khẩu:</strong> Sử dụng hệ thống Premium Password UI kiểm soát 5 điều kiện mật khẩu mạnh tại trang hồ sơ cá nhân.</li>
+                                        <li><strong>Quên mật khẩu:</strong> Cho phép gửi mã xác thực OTP qua Gmail đã đăng ký trong DB, hạn sử dụng mã là 3 phút.</li>
+                                        <li><strong>Cơ chế chống spam:</strong> Hạn chế spam gửi OTP bằng cooldown 120s cho 5 lần đầu, tăng lên 10p cho 3 lần tiếp theo, và 60p cho các lần sau trong ngày.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 6 -->
+                        <div class="accordion-item bg-transparent border-0">
+                            <h2 class="accordion-header" id="headingSix">
+                                <button class="accordion-button collapsed bg-transparent fw-semibold text-body" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSix" aria-expanded="false">
+                                    6. Hệ thống tự động ghi nhận thiết bị & IP
+                                </button>
+                            </h2>
+                            <div id="collapseSix" class="accordion-collapse collapse" data-bs-parent="#docsAccordion">
+                                <div class="accordion-body text-muted small lh-lg">
+                                    Mọi hành động nhạy cảm trên hệ thống (Login, Logout, thay đổi quyền, tạo việc...) đều được tự động lưu vết IP cùng loại thiết bị và trình duyệt sử dụng nhờ cơ chế `AsyncLocalStorage` tích hợp trực tiếp trong tầng cơ sở dữ liệu ActivityLog.
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cột 2: Trợ lý ảo AI - Ming (Right) -->
+        <div class="col-lg-6 col-md-12">
+            <div class="card shadow-sm border-0 d-flex flex-column h-100" style="min-height: 550px; border: 1px solid var(--border-color) !important;">
+                <!-- Header Chatbot -->
+                <div class="card-header bg-transparent py-3 border-bottom d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="avatar-assistant bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                            <i data-feather="cpu"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold mb-0 text-primary">Trợ Lý AI Ming</h5>
+                            <span class="text-success small fw-semibold d-flex align-items-center gap-1">
+                                <span class="bg-success rounded-circle d-inline-block" style="width: 8px; height: 8px;"></span> Ngoại tuyến (Sẵn sàng)
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Khung lịch sử tin nhắn -->
+                <div class="card-body flex-grow-1 overflow-y-auto p-3" id="chatHistory" style="height: 380px; max-height: 380px;">
+                    <!-- Tin nhắn chào mừng -->
+                    <div class="d-flex mb-3">
+                        <div class="bg-body-secondary text-body p-3 rounded-3 shadow-sm max-w-75 small border" style="border-radius: 12px 12px 12px 0px !important;">
+                            Chào bạn! Tôi là <strong>Ming</strong> - Trợ lý ảo AI của phần mềm Quản lý Công việc. 
+                            Tôi có thể giúp bạn giải đáp các vấn đề về cách sử dụng hệ thống này.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Khung gợi ý nhanh -->
+                <div class="px-3 py-1 bg-body-tertiary border-top small">
+                    <span class="text-muted fw-semibold d-block mb-1 text-xs">Gợi ý câu hỏi nhanh:</span>
+                    <div class="d-flex flex-wrap gap-1.5 pb-2">
+                        <button type="button" class="btn btn-outline-secondary btn-xs rounded-pill px-2.5 py-1 text-xs" onclick="quickAsk('Cách giao việc mới?')">Giao việc mới</button>
+                        <button type="button" class="btn btn-outline-secondary btn-xs rounded-pill px-2.5 py-1 text-xs" onclick="quickAsk('Cách thiết lập lặp lại hàng tháng?')">Lặp lại hàng tháng</button>
+                        <button type="button" class="btn btn-outline-secondary btn-xs rounded-pill px-2.5 py-1 text-xs" onclick="quickAsk('Quyền hạn của Trưởng khoa là gì?')">Quyền Trưởng khoa</button>
+                        <button type="button" class="btn btn-outline-secondary btn-xs rounded-pill px-2.5 py-1 text-xs" onclick="quickAsk('Cơ chế chống spam OTP hoạt động thế nào?')">Chống spam OTP</button>
+                    </div>
+                </div>
+
+                <!-- Ô nhập tin nhắn -->
+                <div class="card-footer bg-transparent border-top py-3">
+                    <form id="chatForm" class="input-group">
+                        <input type="text" id="chatInput" class="form-control border-0 shadow-sm bg-body-secondary py-2.5 px-3 rounded-start-pill text-body" placeholder="Nhập câu hỏi của bạn tại đây..." required autocomplete="off">
+                        <button type="submit" class="btn btn-primary px-4 rounded-end-pill d-flex align-items-center justify-content-center shadow-sm">
+                            <i data-feather="send" style="width: 18px; height: 18px;"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Styling custom cho khung chat và phụ trợ */
+    .max-w-75 {
+        max-width: 78%;
+    }
+    .btn-xs {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    .text-xs {
+        font-size: 0.72rem;
+    }
+    .text-xxs {
+        font-size: 0.65rem;
+    }
+    
+    /* Hiệu ứng gõ chữ của chatbot */
+    .typing-indicator {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 8px;
+    }
+    .typing-dot {
+        width: 6px;
+        height: 6px;
+        background-color: var(--bs-secondary-color);
+        border-radius: 50%;
+        animation: typingBounce 1.4s infinite ease-in-out both;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes typingBounce {
+        0%, 80%, 100% { transform: scale(0); }
+        40% { transform: scale(1); }
+    }
+</style>
+
+<script>
+    const chatHistory = document.getElementById('chatHistory');
+    const chatForm = document.getElementById('chatForm');
+    const chatInput = document.getElementById('chatInput');
+
+    // Tự động cuộn xuống dưới cùng của khung chat
+    function scrollToBottom() {
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    // Định dạng markdown đơn giản
+    function formatMessage(text) {
+        // Chuyển đổi **text** thành bold
+        let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        // Chuyển đổi ### Title thành H5
+        formatted = formatted.replace(/^### (.*?)$/gm, '<h6 class="fw-bold text-primary mt-1 mb-2">$1</h6>');
+        // Chuyển đổi danh sách hoa thị * thành li
+        formatted = formatted.replace(/^\- (.*?)$/gm, '<li class="ms-3 mb-1">$1</li>');
+        // Chuyển đổi xuống dòng thành <br>
+        formatted = formatted.replace(/\n/g, '<br>');
+        return formatted;
+    }
+
+    // Gửi câu hỏi nhanh khi click badge
+    function quickAsk(text) {
+        chatInput.value = text;
+        chatForm.requestSubmit();
+    }
+
+    // Xử lý gửi tin nhắn
+    chatForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const message = chatInput.value.trim();
+        if (!message) return;
+
+        // 1. Thêm tin nhắn của User
+        const userMsgDiv = document.createElement('div');
+        userMsgDiv.className = 'd-flex justify-content-end mb-3';
+        userMsgDiv.innerHTML = `
+            <div class="bg-primary text-white p-3 rounded-3 shadow-sm max-w-75 small" style="border-radius: 12px 12px 0px 12px !important;">
+                ${message}
+            </div>
+        `;
+        chatHistory.appendChild(userMsgDiv);
+        chatInput.value = '';
+        scrollToBottom();
+
+        // 2. Thêm hiệu ứng gõ chữ
+        const typingDiv = document.createElement('div');
+        typingDiv.className = 'd-flex mb-3 align-items-center';
+        typingDiv.id = 'typingBubble';
+        typingDiv.innerHTML = `
+            <div class="bg-body-secondary text-body p-3 rounded-3 shadow-sm small border" style="border-radius: 12px 12px 12px 0px !important;">
+                <div class="typing-indicator">
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                </div>
+            </div>
+        `;
+        chatHistory.appendChild(typingDiv);
+        scrollToBottom();
+
+        // 3. Gọi API gửi đến chatbot
+        try {
+            const res = await fetch('/guide/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message })
+            });
+            const data = await res.json();
+            
+            // Xóa hiệu ứng gõ chữ
+            const bubble = document.getElementById('typingBubble');
+            if (bubble) bubble.remove();
+
+            // 4. Thêm phản hồi của AI Assistant
+            if (data.success) {
+                const aiMsgDiv = document.createElement('div');
+                aiMsgDiv.className = 'd-flex mb-3';
+                aiMsgDiv.innerHTML = `
+                    <div class="bg-body-secondary text-body p-3 rounded-3 shadow-sm max-w-75 small border" style="border-radius: 12px 12px 12px 0px !important;">
+                        ${formatMessage(data.response)}
+                    </div>
+                `;
+                chatHistory.appendChild(aiMsgDiv);
+            } else {
+                const errorMsgDiv = document.createElement('div');
+                errorMsgDiv.className = 'd-flex mb-3';
+                errorMsgDiv.innerHTML = `
+                    <div class="bg-danger-subtle text-danger p-3 rounded-3 shadow-sm max-w-75 small border border-danger-subtle" style="border-radius: 12px 12px 12px 0px !important;">
+                        Đã xảy ra lỗi khi gửi yêu cầu, vui lòng thử lại sau.
+                    </div>
+                `;
+                chatHistory.appendChild(errorMsgDiv);
+            }
+        } catch (err) {
+            console.error(err);
+            const bubble = document.getElementById('typingBubble');
+            if (bubble) bubble.remove();
+            
+            const errorMsgDiv = document.createElement('div');
+            errorMsgDiv.className = 'd-flex mb-3';
+            errorMsgDiv.innerHTML = `
+                <div class="bg-danger-subtle text-danger p-3 rounded-3 shadow-sm max-w-75 small border border-danger-subtle" style="border-radius: 12px 12px 12px 0px !important;">
+                    Lỗi kết nối máy chủ.
+                </div>
+            `;
+            chatHistory.appendChild(errorMsgDiv);
+        }
+        
+        scrollToBottom();
+    });
+</script>
+
+<%- include('../partials/footer') %>

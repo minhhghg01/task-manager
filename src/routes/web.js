@@ -138,6 +138,17 @@ module.exports = (io) => {
     // ============================================================
     router.get('/', requireAuth, (req, res) => res.redirect('/dashboard'));
     router.get('/dashboard', requireAuth, taskController.renderDashboard);
+ 
+    // Hướng dẫn sử dụng & Trợ lý AI
+    const aiGuideService = require('../services/aiGuideService');
+    router.get('/guide', requireAuth, (req, res) => {
+        res.render('pages/guide', { user: req.session.user });
+    });
+    router.post('/guide/chat', requireAuth, (req, res) => {
+        const { message } = req.body;
+        const reply = aiGuideService.generateResponse(message);
+        res.json({ success: true, response: reply });
+    });
 
     // Danh sách: Công việc chung
     router.get('/tasks/general', requireAuth, (req, res, next) => {

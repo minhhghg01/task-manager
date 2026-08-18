@@ -202,6 +202,7 @@ const AuthController = {
             const expiresAt = Date.now() + 3 * 60 * 1000;
 
             otpStore.set(username, { otp, expiresAt, verified: false });
+            console.log(`[DEBUG OTP] Tài khoản: ${username} | Mã OTP mới nhất: ${otp}`);
 
             rateLimit.count += 1;
             rateLimit.lastSentAt = Date.now();
