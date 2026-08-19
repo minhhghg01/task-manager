@@ -1255,13 +1255,18 @@ body.scroll-down .fixed-bottom-footer {
 .premium-input-group input {
     width: 100%;
     padding: 12px 42px 12px 16px;
-    border: 2px solid var(--border-color);
+    border: 2px solid #cbd5e1; /* Slate-300 - Viền đậm rõ nét hơn ở chế độ sáng */
     border-radius: 10px;
-    background: transparent;
+    background: #ffffff; /* Nền trắng đục để tăng tương phản trên thẻ kính mờ */
     color: var(--text-main);
     outline: none;
     transition: all 0.2s ease;
     font-size: 15px;
+}
+
+[data-bs-theme="dark"] .premium-input-group input {
+    border-color: #475569; /* Slate-600 - Viền rõ nét hơn ở chế độ tối */
+    background: #1e293b; /* Nền tối đồng bộ */
 }
 
 .premium-input-group label {
