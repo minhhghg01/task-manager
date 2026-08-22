@@ -5,7 +5,14 @@
             <div class="row justify-content-center py-4">
                 <div class="col-md-8 col-lg-6">
                     <div class="card border-0 shadow-lg overflow-hidden" style="border-radius: 16px;">
-                        <div class="card-header bg-gradient-primary text-white text-center py-4 bg-primary">
+                        <div class="card-header bg-gradient-primary text-white text-center py-4 bg-primary position-relative">
+                            <% if (locals.user && user.role === 'ADMIN') { %>
+                                <button class="btn btn-sm btn-light position-absolute end-0 top-50 translate-middle-y me-3 rounded-circle d-flex align-items-center justify-content-center shadow-sm"
+                                        style="width: 36px; height: 36px;"
+                                        data-bs-toggle="modal" data-bs-target="#donateSettingsModal" title="Cài đặt Trang liên hệ">
+                                    <i data-feather="settings" style="width: 18px; height: 18px;" class="text-primary"></i>
+                                </button>
+                            <% } %>
                             <h3 class="fw-bold mb-0">Thông Tin Liên Hệ</h3>
                             <p class="small opacity-75 mb-0">Hỗ trợ kỹ thuật & Phát triển phần mềm</p>
                         </div>
@@ -30,7 +37,7 @@
                                         <i data-feather="map-pin"></i>
                                     </div>
                                     <div>
-                                        <h6 class="fw-bold mb-1 text-dark">Địa chỉ</h6>
+                                        <h6 class="fw-bold mb-1 text-body-emphasis">Địa chỉ</h6>
                                         <p class="text-muted mb-0">Tòa B - Phòng 304 - Công nghệ Thông tin</p>
                                     </div>
                                 </div>
@@ -41,7 +48,7 @@
                                         <i data-feather="phone"></i>
                                     </div>
                                     <div>
-                                        <h6 class="fw-bold mb-1 text-dark">Số điện thoại</h6>
+                                        <h6 class="fw-bold mb-1 text-body-emphasis">Số điện thoại</h6>
                                         <a href="tel:0333097331"
                                             class="text-decoration-none text-muted mb-0 fw-semibold hover-primary">0333097331</a>
                                     </div>
@@ -53,12 +60,29 @@
                                         <i data-feather="mail"></i>
                                     </div>
                                     <div>
-                                        <h6 class="fw-bold mb-1 text-dark">Email</h6>
+                                        <h6 class="fw-bold mb-1 text-body-emphasis">Email</h6>
                                         <a href="mailto:nguyenminhhghg01@gmail.com"
                                             class="text-decoration-none text-muted mb-0 fw-semibold hover-primary">nguyenminhhghg01@gmail.com</a>
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Khung Donate kêu gọi nếu được kích hoạt -->
+                            <% if (settings.showDonate) { %>
+                            <div class="mt-4 p-3 bg-light rounded-3 text-center border border-primary-subtle" style="background: rgba(13, 110, 253, 0.03) !important;">
+                                <h6 class="fw-bold mb-2 text-primary-emphasis d-flex align-items-center justify-content-center gap-2">
+                                    <i data-feather="heart" class="text-danger" style="fill: currentColor; width: 18px; height: 18px;"></i>
+                                    <%= settings.donateTitle %>
+                                </h6>
+                                <p class="text-muted small mb-3"><%= settings.donateMessage %></p>
+                                <div class="d-inline-block p-2 bg-white rounded-3 shadow-sm border mb-2">
+                                    <img src="/uploads/donate_qr.png" alt="Donate QR" class="img-fluid rounded" style="max-width: 220px; height: auto; display: block;">
+                                </div>
+                                <div class="text-center mt-1">
+                                    <span class="badge bg-secondary-subtle text-secondary small">PVcomBank • 1080 0327 8371 • NGUYEN DUC MINH</span>
+                                </div>
+                            </div>
+                            <% } %>
                         </div>
                         <div class="card-footer bg-light text-center py-3">
                             <a href="/dashboard" class="btn btn-primary btn-sm px-4 rounded-pill">
@@ -70,6 +94,52 @@
                 </div>
             </div>
         </div>
+
+        <% if (locals.user && user.role === 'ADMIN') { %>
+        <!-- Modal Cài đặt Contact & Donate -->
+        <div class="modal fade" id="donateSettingsModal" tabindex="-1" aria-labelledby="donateSettingsModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <form action="/contact/settings" method="POST" enctype="multipart/form-data">
+                        <div class="modal-header">
+                            <h5 class="modal-title fw-bold" id="donateSettingsModalLabel">Cài đặt Trang liên hệ</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <!-- Toggle Bật tắt Donate -->
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" role="switch" id="showDonateToggle" name="showDonate" value="true" <%= settings.showDonate ? 'checked' : '' %>>
+                                <label class="form-check-label fw-semibold" for="showDonateToggle">Hiển thị khung gọi Donate</label>
+                            </div>
+                            
+                            <!-- Tiêu đề Donate -->
+                            <div class="mb-3">
+                                <label for="donateTitleInput" class="form-label small fw-semibold">Tiêu đề khung Donate</label>
+                                <input type="text" class="form-control" id="donateTitleInput" name="donateTitle" value="<%= settings.donateTitle %>" required placeholder="Ví dụ: Mời tôi một tách cà phê">
+                            </div>
+                            
+                            <!-- Lời nhắn Donate -->
+                            <div class="mb-3">
+                                <label for="donateMessageInput" class="form-label small fw-semibold">Lời nhắn kêu gọi</label>
+                                <textarea class="form-control" id="donateMessageInput" name="donateMessage" rows="3" placeholder="Lời nhắn hiển thị bên dưới tiêu đề..."><%= settings.donateMessage %></textarea>
+                            </div>
+
+                            <!-- Thay ảnh QR -->
+                            <div class="mb-3">
+                                <label for="donateQRInput" class="form-label small fw-semibold">Thay ảnh QR mới (JPG, PNG)</label>
+                                <input class="form-control" type="file" id="donateQRInput" name="donateQR" accept="image/*">
+                                <div class="form-text small opacity-75">Bỏ trống nếu giữ nguyên ảnh hiện tại.</div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                            <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <% } %>
 
         <style>
             .transition-all {
@@ -86,6 +156,24 @@
                 color: #0d6efd !important;
             }
         </style>
+
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('success') === 'true') {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Thành công',
+                            text: 'Cập nhật cài đặt liên hệ thành công!',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                    }
+                }
+            });
+        </script>
 
         <%- include('../partials/footer') %>
 
@@ -173,7 +261,7 @@
                                                     <i data-feather="map-pin"></i>
                                                 </div>
                                                 <div>
-                                                    <h6 class="fw-bold mb-1 text-dark">Địa chỉ</h6>
+                                                    <h6 class="fw-bold mb-1 text-body-emphasis">Địa chỉ</h6>
                                                     <p class="text-muted mb-0">Tòa B - Phòng 304 - Công nghệ Thông tin
                                                     </p>
                                                 </div>
@@ -185,7 +273,7 @@
                                                     <i data-feather="phone"></i>
                                                 </div>
                                                 <div>
-                                                    <h6 class="fw-bold mb-1 text-dark">Số điện thoại</h6>
+                                                    <h6 class="fw-bold mb-1 text-body-emphasis">Số điện thoại</h6>
                                                     <a href="tel:0333097331"
                                                         class="text-decoration-none text-muted mb-0 fw-semibold hover-primary">0333097331</a>
                                                 </div>
@@ -197,12 +285,29 @@
                                                     <i data-feather="mail"></i>
                                                 </div>
                                                 <div>
-                                                    <h6 class="fw-bold mb-1 text-dark">Email</h6>
+                                                    <h6 class="fw-bold mb-1 text-body-emphasis">Email</h6>
                                                     <a href="mailto:nguyenminhhghg01@gmail.com"
                                                         class="text-decoration-none text-muted mb-0 fw-semibold hover-primary">nguyenminhhghg01@gmail.com</a>
                                                 </div>
                                             </div>
                                         </div>
+
+                                        <!-- Khung Donate kêu gọi ở trang ngoài -->
+                                        <% if (settings.showDonate) { %>
+                                        <div class="mt-4 p-3 bg-light rounded-3 text-center border border-primary-subtle" style="background: rgba(13, 110, 253, 0.03) !important;">
+                                            <h6 class="fw-bold mb-2 text-primary-emphasis d-flex align-items-center justify-content-center gap-2">
+                                                <i data-feather="heart" class="text-danger" style="fill: currentColor; width: 18px; height: 18px;"></i>
+                                                <%= settings.donateTitle %>
+                                            </h6>
+                                            <p class="text-muted small mb-3"><%= settings.donateMessage %></p>
+                                            <div class="d-inline-block p-2 bg-white rounded-3 shadow-sm border mb-2">
+                                                <img src="/uploads/donate_qr.png" alt="Donate QR" class="img-fluid rounded" style="max-width: 220px; height: auto; display: block;">
+                                            </div>
+                                            <div class="text-center mt-1">
+                                                <span class="badge bg-secondary-subtle text-secondary small">PVcomBank • 1080 0327 8371 • NGUYEN DUC MINH</span>
+                                            </div>
+                                        </div>
+                                        <% } %>
                                     </div>
                                     <div class="card-footer bg-light text-center py-3">
                                         <a href="/login" class="btn btn-primary btn-sm px-4 rounded-pill">

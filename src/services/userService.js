@@ -21,26 +21,13 @@ class UserService {
             if (currentUser.role === 'ADMIN') {
                 whereCondition = {};
             }
-            // 2. GIÁM ĐỐC: Xem Ban GĐ + Trưởng khoa
+            // 2. GIÁM ĐỐC: Xem Phó Giám đốc + Trưởng khoa/phòng
             else if (currentUser.role === 'DIRECTOR') {
-                whereCondition = {
-                    [Op.or]: [
-                        { departments_id: currentUser.departments_id },
-                        { role: 'HEAD' }
-                    ]
-                };
+                whereCondition = { role: { [Op.in]: ['DEPUTY_DIRECTOR', 'HEAD'] } };
             }
-            // 3. PHÓ GIÁM ĐỐC: Xem Ban GĐ (cấp dưới) + Trưởng khoa
+            // 3. PHÓ GIÁM ĐỐC: Chỉ xem Trưởng khoa/phòng
             else if (currentUser.role === 'DEPUTY_DIRECTOR') {
-                whereCondition = {
-                    [Op.or]: [
-                        {
-                            departments_id: currentUser.departments_id,
-                            role: { [Op.notIn]: ['DIRECTOR', 'DEPUTY_DIRECTOR'] }
-                        },
-                        { role: 'HEAD' }
-                    ]
-                };
+                whereCondition = { role: 'HEAD' };
             }
             // 4. TRƯỞNG KHOA / PHÓ KHOA
             else if (['HEAD', 'DEPUTY'].includes(currentUser.role)) {

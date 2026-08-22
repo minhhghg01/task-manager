@@ -116,6 +116,35 @@ const requireAdmin = (req, res, next) => {
     res.status(403).send('Cấm truy cập - Chỉ dành cho Admin');
 };
 
+const getContactSettings = () => {
+    const settingsPath = path.join(__dirname, '../config/contact_settings.json');
+    const defaults = {
+        showDonate: true,
+        donateTitle: "Mời tôi một tách cà phê",
+        donateMessage: "Nếu bạn thấy ứng dụng này hữu ích, hãy ủng hộ nhà phát triển."
+    };
+    try {
+        if (fs.existsSync(settingsPath)) {
+            const data = fs.readFileSync(settingsPath, 'utf8');
+            return { ...defaults, ...JSON.parse(data) };
+        }
+    } catch (err) {
+        console.error('Lỗi đọc contact settings:', err);
+    }
+    return defaults;
+};
+
+const saveContactSettings = (settings) => {
+    const settingsPath = path.join(__dirname, '../config/contact_settings.json');
+    try {
+        fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
+        return true;
+    } catch (err) {
+        console.error('Lỗi ghi contact settings:', err);
+        return false;
+    }
+};
+
 module.exports = (io) => {
     const taskController = taskControllerFactory(io);
 
@@ -246,7 +275,30 @@ module.exports = (io) => {
     // 8. CONTACT PAGE
     // ============================================================
     router.get('/contact', (req, res) => {
-        res.render('pages/contact');
+        const settings = getContactSettings();
+        res.render('pages/contact', { settings });
+    });
+
+    router.post('/contact/settings', requireAuth, requireAdmin, upload.single('donateQR'), (req, res) => {
+        const { showDonate, donateTitle, donateMessage } = req.body;
+        const settings = getContactSettings();
+        
+        settings.showDonate = showDonate === 'true' || showDonate === 'on' || showDonate === true;
+        settings.donateTitle = donateTitle || "Mời tôi một tách cà phê";
+        settings.donateMessage = donateMessage || "";
+
+        if (req.file) {
+            const destPath = path.join(__dirname, '../public/uploads/donate_qr.png');
+            try {
+                fs.copyFileSync(req.file.path, destPath);
+                fs.unlinkSync(req.file.path);
+            } catch (e) {
+                console.error('Lỗi khi lưu ảnh QR mới:', e);
+            }
+        }
+
+        saveContactSettings(settings);
+        res.redirect('/contact?success=true');
     });
 
     return router;

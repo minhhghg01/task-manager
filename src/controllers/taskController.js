@@ -289,7 +289,7 @@ module.exports = (io) => {
                 const myRank = ROLE_HIERARCHY[user.role] || 99;
 
                 let whereCondition = {};
-                if (!['ADMIN', 'DIRECTOR'].includes(user.role)) {
+                if (!['ADMIN', 'DIRECTOR', 'DEPUTY_DIRECTOR'].includes(user.role)) {
                     whereCondition = { departments_id: user.departments_id };
                 }
 
@@ -301,6 +301,14 @@ module.exports = (io) => {
                 const subordinates = allUsersInDept.filter(u => {
                     if (u.id === user.id) return false;
                     if (u.role === 'ADMIN') return false;
+                    
+                    if (user.role === 'DIRECTOR') {
+                        return u.role === 'DEPUTY_DIRECTOR' || u.role === 'HEAD';
+                    }
+                    if (user.role === 'DEPUTY_DIRECTOR') {
+                        return u.role === 'DIRECTOR' || u.role === 'DEPUTY_DIRECTOR' || u.role === 'HEAD';
+                    }
+                    
                     const userRank = ROLE_HIERARCHY[u.role] || 99;
                     return userRank > myRank;
                 });
@@ -459,8 +467,18 @@ module.exports = (io) => {
                 }
 
                 let availableUsers = [];
-                if (isAdmin || ['DIRECTOR', 'DEPUTY_DIRECTOR'].includes(user.role)) {
+                if (isAdmin) {
                     availableUsers = await User.findAll({ attributes: ['id', 'fullname'] });
+                } else if (user.role === 'DIRECTOR') {
+                    availableUsers = await User.findAll({
+                        where: { role: { [Op.in]: ['DEPUTY_DIRECTOR', 'HEAD'] } },
+                        attributes: ['id', 'fullname']
+                    });
+                } else if (user.role === 'DEPUTY_DIRECTOR') {
+                    availableUsers = await User.findAll({
+                        where: { role: 'HEAD' },
+                        attributes: ['id', 'fullname']
+                    });
                 } else if (['HEAD', 'DEPUTY'].includes(user.role)) {
                     availableUsers = await User.findAll({
                         where: {
@@ -549,6 +567,14 @@ module.exports = (io) => {
 
                 const subordinates = allUsers.filter(u => {
                     if (u.id === currentUser.id) return false;
+                    
+                    if (currentUser.role === 'DIRECTOR') {
+                        return u.role === 'DEPUTY_DIRECTOR' || u.role === 'HEAD';
+                    }
+                    if (currentUser.role === 'DEPUTY_DIRECTOR') {
+                        return u.role === 'HEAD';
+                    }
+                    
                     const userRank = ROLE_HIERARCHY[u.role] || 99;
                     return userRank > myRank;
                 });
