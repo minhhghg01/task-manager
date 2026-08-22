@@ -6,7 +6,7 @@ async function run() {
         console.log('Total users:', users.length);
         console.log('Usernames:');
         users.forEach(u => {
-            console.log(`- ${u.username} (Gmail: ${u.gmail || 'None'})`);
+            console.log(`- ID #${u.id}: ${u.username} (${u.fullname})`);
         });
 
         const target = await User.findOne({ where: { username: 'truongphong_it' } });

@@ -45,6 +45,7 @@
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-semibold small text-muted">Khoa / Phòng</label>
                             <select name="departments_id" class="form-select">
+                                <option value="" <%= !targetUser.departments_id ? 'selected' : '' %>>-- Chưa phân phòng ban --</option>
                                 <% departments.forEach(d=> { %>
                                     <option value="<%= d.id %>" <%=targetUser.departments_id==d.id ? 'selected' : '' %>>
                                         <%= d.name %>

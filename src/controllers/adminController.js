@@ -39,13 +39,14 @@ const AdminController = {
     createUser: async (req, res) => {
         try {
             const { fullname, username, password, role, departments_id, gmail } = req.body;
+            const deptId = (departments_id && departments_id.trim() !== '') ? parseInt(departments_id) : null;
 
             // Hash mật khẩu
             const salt = await bcrypt.genSalt(10);
             const hashedPassword = await bcrypt.hash(password, salt);
 
             const newUser = await User.create({
-                fullname, username, password: hashedPassword, role, departments_id, gmail, status: 'active'
+                fullname, username, password: hashedPassword, role, departments_id: deptId, gmail, status: 'active'
             });
 
             // GHI LOG
@@ -73,7 +74,8 @@ const AdminController = {
     updateUser: async (req, res) => {
         try {
             const { fullname, username, role, departments_id, status, password, gmail } = req.body;
-            let updateData = { fullname, username, role, departments_id, status, gmail };
+            const deptId = (departments_id && departments_id.trim() !== '') ? parseInt(departments_id) : null;
+            let updateData = { fullname, username, role, departments_id: deptId, status, gmail };
 
             // Chỉ hash password nếu nhập mới
             if (password && password.trim() !== "") {
